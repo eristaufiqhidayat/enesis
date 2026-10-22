@@ -33,9 +33,9 @@ class ImportMarketama extends Command
                 continue;
             }
 
-            $path = "{$dir}/{$table}.csv";
+            $path = CsvTableLoader::find($dir, $table);
 
-            if (! is_file($path) || ! Schema::hasTable($table)) {
+            if (! $path || ! Schema::hasTable($table)) {
                 $this->line("<fg=gray>{$table}: dilewati (file tidak ada)</>");
 
                 continue;

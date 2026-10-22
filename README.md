@@ -25,21 +25,38 @@ laporannya dan menampilkan tautan ke sana.
 composer install
 cp .env.example .env
 php artisan key:generate
-touch database/database.sqlite      # atau atur DB MySQL di .env
+# buat database MySQL `enesis` (utf8mb4), lalu sesuaikan DB_* di .env
+mkdir -p storage/app/marketama
+unzip marketama_csv_import_1-22okt2026.zip -d storage/app/marketama
 php artisan migrate --seed
 php artisan serve
 ```
 
-`--seed` mengisi **data referensi tanpa data pribadi**: provinsi, kota/kabupaten,
-kecamatan, kelurahan, city group, produk, brand, kategori, satuan, depo, wilayah depo,
-project, tanggal libur, tipe/kategori outlet, kategori user/karyawan, hari kerja aktif,
-target, parameter potongan gaji, dan rumus insentif.
+Default `.env.example` memakai MySQL (`DB_CONNECTION=mysql`, database `enesis`).
 
-## Impor data lengkap
+`--seed` menjalankan dua seeder:
+
+1. `ReferenceDataSeeder`: **data referensi tanpa data pribadi** dari `database/seeders/data/`
+   (provinsi, kota/kabupaten, kecamatan, kelurahan, city group, produk, brand, kategori, satuan,
+   depo, wilayah depo, project, tanggal libur, tipe/kategori outlet, kategori user/karyawan,
+   hari kerja aktif, target, parameter potongan gaji, rumus insentif).
+2. `MarketamaDataSeeder`: **semua data hasil tarikan lainnya** (transaksi 1–22 Okt 2026,
+   karyawan, user, outlet, tracking, polygon area) dari folder `storage/app/marketama`
+   (atau `MARKETAMA_DATA_PATH` di `.env`). File boleh `.csv` atau `.csv.gz`.
 
 Data transaksi, karyawan, user, dan outlet **tidak disimpan di repo** karena berisi data
-pribadi dan ukurannya besar (sampai 1,7 juta baris per tabel). Data ini dimuat dari
-folder CSV hasil tarikan (satu file per tabel, nama file = nama tabel):
+pribadi dan ukurannya besar (sampai 1,7 juta baris per tabel). Folder `storage/app` sudah
+di-`.gitignore`. Kalau folder kosong, seeder hanya memberi peringatan.
+
+Seeder data besar bisa dijalankan ulang sendiri:
+
+```bash
+php artisan db:seed --class=MarketamaDataSeeder
+```
+
+## Impor data dari folder lain
+
+Data juga bisa dimuat dari folder CSV mana pun (satu file per tabel, nama file = nama tabel):
 
 ```bash
 php artisan marketama:import /path/ke/folder-csv
