@@ -6,9 +6,9 @@
     <link rel="stylesheet" href="{{ asset('vendor/leaflet/leaflet.css') }}">
     <style>
         #tracking_map { height: calc(100vh - 160px); min-height: 480px; border-radius: .375rem; }
-        .koordinator-item { cursor: pointer; }
-        .koordinator-item.no-data { opacity: .55; }
-        .koordinator-item.active { background: #e7f1ff; color: #212529; border-color: #dee2e6; border-left: 3px solid #0d6efd; }
+        .person-item { cursor: pointer; }
+        .person-item.no-data { opacity: .55; }
+        .person-item.active { background: #e7f1ff; color: #212529; border-color: #dee2e6; border-left: 3px solid #0d6efd; }
         .layer-toggle .btn { font-size: 12px; font-weight: 600; }
         .tracking-name-tooltip { font-weight: 600; }
     </style>
@@ -25,16 +25,29 @@
                     <label class="form-label" for="tracking_date">Tanggal</label>
                     <input type="date" id="tracking_date" class="form-control form-control-sm mb-3" value="{{ $tanggal }}">
 
-                    <label class="form-label" for="koordinator_search">Koordinator</label>
-                    <input type="search" id="koordinator_search" class="form-control form-control-sm mb-2" placeholder="Cari koordinator...">
-                    <div class="small text-muted mb-2" id="koordinator_summary"></div>
-                    <div class="list-group" id="koordinator_list" style="max-height: 50vh; overflow-y: auto;">
-                        @forelse ($koordinators as $k)
-                            <a class="list-group-item list-group-item-action koordinator-item py-2" data-id="{{ $k->koordinator_id }}" data-name="{{ $k->nama }}">
+                    @if (! empty($groups))
+                        <label class="form-label" for="group_filter">Koordinator</label>
+                        <select id="group_filter" class="form-select form-select-sm mb-3">
+                            <option value="">Semua koordinator</option>
+                            @foreach ($groups as $groupId => $groupName)
+                                <option value="{{ $groupId }}">{{ $groupName }}</option>
+                            @endforeach
+                        </select>
+                    @endif
+
+                    <label class="form-label" for="person_search">{{ $label }}</label>
+                    <input type="search" id="person_search" class="form-control form-control-sm mb-2" placeholder="Cari {{ strtolower($label) }}...">
+                    <div class="small text-muted mb-2" id="person_summary"></div>
+                    <div class="list-group" id="person_list" style="max-height: 50vh; overflow-y: auto;">
+                        @forelse ($people as $k)
+                            <a class="list-group-item list-group-item-action person-item py-2" data-id="{{ $k->id }}" data-name="{{ $k->nama }}" data-group="{{ $k->group_id ?? '' }}">
                                 <div class="d-flex justify-content-between align-items-start gap-2">
                                     <span class="fw-semibold">{{ $k->nama }}</span>
                                     <span class="badge rounded-pill point-count"></span>
                                 </div>
+                                @if (! empty($k->koordinator_nama))
+                                    <small class="text-muted d-block"><i class="fas fa-user-tie me-1"></i>{{ $k->koordinator_nama }}</small>
+                                @endif
                                 <small class="text-muted"><i class="fas fa-warehouse me-1"></i>{{ $k->depo ?: '-' }}
                                     @if ($k->telepon)<span class="ms-2"><i class="fas fa-phone me-1"></i>{{ $k->telepon }}</span>@endif
                                 </small>
@@ -50,9 +63,9 @@
         <div class="col-lg-8">
             <div class="card">
                 <div class="card-header bg-light d-flex flex-wrap gap-3 small">
-                    <span><b>Koordinator:</b> <span id="koordinator_name_display">-</span></span>
+                    <span><b>{{ $label }}:</b> <span id="person_name_display">-</span></span>
                     <span><b>Tanggal:</b> <span id="date_display">-</span></span>
-                    <span><b>Info:</b> <span id="location_info">Pilih koordinator</span></span>
+                    <span><b>Info:</b> <span id="location_info">Pilih {{ strtolower($label) }}</span></span>
                 </div>
                 <div class="card-body p-2">
                     <div id="tracking_map"></div>
@@ -65,8 +78,10 @@
 @push('scripts')
     <script src="{{ asset('vendor/leaflet/leaflet.js') }}"></script>
     <script>
-        const locationsUrl = @json(route('tracking-koordinator.locations'));
-        const countsUrl = @json(route('tracking-koordinator.counts'));
+        const locationsUrl = @json($locationsUrl);
+        const countsUrl = @json($countsUrl);
+        const idParam = @json($idParam);
+        const label = @json(strtolower($label));
         const initialCounts = @json((object) $counts);
         const map = L.map('tracking_map', { center: [-6.177031, 106.839651], zoom: 11 });
 
@@ -186,15 +201,15 @@
         }
 
         function load() {
-            const active = document.querySelector('.koordinator-item.active');
+            const active = document.querySelector('.person-item.active');
             const tanggal = document.getElementById('tracking_date').value;
             if (!active || !tanggal) return;
             const name = active.dataset.name;
-            document.getElementById('koordinator_name_display').textContent = name;
+            document.getElementById('person_name_display').textContent = name;
             document.getElementById('date_display').textContent = tanggal;
             document.getElementById('location_info').textContent = 'Memuat...';
 
-            fetch(locationsUrl + '?' + new URLSearchParams({ koordinator_id: active.dataset.id, tanggal }))
+            fetch(locationsUrl + '?' + new URLSearchParams({ [idParam]: active.dataset.id, tanggal }))
                 .then((r) => r.json())
                 .then((data) => {
                     document.getElementById('location_info').textContent = data.total ? data.total + ' titik lokasi' : 'Tidak ada data lokasi';
@@ -203,17 +218,30 @@
                 .catch(() => { document.getElementById('location_info').textContent = 'Gagal memuat data'; });
         }
 
-        document.querySelectorAll('.koordinator-item').forEach((el) => el.addEventListener('click', () => {
-            document.querySelectorAll('.koordinator-item').forEach((x) => x.classList.remove('active'));
+        document.querySelectorAll('.person-item').forEach((el) => el.addEventListener('click', () => {
+            document.querySelectorAll('.person-item').forEach((x) => x.classList.remove('active'));
             el.classList.add('active');
             load();
         }));
-        // Tandai koordinator yang punya titik GPS pada tanggal terpilih, taruh di atas, lalu pilih otomatis
+        const groupFilter = document.getElementById('group_filter');
+        const isShown = (el) => !el.classList.contains('d-none');
+
+        // Sembunyikan item yang tidak cocok dengan pencarian nama atau filter koordinator.
+        function applyFilter() {
+            const q = document.getElementById('person_search').value.toLowerCase();
+            const group = groupFilter ? groupFilter.value : '';
+            document.querySelectorAll('.person-item').forEach((el) => {
+                el.classList.toggle('d-none', !el.dataset.name.toLowerCase().includes(q) || (group !== '' && el.dataset.group !== group));
+            });
+        }
+
+        // Tandai yang punya titik GPS pada tanggal terpilih, taruh di atas, lalu pilih otomatis
         // yang pertama kalau belum ada yang dipilih (atau yang dipilih tidak punya data).
+        let lastCounts = initialCounts;
         function applyCounts(counts) {
-            const list = document.getElementById('koordinator_list');
-            const items = [...document.querySelectorAll('.koordinator-item')];
-            let withData = 0;
+            lastCounts = counts;
+            const list = document.getElementById('person_list');
+            const items = [...document.querySelectorAll('.person-item')];
             items.forEach((el) => {
                 const n = counts[el.dataset.id] || 0;
                 el.dataset.count = n;
@@ -221,19 +249,20 @@
                 const badge = el.querySelector('.point-count');
                 badge.textContent = n ? n + ' titik' : 'tidak ada GPS';
                 badge.className = 'badge rounded-pill point-count ' + (n ? 'bg-primary' : 'bg-light text-muted');
-                if (n) withData++;
             });
             items.sort((a, b) => (b.dataset.count > 0) - (a.dataset.count > 0) || a.dataset.name.localeCompare(b.dataset.name))
                 .forEach((el) => list.appendChild(el));
-            document.getElementById('koordinator_summary').textContent = withData + ' dari ' + items.length + ' koordinator punya data GPS pada tanggal ini.';
+            const shown = items.filter(isShown);
+            const withData = shown.filter((el) => el.dataset.count > 0).length;
+            document.getElementById('person_summary').textContent = withData + ' dari ' + shown.length + ' ' + label + ' punya data GPS pada tanggal ini.';
 
-            const active = document.querySelector('.koordinator-item.active');
-            if (active && active.dataset.count > 0) { load(); return; }
-            const first = items.find((el) => el.dataset.count > 0);
+            const active = document.querySelector('.person-item.active');
+            if (active && isShown(active) && active.dataset.count > 0) { load(); return; }
+            const first = shown.find((el) => el.dataset.count > 0);
             if (first) { first.click(); first.scrollIntoView({ block: 'nearest' }); return; }
             if (active) active.classList.remove('active');
             routeLayer.clearLayers();
-            document.getElementById('koordinator_name_display').textContent = '-';
+            document.getElementById('person_name_display').textContent = '-';
             document.getElementById('location_info').textContent = 'Tidak ada data lokasi pada tanggal ini';
         }
 
@@ -245,12 +274,8 @@
                 .catch(() => { document.getElementById('location_info').textContent = 'Gagal memuat data'; });
         });
         applyCounts(initialCounts);
-        document.getElementById('koordinator_search').addEventListener('input', (e) => {
-            const q = e.target.value.toLowerCase();
-            document.querySelectorAll('.koordinator-item').forEach((el) => {
-                el.classList.toggle('d-none', !el.dataset.name.toLowerCase().includes(q));
-            });
-        });
+        document.getElementById('person_search').addEventListener('input', applyFilter);
+        if (groupFilter) groupFilter.addEventListener('change', () => { applyFilter(); applyCounts(lastCounts); });
 
         // Klik peta: tampilkan info lokasi (alamat + koordinat).
         map.on('click', (e) => {

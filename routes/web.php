@@ -3,6 +3,7 @@
 use App\Http\Controllers\DesignAreaController;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\TrackingKoordinatorController;
+use App\Http\Controllers\TrackingSalesController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/home');
@@ -12,6 +13,12 @@ Route::get('/tracking_koordinator_history_location/locations', [TrackingKoordina
     ->name('tracking-koordinator.locations');
 Route::get('/tracking_koordinator_history_location/counts', [TrackingKoordinatorController::class, 'counts'])
     ->name('tracking-koordinator.counts');
+
+Route::get('/tracking_sales_history_location', [TrackingSalesController::class, 'index']);
+Route::get('/tracking_sales_history_location/locations', [TrackingSalesController::class, 'locations'])
+    ->name('tracking-sales.locations');
+Route::get('/tracking_sales_history_location/counts', [TrackingSalesController::class, 'counts'])
+    ->name('tracking-sales.counts');
 
 Route::prefix('master_area/design_area')->name('design-area.')->controller(DesignAreaController::class)->group(function () {
     Route::get('/', 'index')->name('index');

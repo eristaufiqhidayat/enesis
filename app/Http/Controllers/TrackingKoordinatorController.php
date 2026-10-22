@@ -13,9 +13,15 @@ class TrackingKoordinatorController extends Controller
             ?? DB::table('tracking_koordinator_lokasi')->max('tanggal')
             ?? now()->toDateString();
 
-        return view('tracking.koordinator_history', [
+        return view('tracking.history', [
             'page' => config('marketama.pages.tracking_koordinator_history_location'),
-            'koordinators' => DB::table('tracking_koordinator')->orderBy('nama')->get(),
+            'label' => 'Koordinator',
+            'idParam' => 'koordinator_id',
+            'people' => DB::table('tracking_koordinator')->orderBy('nama')
+                ->get(['koordinator_id as id', 'nama', 'telepon', 'depo']),
+            'groups' => [],
+            'locationsUrl' => route('tracking-koordinator.locations'),
+            'countsUrl' => route('tracking-koordinator.counts'),
             'tanggal' => $tanggal,
             'counts' => $this->countsFor($tanggal),
         ]);

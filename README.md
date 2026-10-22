@@ -90,6 +90,14 @@ Datanya ada di tabel `tracking_koordinator` dan `tracking_koordinator_lokasi`, d
 `marketama:import` (file `tracking_koordinator.csv` dan `tracking_koordinator_lokasi.csv`).
 Peta memakai tile OpenStreetMap dan Esri, jadi butuh koneksi internet.
 
+## Peta Tracking History Sales Location
+
+Halaman `/tracking_sales_history_location` sama seperti peta koordinator, untuk sales: filter
+koordinator, daftar sales dengan jumlah titik GPS per tanggal, rute GPS dan lokasi depo.
+Datanya di tabel `tracking_sales` dan `tracking_sales_lokasi` (835 ribu titik, 1–22 Okt 2026),
+dimuat lewat seeder atau `marketama:import` (file `tracking_sales.csv` dan
+`tracking_sales_lokasi.csv.gz`).
+
 ## Menu kanan atas & Design Polygon Area
 
 Ikon kanan atas sama dengan header Marketama: Tambah Loading Barang, Tambah Barang Canvassing,

@@ -15,7 +15,7 @@ class ImportMarketama extends Command
     protected $description = 'Impor data hasil tarikan Marketama (CSV per tabel) ke database';
 
     // Tabel di luar config/marketama.php (dibuat oleh migration tersendiri).
-    private const EXTRA_TABLES = ['tracking_koordinator', 'tracking_koordinator_lokasi', 'area_polygon', 'area_depo'];
+    private const EXTRA_TABLES = ['tracking_koordinator', 'tracking_koordinator_lokasi', 'tracking_sales', 'tracking_sales_lokasi', 'area_polygon', 'area_depo'];
 
     public function handle(): int
     {
