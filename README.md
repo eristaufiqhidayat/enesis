@@ -48,4 +48,13 @@ php artisan marketama:import /path/ke/folder-csv --only=lap_penjualan_barang --o
 
 Setiap tabel dikosongkan dulu sebelum diisi ulang.
 
+## Peta Tracking History Koordinator Location
+
+Halaman `/tracking_koordinator_history_location` menampilkan rute GPS koordinator di peta
+Leaflet (pilih tanggal dan koordinator), sama seperti di Marketama: garis rute, ikon Start/End,
+titik-titik lokasi dengan alamat, lokasi depo, dan tombol Satelit / 2D Map / Garis Jalan.
+Datanya ada di tabel `tracking_koordinator` dan `tracking_koordinator_lokasi`, dimuat lewat
+`marketama:import` (file `tracking_koordinator.csv` dan `tracking_koordinator_lokasi.csv`).
+Peta memakai tile OpenStreetMap dan Esri, jadi butuh koneksi internet.
+
 Rentang data hasil tarikan 22 Okt 2026: data transaksi 1–22 Okt 2026, master data lengkap.

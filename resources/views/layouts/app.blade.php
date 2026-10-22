@@ -20,6 +20,7 @@
         main { margin-left: 260px; padding: 1.5rem; }
         @media (max-width: 991px) { .sidebar { position: static; width: 100%; height: auto; } main { margin-left: 0; } }
     </style>
+    @stack('head')
 </head>
 <body>
     @include('layouts.sidebar')
@@ -27,5 +28,6 @@
         @yield('content')
     </main>
     <script src="{{ asset('vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
+    @stack('scripts')
 </body>
 </html>

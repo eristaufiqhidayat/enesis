@@ -1,4 +1,4 @@
-@php($current = request()->route('slug'))
+@php($current = request()->route('slug') ?? request()->path())
 <nav class="sidebar">
     <div class="brand"><i class="fas fa-leaf me-1"></i> {{ config('app.name') }}</div>
     <ul class="nav flex-column">

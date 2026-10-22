@@ -14,6 +14,9 @@ class ImportMarketama extends Command
 
     protected $description = 'Impor data hasil tarikan Marketama (CSV per tabel) ke database';
 
+    // Tabel di luar config/marketama.php (dibuat oleh migration tersendiri).
+    private const EXTRA_TABLES = ['tracking_koordinator', 'tracking_koordinator_lokasi'];
+
     public function handle(): int
     {
         $dir = rtrim($this->argument('dir'), '/');
@@ -25,7 +28,7 @@ class ImportMarketama extends Command
             return self::FAILURE;
         }
 
-        foreach (array_keys(config('marketama.tables')) as $table) {
+        foreach ([...array_keys(config('marketama.tables')), ...self::EXTRA_TABLES] as $table) {
             if ($only && ! in_array($table, $only, true)) {
                 continue;
             }
