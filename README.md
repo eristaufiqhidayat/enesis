@@ -34,6 +34,22 @@ php artisan serve
 
 Default `.env.example` memakai MySQL (`DB_CONNECTION=mysql`, database `enesis`).
 
+### PostgreSQL
+
+Migration dan seeder yang sama juga jalan di PostgreSQL (diuji di PostgreSQL 16). Buat
+database `enesis` (encoding UTF8), lalu di `.env`:
+
+```dotenv
+DB_CONNECTION=pgsql
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_DATABASE=enesis
+DB_USERNAME=postgres
+DB_PASSWORD=rahasia
+```
+
+Lalu jalankan `php artisan migrate --seed` seperti biasa. Butuh ekstensi PHP `pdo_pgsql`.
+
 `--seed` menjalankan dua seeder:
 
 1. `ReferenceDataSeeder`: **data referensi tanpa data pribadi** dari `database/seeders/data/`
