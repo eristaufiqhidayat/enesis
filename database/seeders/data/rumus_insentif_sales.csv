@@ -1,0 +1,4 @@
+source_id,deskripsi,tot_ec_lower_bound,tot_ec_upper_bound,total_insentif
+1,720 EC min transaksi Rp 25.000 per EC/bulan,720/bulan,999999/bulan,"Rp 2.000.000,00"
+2,684 EC min transaksi Rp 25.000 per EC/bulan,684/bulan,719/bulan,"Rp 1.500.000,00"
+3,612 EC min transaksi Rp 25.000 per EC/bulan,612/bulan,683/bulan,"Rp 1.000.000,00"

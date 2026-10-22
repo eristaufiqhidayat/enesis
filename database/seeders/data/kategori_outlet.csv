@@ -1,0 +1,6 @@
+source_id,nama_kategori,deskripsi
+1,AC,"Actual Call, Ini adalah outlet / toko yang sudah dikunjungi oleh salesman"
+2,NOO,"New Open Outlet, Ini adalah outlet / toko yang baru, esok harinya dia akan masuk ke data All Outlets"
+3,RO,"Repeat Order, Ini adalah outlet / toko yang sudah transaksi lebih dari 1 kali"
+4,OOS,"Out of Stock, Ini adalah outlet / toko yang kehabisan stok"
+5,EC,"Effective Call, Ini adalah outlet / toko yang sudah transaksi pertama kali di bulan tersebut"

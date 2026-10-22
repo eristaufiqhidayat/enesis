@@ -1,0 +1,4 @@
+source_id,deskripsi,tot_ec_lower_bound,tot_ec_upper_bound,total_sales,total_insentif
+1,720 EC x 10 Sales = 100%/bulan,7200/bulan,999999999/bulan,10,"Rp 3.000.000,00"
+2,684 EC x 10 Sales = 95%/bulan,6840/bulan,7190/bulan,10,"Rp 1.900.000,00"
+3,612 EC x 10 Sales = 85%/bulan,6120/bulan,6830/bulan,10,"Rp 1.000.000,00"
