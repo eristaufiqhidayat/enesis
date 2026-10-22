@@ -10,6 +10,8 @@ Route::redirect('/', '/home');
 Route::get('/tracking_koordinator_history_location', [TrackingKoordinatorController::class, 'index']);
 Route::get('/tracking_koordinator_history_location/locations', [TrackingKoordinatorController::class, 'locations'])
     ->name('tracking-koordinator.locations');
+Route::get('/tracking_koordinator_history_location/counts', [TrackingKoordinatorController::class, 'counts'])
+    ->name('tracking-koordinator.counts');
 
 Route::prefix('master_area/design_area')->name('design-area.')->controller(DesignAreaController::class)->group(function () {
     Route::get('/', 'index')->name('index');

@@ -7,6 +7,7 @@
     <style>
         #tracking_map { height: calc(100vh - 160px); min-height: 480px; border-radius: .375rem; }
         .koordinator-item { cursor: pointer; }
+        .koordinator-item.no-data { opacity: .55; }
         .koordinator-item.active { background: #e7f1ff; color: #212529; border-color: #dee2e6; border-left: 3px solid #0d6efd; }
         .layer-toggle .btn { font-size: 12px; font-weight: 600; }
         .tracking-name-tooltip { font-weight: 600; }
@@ -26,10 +27,14 @@
 
                     <label class="form-label" for="koordinator_search">Koordinator</label>
                     <input type="search" id="koordinator_search" class="form-control form-control-sm mb-2" placeholder="Cari koordinator...">
+                    <div class="small text-muted mb-2" id="koordinator_summary"></div>
                     <div class="list-group" id="koordinator_list" style="max-height: 50vh; overflow-y: auto;">
                         @forelse ($koordinators as $k)
                             <a class="list-group-item list-group-item-action koordinator-item py-2" data-id="{{ $k->koordinator_id }}" data-name="{{ $k->nama }}">
-                                <div class="fw-semibold">{{ $k->nama }}</div>
+                                <div class="d-flex justify-content-between align-items-start gap-2">
+                                    <span class="fw-semibold">{{ $k->nama }}</span>
+                                    <span class="badge rounded-pill point-count"></span>
+                                </div>
                                 <small class="text-muted"><i class="fas fa-warehouse me-1"></i>{{ $k->depo ?: '-' }}
                                     @if ($k->telepon)<span class="ms-2"><i class="fas fa-phone me-1"></i>{{ $k->telepon }}</span>@endif
                                 </small>
@@ -61,6 +66,8 @@
     <script src="{{ asset('vendor/leaflet/leaflet.js') }}"></script>
     <script>
         const locationsUrl = @json(route('tracking-koordinator.locations'));
+        const countsUrl = @json(route('tracking-koordinator.counts'));
+        const initialCounts = @json((object) $counts);
         const map = L.map('tracking_map', { center: [-6.177031, 106.839651], zoom: 11 });
 
         const osmLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -201,7 +208,43 @@
             el.classList.add('active');
             load();
         }));
-        document.getElementById('tracking_date').addEventListener('change', load);
+        // Tandai koordinator yang punya titik GPS pada tanggal terpilih, taruh di atas, lalu pilih otomatis
+        // yang pertama kalau belum ada yang dipilih (atau yang dipilih tidak punya data).
+        function applyCounts(counts) {
+            const list = document.getElementById('koordinator_list');
+            const items = [...document.querySelectorAll('.koordinator-item')];
+            let withData = 0;
+            items.forEach((el) => {
+                const n = counts[el.dataset.id] || 0;
+                el.dataset.count = n;
+                el.classList.toggle('no-data', n === 0);
+                const badge = el.querySelector('.point-count');
+                badge.textContent = n ? n + ' titik' : 'tidak ada GPS';
+                badge.className = 'badge rounded-pill point-count ' + (n ? 'bg-primary' : 'bg-light text-muted');
+                if (n) withData++;
+            });
+            items.sort((a, b) => (b.dataset.count > 0) - (a.dataset.count > 0) || a.dataset.name.localeCompare(b.dataset.name))
+                .forEach((el) => list.appendChild(el));
+            document.getElementById('koordinator_summary').textContent = withData + ' dari ' + items.length + ' koordinator punya data GPS pada tanggal ini.';
+
+            const active = document.querySelector('.koordinator-item.active');
+            if (active && active.dataset.count > 0) { load(); return; }
+            const first = items.find((el) => el.dataset.count > 0);
+            if (first) { first.click(); first.scrollIntoView({ block: 'nearest' }); return; }
+            if (active) active.classList.remove('active');
+            routeLayer.clearLayers();
+            document.getElementById('koordinator_name_display').textContent = '-';
+            document.getElementById('location_info').textContent = 'Tidak ada data lokasi pada tanggal ini';
+        }
+
+        document.getElementById('tracking_date').addEventListener('change', (e) => {
+            if (!e.target.value) return;
+            fetch(countsUrl + '?' + new URLSearchParams({ tanggal: e.target.value }))
+                .then((r) => r.json())
+                .then(applyCounts)
+                .catch(() => { document.getElementById('location_info').textContent = 'Gagal memuat data'; });
+        });
+        applyCounts(initialCounts);
         document.getElementById('koordinator_search').addEventListener('input', (e) => {
             const q = e.target.value.toLowerCase();
             document.querySelectorAll('.koordinator-item').forEach((el) => {

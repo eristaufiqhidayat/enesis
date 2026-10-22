@@ -17,7 +17,29 @@ class TrackingKoordinatorController extends Controller
             'page' => config('marketama.pages.tracking_koordinator_history_location'),
             'koordinators' => DB::table('tracking_koordinator')->orderBy('nama')->get(),
             'tanggal' => $tanggal,
+            'counts' => $this->countsFor($tanggal),
         ]);
+    }
+
+    /**
+     * Jumlah titik lokasi per koordinator pada satu tanggal, untuk menandai koordinator yang punya data.
+     */
+    public function counts(Request $request)
+    {
+        $data = $request->validate(['tanggal' => ['required', 'date']]);
+
+        return response()->json($this->countsFor($data['tanggal']));
+    }
+
+    private function countsFor(string $tanggal): array
+    {
+        return DB::table('tracking_koordinator_lokasi')
+            ->whereDate('tanggal', $tanggal)
+            ->groupBy('koordinator_id')
+            ->selectRaw('koordinator_id, count(*) as total')
+            ->pluck('total', 'koordinator_id')
+            ->map(fn ($total) => (int) $total)
+            ->all();
     }
 
     public function locations(Request $request)

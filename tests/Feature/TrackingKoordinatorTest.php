@@ -36,4 +36,18 @@ class TrackingKoordinatorTest extends TestCase
             ->assertJsonPath('locations.0.waktu', '2026-10-21 08:00:00')
             ->assertJsonPath('depo.nama', 'JAKSEL');
     }
+
+    public function test_counts_endpoint_returns_points_per_koordinator_for_a_date(): void
+    {
+        DB::table('tracking_koordinator_lokasi')->insert([
+            ['koordinator_id' => 7, 'tanggal' => '2026-10-21', 'waktu' => '2026-10-21 08:00:00', 'lat' => -6.1, 'lng' => 106.7],
+            ['koordinator_id' => 7, 'tanggal' => '2026-10-21', 'waktu' => '2026-10-21 09:00:00', 'lat' => -6.2, 'lng' => 106.8],
+            ['koordinator_id' => 9, 'tanggal' => '2026-10-21', 'waktu' => '2026-10-21 09:00:00', 'lat' => -6.2, 'lng' => 106.8],
+            ['koordinator_id' => 9, 'tanggal' => '2026-10-22', 'waktu' => '2026-10-22 08:00:00', 'lat' => -6.3, 'lng' => 106.9],
+        ]);
+
+        $this->getJson('/tracking_koordinator_history_location/counts?tanggal=2026-10-21')
+            ->assertOk()
+            ->assertExactJson(['7' => 2, '9' => 1]);
+    }
 }
