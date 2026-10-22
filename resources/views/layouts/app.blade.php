@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title') · {{ config('app.name') }}</title>
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
@@ -17,7 +18,9 @@
         .sidebar .nav .nav .nav-link { padding-left: 2.25rem; }
         .sidebar .section-label { font-size: .7rem; text-transform: uppercase; color: #9da9bb; font-weight: 600; margin: 1rem .5rem .25rem; }
         .sidebar [data-bs-toggle="collapse"]::after { content: "\f107"; font-family: "Font Awesome 5 Free"; font-weight: 900; float: right; }
-        main { margin-left: 260px; padding: 1.5rem; }
+        main { margin-left: 260px; padding: 1rem 1.5rem 1.5rem; }
+        .topbar-icon { display: inline-flex; width: 2.25rem; height: 2.25rem; align-items: center; justify-content: center; border-radius: 50%; color: #5e6e82; font-size: 1.05rem; }
+        .topbar-icon:hover { background: #fff; color: #2c7be5; }
         @media (max-width: 991px) { .sidebar { position: static; width: 100%; height: auto; } main { margin-left: 0; } }
     </style>
     @stack('head')
@@ -25,9 +28,11 @@
 <body>
     @include('layouts.sidebar')
     <main>
+        @include('layouts.topbar')
         @yield('content')
     </main>
     <script src="{{ asset('vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
+    <script>document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => new bootstrap.Tooltip(el));</script>
     @stack('scripts')
 </body>
 </html>

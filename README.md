@@ -57,4 +57,14 @@ Datanya ada di tabel `tracking_koordinator` dan `tracking_koordinator_lokasi`, d
 `marketama:import` (file `tracking_koordinator.csv` dan `tracking_koordinator_lokasi.csv`).
 Peta memakai tile OpenStreetMap dan Esri, jadi butuh koneksi internet.
 
+## Menu kanan atas & Design Polygon Area
+
+Ikon kanan atas sama dengan header Marketama: Tambah Loading Barang, Tambah Barang Canvassing,
+Design Polygon Area, dan Notifikasi. Halaman `/master_area/design_area` menampilkan polygon
+semua area (13.254 area) per provinsi/kota/kecamatan/kelurahan, lokasi depo, daftar area yang
+bisa dicari, serta fitur gambar polygon baru (simpan ke database lokal) dan hapus area.
+Datanya di tabel `area_polygon` dan `area_depo`, dimuat lewat `marketama:import`
+(file `area_polygon.csv` dan `area_depo.csv`). Form Tambah Loading Barang dan Tambah Barang
+Canvassing belum dibuat.
+
 Rentang data hasil tarikan 22 Okt 2026: data transaksi 1–22 Okt 2026, master data lengkap.
