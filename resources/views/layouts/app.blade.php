@@ -21,8 +21,12 @@
         .sidebar .section-label:first-child { border-top: 0; padding-top: 0; }
         .sidebar [data-bs-toggle="collapse"]::after { content: "\f107"; font-family: "Font Awesome 5 Free"; font-weight: 900; float: right; }
         main { margin-left: 260px; padding: 1rem 1.5rem 1.5rem; }
-        .topbar-icon { display: inline-flex; width: 2.25rem; height: 2.25rem; align-items: center; justify-content: center; border-radius: 50%; color: #5e6e82; font-size: 1.05rem; }
-        .topbar-icon:hover { background: #fff; color: #2c7be5; }
+        /* Ikon kanan atas sama dengan Marketama: tombol bulat biru (.shortcut-btn) dan lonceng abu-abu dengan titik biru. */
+        .shortcut-btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background-color: #2c7be5; color: #fff !important; font-size: 14px; transition: all .2s ease; text-decoration: none; }
+        .shortcut-btn:hover { opacity: .85; transform: scale(1.1); color: #fff !important; }
+        .notif-bell { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 2.25rem; height: 2.25rem; color: #5e6e82; font-size: 1.25rem; text-decoration: none; }
+        .notif-bell:hover { color: #2c7be5; }
+        .notif-bell::before { content: ""; position: absolute; right: .3rem; top: .35rem; width: .7rem; height: .7rem; border-radius: 40%; background-color: #2c7be5; border: 2px solid #edf2f9; }
         @media (max-width: 991px) { .sidebar { position: static; width: 100%; height: auto; } main { margin-left: 0; } }
     </style>
     @stack('head')
