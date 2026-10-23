@@ -20,3 +20,7 @@ Sebelum implementasi, cek format kolom `tanggal` (string) di `absensi_sales_terl
 ## Blocked by
 
 - Ticket "Filter tanggal backend checkin_pagi"
+
+## Status (implementasi 2026-10-23)
+
+Semua acceptance criteria terpenuhi **kecuali** verifikasi konsistensi angka "Terlambat" dengan data nyata: repo/database lokal tidak punya sampel `absensi_sales_terlambat`, dan `docs/PRD.md` baris 74 menyebut CSV asli Marketama bisa menyimpan tanggal sebagai teks tampilan (bukan `Y-m-d`). Implementasi saat ini mencocokkan `absensi_sales_terlambat.tanggal` secara exact-string ke `Y-m-d` — kalau format produksi berbeda, angka "Terlambat" akan selalu 0 tanpa error. Dicatat sebagai catatan terbuka, belum dibuat tiket susulan (keputusan pengguna, 2026-10-23).
