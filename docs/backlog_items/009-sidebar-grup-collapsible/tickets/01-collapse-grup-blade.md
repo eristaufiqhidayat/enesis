@@ -14,11 +14,11 @@ Ubah `resources/views/components/ui/organisms/sidebar.blade.php` supaya tiap gru
 
 ## Acceptance criteria
 
-- [ ] Setiap grup berlabel di sidebar punya toggle (klik label collapse/expand daftar menu grup tersebut), grup pertama tidak berubah (selalu terbuka, tidak ada toggle).
-- [ ] State collapse per grup tersimpan di `localStorage` key `sidebar-collapsed-groups` dan tetap terbaca setelah reload halaman.
-- [ ] Mengunjungi URL menu yang berada di grup yang collapsed menurut `localStorage` tetap menampilkan grup itu terbuka (tidak menyembunyikan menu aktif).
-- [ ] Chevron grup berputar 180° saat grup terbuka (konsisten visual dengan chevron submenu yang sudah ada).
-- [ ] Feature test memverifikasi markup `data-collapse-toggle` muncul di semua grup berlabel dan tidak muncul di grup pertama.
+- [x] Setiap grup berlabel di sidebar punya toggle (klik label collapse/expand daftar menu grup tersebut), grup pertama tidak berubah (selalu terbuka, tidak ada toggle).
+- [x] State collapse per grup tersimpan di `localStorage` key `sidebar-collapsed-groups` dan tetap terbaca setelah reload halaman.
+- [x] Mengunjungi URL menu yang berada di grup yang collapsed menurut `localStorage` tetap menampilkan grup itu terbuka (tidak menyembunyikan menu aktif).
+- [x] Chevron grup berputar 180° saat grup terbuka (konsisten visual dengan chevron submenu yang sudah ada).
+- [x] Feature test memverifikasi markup `data-collapse-toggle` muncul di semua grup berlabel dan tidak muncul di grup pertama.
 
 ## Blocked by
 

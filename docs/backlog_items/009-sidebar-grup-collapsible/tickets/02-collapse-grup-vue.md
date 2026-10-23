@@ -13,10 +13,10 @@ Ubah `resources/js/Components/ui/organisms/Sidebar.vue` supaya tiap grup berlabe
 
 ## Acceptance criteria
 
-- [ ] Setiap grup berlabel di sidebar Vue punya toggle collapse/expand, perilaku sama dengan versi Blade (ticket 01) untuk input yang sama.
-- [ ] Toggle grup menulis ke `localStorage` key `sidebar-collapsed-groups` dengan format array yang sama seperti yang dibaca/ditulis versi Blade (ticket 01) — collapse di satu stack lalu pindah ke stack lain (atau reload) menghasilkan state collapse yang sama.
-- [ ] Navigasi Inertia ke menu di grup yang collapsed menurut `localStorage` tetap menampilkan grup itu terbuka.
-- [ ] Tidak ada exception di console saat `localStorage` kosong/belum pernah diisi (first visit).
+- [x] Setiap grup berlabel di sidebar Vue punya toggle collapse/expand, perilaku sama dengan versi Blade (ticket 01) untuk input yang sama.
+- [x] Toggle grup menulis ke `localStorage` key `sidebar-collapsed-groups` dengan format array yang sama seperti yang dibaca/ditulis versi Blade (ticket 01) — collapse di satu stack lalu pindah ke stack lain (atau reload) menghasilkan state collapse yang sama.
+- [x] Navigasi Inertia ke menu di grup yang collapsed menurut `localStorage` tetap menampilkan grup itu terbuka.
+- [x] Tidak ada exception di console saat `localStorage` kosong/belum pernah diisi (first visit).
 
 ## Blocked by
 
