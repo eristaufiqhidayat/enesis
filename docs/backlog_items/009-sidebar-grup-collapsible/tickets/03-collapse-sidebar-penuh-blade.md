@@ -14,12 +14,12 @@ Tambah mode collapse untuk **seluruh sidebar** (bukan per grup) jadi strip ikon-
 
 ## Acceptance criteria
 
-- [ ] Tombol toggle di `.brand` sidebar mempersempit/melebarkan seluruh sidebar jadi strip ikon-saja dan kembali, tanpa reload.
-- [ ] State collapse tersimpan di `localStorage` key `sidebar-collapsed-full` (`'1'`/tidak ada) dan tetap terbaca setelah reload halaman penuh.
-- [ ] Saat mode icon-only aktif, hover ikon menu menampilkan tooltip native (`title`) berisi nama menu.
-- [ ] Klik item berChildren (punya submenu) saat mode icon-only aktif meng-expand sidebar kembali ke mode normal lebih dulu (bukan flyout).
-- [ ] Di viewport ≤991px, tombol toggle tidak tampil dan sidebar tetap pakai perilaku statis full-width yang sudah ada.
-- [ ] Feature test memverifikasi markup tombol `[data-sidebar-toggle]` muncul di `.brand`.
+- [x] Tombol toggle di `.brand` sidebar mempersempit/melebarkan seluruh sidebar jadi strip ikon-saja dan kembali, tanpa reload.
+- [x] State collapse tersimpan di `localStorage` key `sidebar-collapsed-full` (`'1'`/tidak ada) dan tetap terbaca setelah reload halaman penuh.
+- [x] Saat mode icon-only aktif, hover ikon menu menampilkan tooltip native (`title`) berisi nama menu.
+- [x] Klik item berChildren (punya submenu) saat mode icon-only aktif meng-expand sidebar kembali ke mode normal lebih dulu (bukan flyout).
+- [x] Di viewport ≤991px, tombol toggle tidak tampil dan sidebar tetap pakai perilaku statis full-width yang sudah ada.
+- [x] Feature test memverifikasi markup tombol `[data-sidebar-toggle]` muncul di `.brand`.
 
 ## Blocked by
 

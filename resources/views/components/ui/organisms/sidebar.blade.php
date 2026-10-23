@@ -1,40 +1,82 @@
 @php($current = request()->route('slug') ?? request()->path())
 <nav class="sidebar">
-    <div class="brand"><i class="fas fa-leaf me-1"></i> {{ config('app.name') }}</div>
+    <div class="brand">
+        <span><i class="fas fa-leaf me-1"></i> {{ config('app.name') }}</span>
+        <button type="button" data-sidebar-toggle aria-label="Persempit/lebarkan sidebar"><i class="fas fa-bars"></i></button>
+    </div>
     <ul class="nav flex flex-col list-none m-0 p-0">
         @foreach (config('marketama.menu') as $section)
+            @php($groupId = 'group-' . $loop->index)
             @if ($section['label'])
-                <li class="section-label">{{ $section['label'] }}</li>
+                @php($groupSlugs = collect($section['items'])->flatMap(fn ($item) => isset($item['children']) ? array_column($item['children'], 'slug') : [$item['slug']])->implode(','))
+                <li class="section-label is-open" data-collapse-toggle="{{ $groupId }}" data-group-label="{{ $section['label'] }}" role="button" tabindex="0" aria-expanded="true">
+                    {{ $section['label'] }}
+                    <i class="fas fa-chevron-down nav-chevron"></i>
+                </li>
             @endif
-            @foreach ($section['items'] as $item)
-                @if (isset($item['children']))
-                    @php($open = in_array($current, array_column($item['children'], 'slug'), true))
-                    <li class="nav-item">
-                        <a class="nav-link {{ $open ? 'is-open' : '' }}" href="#" data-collapse-toggle="{{ $item['id'] }}" aria-expanded="{{ $open ? 'true' : 'false' }}">
-                            <span class="nav-link-icon"><i class="{{ $item['icon'] }}"></i></span>
-                            <span class="nav-link-text">{{ $item['title'] }}</span>
-                            <i class="fas fa-chevron-down nav-chevron"></i>
-                        </a>
-                        <ul class="nav flex flex-col list-none m-0 p-0 {{ $open ? '' : 'hidden' }}" id="{{ $item['id'] }}">
-                            @foreach ($item['children'] as $child)
-                                <li class="nav-item">
-                                    <a class="nav-link {{ $current === $child['slug'] ? 'active' : '' }}" href="{{ route('menu', $child['slug']) }}">
-                                        @if ($child['icon'])<span class="nav-link-icon"><i class="{{ $child['icon'] }}"></i></span>@endif
-                                        <span class="nav-link-text">{{ $child['title'] }}</span>
-                                    </a>
-                                </li>
-                            @endforeach
-                        </ul>
-                    </li>
-                @else
-                    <li class="nav-item">
-                        <a class="nav-link {{ $current === $item['slug'] ? 'active' : '' }}" href="{{ route('menu', $item['slug']) }}">
-                            <span class="nav-link-icon"><i class="{{ $item['icon'] }}"></i></span>
-                            <span class="nav-link-text">{{ $item['title'] }}</span>
-                        </a>
-                    </li>
-                @endif
-            @endforeach
+            <ul @if ($section['label']) id="{{ $groupId }}" data-group-slugs="{{ $groupSlugs }}" @endif class="flex flex-col list-none m-0 p-0">
+                <x-ui.organisms.partials.sidebar-nav-items :items="$section['items']" :current="$current" />
+            </ul>
         @endforeach
     </ul>
 </nav>
+<script>
+    // Collapse per grup sidebar: state disimpan di localStorage supaya tetap
+    // terbaca setelah reload maupun saat pindah halaman (full reload Blade).
+    (() => {
+        const STORAGE_KEY = 'sidebar-collapsed-groups';
+        const currentSlug = @json($current);
+
+        const readCollapsed = () => {
+            try {
+                const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+                return Array.isArray(saved) ? saved : [];
+            } catch {
+                return [];
+            }
+        };
+
+        const writeCollapsed = (labels) => {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(labels));
+            } catch {
+                // localStorage tidak tersedia (mode privat dll.), state collapse tidak persist.
+            }
+        };
+
+        document.querySelectorAll('.sidebar .section-label[data-collapse-toggle]').forEach((toggle) => {
+            const label = toggle.dataset.groupLabel;
+            const target = document.getElementById(toggle.dataset.collapseToggle);
+            if (!target) return;
+
+            const groupSlugs = (target.dataset.groupSlugs || '').split(',');
+            const hasActiveMenu = groupSlugs.includes(currentSlug);
+            let collapsed = readCollapsed().includes(label) && !hasActiveMenu;
+
+            target.classList.toggle('hidden', collapsed);
+            toggle.classList.toggle('is-open', !collapsed);
+            toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+
+            // Klik ditangani oleh script generic [data-collapse-toggle] di layouts/app.blade.php
+            // (toggle class hidden/is-open pada target) — di sini kita cuma mencerminkan
+            // state yang sama (bukan membaca classList setelahnya) supaya tidak tergantung
+            // urutan eksekusi antar script.
+            toggle.addEventListener('click', () => {
+                collapsed = !collapsed;
+                toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+
+                const labels = readCollapsed().filter((item) => item !== label);
+                if (collapsed) labels.push(label);
+                writeCollapsed(labels);
+
+                toggle.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+
+            toggle.addEventListener('keydown', (e) => {
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                e.preventDefault();
+                toggle.click();
+            });
+        });
+    })();
+</script>

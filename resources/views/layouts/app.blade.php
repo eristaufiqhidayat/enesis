@@ -34,11 +34,42 @@
             });
         })();
 
+        // Collapse seluruh sidebar jadi strip ikon-saja: state terpisah dari
+        // collapse per grup (key localStorage sendiri) supaya dua preferensi
+        // ini tidak saling menimpa.
+        (() => {
+            const STORAGE_KEY = 'sidebar-collapsed-full';
+
+            if (localStorage.getItem(STORAGE_KEY) === '1') {
+                document.body.classList.add('sidebar-collapsed');
+            }
+
+            const sidebarToggle = document.querySelector('[data-sidebar-toggle]');
+            if (!sidebarToggle) return;
+
+            sidebarToggle.addEventListener('click', () => {
+                const collapsed = document.body.classList.toggle('sidebar-collapsed');
+                try {
+                    localStorage.setItem(STORAGE_KEY, collapsed ? '1' : '0');
+                } catch {
+                    // localStorage tidak tersedia (mode privat dll.), state collapse tidak persist.
+                }
+            });
+        })();
+
         // Pengganti ringan Bootstrap collapse/dropdown (tanpa Bootstrap JS).
         document.querySelectorAll('[data-collapse-toggle]').forEach((toggle) => {
             const target = document.getElementById(toggle.dataset.collapseToggle);
             if (!target) return;
             toggle.addEventListener('click', (e) => {
+                if (document.body.classList.contains('sidebar-collapsed')) {
+                    document.body.classList.remove('sidebar-collapsed');
+                    try {
+                        localStorage.setItem('sidebar-collapsed-full', '0');
+                    } catch {
+                        // localStorage tidak tersedia (mode privat dll.), state collapse tidak persist.
+                    }
+                }
                 e.preventDefault();
                 target.classList.toggle('hidden');
                 toggle.classList.toggle('is-open', !target.classList.contains('hidden'));
