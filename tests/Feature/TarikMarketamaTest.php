@@ -372,6 +372,26 @@ class TarikMarketamaTest extends TestCase
         $this->assertSame(18685, (int) DB::table('mk_outlet')->where('id', 11)->value('area_id'));
     }
 
+    public function test_area_disalin_dari_area_polygon_tanpa_menu_master_area(): void
+    {
+        DB::table('area_polygon')->insert([
+            ['source_id' => 18685, 'code' => 'A-200', 'name' => 'Area Gresik-200', 'polygon' => '[]', 'warehouse' => 'Sidoarjo', 'warehouse_id' => 46, 'branch_area_id' => 5],
+            ['source_id' => 50001, 'code' => 'P-1', 'name' => 'Area Dari Polygon', 'polygon' => '[]', 'warehouse' => 'Balaraja', 'warehouse_id' => null, 'branch_area_id' => null],
+        ]);
+        $this->areaTimeoutDiAtas = 0; // menu Master Area tidak boleh dipakai
+        $this->pasangServer();
+
+        $this->artisan('marketama:tarik', ['bagian' => ['master']])
+            ->expectsOutputToContain('disalin dari area_polygon')
+            ->assertSuccessful();
+
+        $this->assertSame(46, (int) DB::table('mk_area')->where('id', 18685)->value('depo_id'));
+        $this->assertSame(22, (int) DB::table('mk_area')->where('id', 50001)->value('depo_id'), 'depo dari nama bila warehouse_id kosong');
+        $this->assertSame('P-1', DB::table('mk_area')->where('id', 50001)->value('kode'));
+        $this->assertSame(3, DB::table('mk_area')->count(), '2 dari polygon + 1 dari daftar area sales');
+        $this->assertNull(DB::table('mk_tarikan')->where('kunci', 'list:master_area')->first());
+    }
+
     public function test_parser_halaman(): void
     {
         $html = $this->halaman('tabel_x', ['', '', 'Kode Outlet', 'Kota/Kabupaten'], '/x/datatable_x');

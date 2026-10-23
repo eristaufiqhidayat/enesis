@@ -14,6 +14,7 @@ class TarikMarketama extends Command
                             {bagian?* : master, karyawan, user, outlet, sambung, atau mentah:<menu> (default: master karyawan user outlet sambung)}
                             {--tanpa-detail : Jangan buka form edit per karyawan/user (lebih cepat, relasi dari nama)}
                             {--ulang : Abaikan posisi tersimpan, tarik dari awal}
+                            {--area-dari-menu : Tarik area dari menu Master Area (lambat) walaupun area_polygon sudah berisi}
                             {--batas= : Batasi jumlah baris/form per menu (uji coba)}
                             {--status : Tampilkan progres tarikan saja}';
 
@@ -38,6 +39,7 @@ class TarikMarketama extends Command
         $client = MarketamaClient::dariConfig();
         $penarik = (new Penarik($client, fn (string $pesan) => $this->line($pesan)))
             ->ulang((bool) $this->option('ulang'))
+            ->areaDariMenuSumber((bool) $this->option('area-dari-menu'))
             ->batas($this->option('batas') !== null ? (int) $this->option('batas') : null);
 
         try {

@@ -5,6 +5,7 @@ namespace App\Support\Marketama;
 use Closure;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 // Menarik data dari aplikasi lama Marketama ke tabel mk_* (baca saja di sisi sumber).
 // Setiap daftar ditarik per 100 baris; posisi disimpan di mk_tarikan sehingga perintah
@@ -15,6 +16,8 @@ class Penarik
     private Closure $log;
 
     private bool $ulang = false;
+
+    private bool $areaDariMenu = false;
 
     private ?int $batas = null;
 
@@ -30,6 +33,14 @@ class Penarik
     public function ulang(bool $ulang = true): self
     {
         $this->ulang = $ulang;
+
+        return $this;
+    }
+
+    /** Ambil area dari menu Master Area (lambat) walaupun area_polygon tersedia. */
+    public function areaDariMenuSumber(bool $ya = true): self
+    {
+        $this->areaDariMenu = $ya;
 
         return $this;
     }
@@ -105,16 +116,15 @@ class Penarik
     public function area(): void
     {
         $now = now();
-        $this->daftar('master_area', function (array $baris) use ($now) {
-            $this->simpan('mk_area', array_map(fn ($b) => [
-                'id' => $b[0],
-                'kode' => $this->ambil($b[1], ['kode', 'kode_area', 'code']),
-                'nama' => (string) $this->ambil($b[1], ['nama', 'nama_area', 'name', 'area']),
-                'depo_id' => $this->idNama('mk_depo', $this->ambil($b[1], ['depo', 'warehouse', 'depo_warehouse', 'gudang'])),
-                'data' => json_encode($b[1]),
-                'ditarik_pada' => $now,
-            ], $baris), ['id'], ['kode', 'nama', 'depo_id', 'data', 'ditarik_pada']);
-        });
+
+        // area_polygon (hasil tarikan API area sebelumnya) memakai ID area asli Marketama
+        // (source_id), jadi cukup disalin — jauh lebih cepat daripada menu Master Area yang
+        // di server lama bisa >60 detik per halaman.
+        if (! $this->areaDariMenu && Schema::hasTable('area_polygon') && DB::table('area_polygon')->whereNotNull('source_id')->exists()) {
+            $this->areaDariPolygon($now);
+        } else {
+            $this->areaDariMenu($now);
+        }
 
         // Daftar area untuk form sales (ID + nama) sebagai pelengkap.
         $hasil = $this->client->getJson('/karyawan_sales/get_area_list');
@@ -133,6 +143,41 @@ class Penarik
 
         // Outlet yang ditarik sebelum area lengkap: sambungkan area_id-nya sekarang.
         $this->sambung();
+    }
+
+    private function areaDariPolygon($now): void
+    {
+        $kolom = ['source_id', 'code', 'name', 'warehouse', 'warehouse_id', 'branch_area', 'branch_area_id', 'province', 'province_id', 'city', 'city_id', 'district', 'district_id', 'village', 'village_id', 'outlet_count', 'salesperson'];
+        $jumlah = 0;
+
+        DB::table('area_polygon')->whereNotNull('source_id')->select($kolom)->orderBy('source_id')
+            ->chunk(1000, function ($rows) use ($now, &$jumlah) {
+                $this->simpan('mk_area', $rows->map(fn ($r) => [
+                    'id' => (int) $r->source_id,
+                    'kode' => $r->code,
+                    'nama' => (string) $r->name,
+                    'depo_id' => $r->warehouse_id ? (int) $r->warehouse_id : $this->idNama('mk_depo', $r->warehouse),
+                    'data' => json_encode(array_diff_key((array) $r, ['source_id' => 1]) + ['sumber' => 'area_polygon']),
+                    'ditarik_pada' => $now,
+                ])->all(), ['id'], ['kode', 'nama', 'depo_id', 'data', 'ditarik_pada']);
+                $jumlah += $rows->count();
+            });
+
+        ($this->log)(sprintf('mk_area: %s area disalin dari area_polygon (ID asli), menu Master Area dilewati', number_format($jumlah, 0, ',', '.')));
+    }
+
+    private function areaDariMenu($now): void
+    {
+        $this->daftar('master_area', function (array $baris) use ($now) {
+            $this->simpan('mk_area', array_map(fn ($b) => [
+                'id' => $b[0],
+                'kode' => $this->ambil($b[1], ['kode', 'kode_area', 'code']),
+                'nama' => (string) $this->ambil($b[1], ['nama', 'nama_area', 'name', 'area']),
+                'depo_id' => $this->idNama('mk_depo', $this->ambil($b[1], ['depo', 'warehouse', 'depo_warehouse', 'gudang'])),
+                'data' => json_encode($b[1]),
+                'ditarik_pada' => $now,
+            ], $baris), ['id'], ['kode', 'nama', 'depo_id', 'data', 'ditarik_pada']);
+        });
     }
 
     public function distributor(): void
