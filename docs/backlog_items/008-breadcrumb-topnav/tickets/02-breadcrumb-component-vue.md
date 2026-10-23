@@ -13,10 +13,10 @@ Buat molecule `resources/js/Components/ui/molecules/Breadcrumb.vue` untuk stack 
 
 ## Acceptance criteria
 
-- [ ] `Breadcrumb.vue` ada dan dipakai di `Topbar.vue`.
-- [ ] Mengunjungi halaman menu lewat Inertia (`Menu/Show.vue`) menampilkan breadcrumb yang sama persis (jumlah level, teks) dengan hasil versi Blade untuk slug yang sama (home, menu berlabel, menu dengan children).
-- [ ] `currentSlug` yang tidak match apa pun di `menu` tidak menyebabkan error JS (breadcrumb kosong/tidak tampil, tidak ada exception di console).
-- [ ] Markup/class CSS breadcrumb konsisten dengan versi Blade (pakai class yang sama dari ticket 01, tidak duplikasi style baru).
+- [x] `Breadcrumb.vue` ada dan dipakai di `Topbar.vue`.
+- [x] Mengunjungi halaman menu lewat Inertia (`Menu/Show.vue`) menampilkan breadcrumb yang sama persis (jumlah level, teks) dengan hasil versi Blade untuk slug yang sama (home, menu berlabel, menu dengan children).
+- [x] `currentSlug` yang tidak match apa pun di `menu` tidak menyebabkan error JS (breadcrumb kosong/tidak tampil, tidak ada exception di console).
+- [x] Markup/class CSS breadcrumb konsisten dengan versi Blade (pakai class yang sama dari ticket 01, tidak duplikasi style baru).
 
 ## Blocked by
 

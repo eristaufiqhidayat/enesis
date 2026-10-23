@@ -11,11 +11,11 @@ Pastikan breadcrumb tetap tampil benar di halaman-halaman yang slug URL-nya tida
 
 ## Acceptance criteria
 
-- [ ] Mengunjungi `/loading_barang/add` menampilkan breadcrumb yang sama seolah berada di menu `loading_barang` (bukan kosong).
-- [ ] Mengunjungi `/barang_canvassing/add` menampilkan breadcrumb yang sama seolah berada di menu `barang_canvassing`.
-- [ ] Mengunjungi halaman tracking koordinator dan tracking sales masing-masing menampilkan breadcrumb yang benar (diverifikasi manual terhadap slug di `config/marketama.php`, dipass eksplisit kalau `request()->path()` tidak match).
-- [ ] Mengunjungi `/master_area/design_area` menampilkan breadcrumb yang benar untuk menu Design Polygon Area.
-- [ ] Feature test yang menutupi ketiga rute custom ini plus kedua route `coming_soon`.
+- [x] Mengunjungi `/loading_barang/add` menampilkan breadcrumb yang sama seolah berada di menu `loading_barang` (bukan kosong).
+- [x] Mengunjungi `/barang_canvassing/add` menampilkan breadcrumb yang sama seolah berada di menu `barang_canvassing`.
+- [x] Mengunjungi halaman tracking koordinator dan tracking sales masing-masing menampilkan breadcrumb yang benar (diverifikasi manual terhadap slug di `config/marketama.php`, dipass eksplisit kalau `request()->path()` tidak match).
+- [x] Mengunjungi `/master_area/design_area` menampilkan breadcrumb yang benar untuk menu Design Polygon Area.
+- [x] Feature test yang menutupi ketiga rute custom ini plus kedua route `coming_soon`.
 
 ## Blocked by
 

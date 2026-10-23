@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @section('title', $title)
+@section('breadcrumb_slug', $back)
 
 @section('content')
     <h5 class="mb-3 font-semibold">{{ $title }}</h5>

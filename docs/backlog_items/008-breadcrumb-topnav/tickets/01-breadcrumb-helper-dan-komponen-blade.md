@@ -19,12 +19,12 @@ Pasang komponen ini di `resources/views/components/ui/organisms/topbar.blade.php
 
 ## Acceptance criteria
 
-- [ ] `breadcrumb.blade.php` ada dan dipakai di `topbar.blade.php`.
-- [ ] Mengunjungi halaman menu biasa tanpa grup (`label: null`, mis. slug `home`) menampilkan breadcrumb 1 level: "Beranda".
-- [ ] Mengunjungi menu di dalam grup berlabel menampilkan 2 level: "<Label Grup> / <Judul Menu>".
-- [ ] Mengunjungi menu yang merupakan `children` dari parent menampilkan 3 level: "<Label Grup> / <Judul Parent> / <Judul Child>".
-- [ ] Mengunjungi slug yang tidak match apa pun di `config('marketama.menu')` tidak menyebabkan error (breadcrumb kosong/tidak tampil).
-- [ ] Ada Feature test (`tests/Feature/...`) yang menutupi keempat kasus di atas dengan mem-assert isi HTML breadcrumb pada response.
+- [x] `breadcrumb.blade.php` ada dan dipakai di `topbar.blade.php`.
+- [x] Mengunjungi halaman menu biasa tanpa grup (`label: null`, mis. slug `home`) menampilkan breadcrumb 1 level: "Beranda".
+- [x] Mengunjungi menu di dalam grup berlabel menampilkan 2 level: "<Label Grup> / <Judul Menu>".
+- [x] Mengunjungi menu yang merupakan `children` dari parent menampilkan 3 level: "<Label Grup> / <Judul Parent> / <Judul Child>".
+- [x] Mengunjungi slug yang tidak match apa pun di `config('marketama.menu')` tidak menyebabkan error (breadcrumb kosong/tidak tampil).
+- [x] Ada Feature test (`tests/Feature/...`) yang menutupi keempat kasus di atas dengan mem-assert isi HTML breadcrumb pada response.
 
 ## Blocked by
 
