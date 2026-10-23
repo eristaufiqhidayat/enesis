@@ -129,6 +129,40 @@ php artisan marketama:import /path/ke/folder-csv --only=lap_penjualan_barang --o
 
 Setiap tabel dikosongkan dulu sebelum diisi ulang.
 
+## Tarik data langsung dari aplikasi lama (`marketama:tarik`)
+
+Mengisi tabel baru `mk_*` langsung dari app.cnvmarketama.com memakai akun admin, dengan
+**ID asli Marketama** sebagai kunci (bukan teks nama), sehingga relasi antar tabel pasti.
+Perintah ini **hanya membaca**: klien hanya boleh GET, POST login, dan POST ke endpoint
+DataTables; alamat simpan/ubah/hapus ditolak oleh kode (`MarketamaClient::postDiizinkan`).
+
+```bash
+# .env server: MARKETAMA_USERNAME / MARKETAMA_PASSWORD (akun admin), MARKETAMA_JEDA_MS=300
+php artisan migrate
+php artisan marketama:tarik master            # depo, wilayah depo, area, distributor, produk, koordinator
+php artisan marketama:tarik karyawan          # semua sales (aktif + tidak aktif), supervisor, lainnya + form edit
+php artisan marketama:tarik user              # user sales/koordinator/lainnya/super admin + id karyawan
+php artisan marketama:tarik outlet            # ±552 ribu outlet (±2 jam)
+php artisan marketama:tarik mentah:penjualan_barang   # menu lain apa adanya ke mk_baris_mentah
+php artisan marketama:tarik --status          # progres per menu vs total di sumber
+```
+
+| Tabel | Isi | Sumber ID |
+| --- | --- | --- |
+| `mk_depo`, `mk_wilayah_depo`, `mk_area`, `mk_distributor`, `mk_produk` | master | `get_depo`, `data-id` baris, dropdown form edit |
+| `mk_karyawan` | sales (aktif + tidak aktif), koordinator, supervisor, lainnya; `depo_id`, `koordinator_id` | form edit karyawan (`warehouse_id`, `koordinator_id`) |
+| `mk_karyawan_area` | area tiap sales + area aktif | `data-areas` di form edit |
+| `mk_user` | akun login (tanpa password) + `karyawan_id` | `id_employee` di form edit user |
+| `mk_outlet` | outlet + `area_id` | `data-id` baris; area dari nama area (unik) |
+| `mk_baris_mentah` | baris menu lain (transaksi) sebagai JSON | `data-id` baris |
+| `mk_tarikan` | posisi & jumlah per menu (untuk melanjutkan) | — |
+
+- Bisa dihentikan kapan saja; jalankan perintah yang sama untuk melanjutkan. `--ulang` menarik dari awal,
+  `--batas=50` untuk uji coba, `--tanpa-detail` melewati form edit (lebih cepat, relasi dari nama).
+- Gaji/tunjangan di form edit karyawan **tidak** disimpan. Data `mk_*` berisi data pribadi
+  (nama, HP, email): jangan diekspor ke repo.
+- `php artisan db:seed --class=MarketamaSumberSeeder` menjalankan semua bagian sekaligus.
+
 ## Peta Tracking History Koordinator Location
 
 Halaman `/tracking_koordinator_history_location` menampilkan rute GPS koordinator di peta
