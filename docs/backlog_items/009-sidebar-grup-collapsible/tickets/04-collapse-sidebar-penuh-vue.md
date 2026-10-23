@@ -15,12 +15,12 @@ Tambah mode collapse untuk **seluruh sidebar** jadi strip ikon-saja di stack Vue
 
 ## Acceptance criteria
 
-- [ ] Tombol toggle di `.brand` sidebar Vue mempersempit/melebarkan seluruh sidebar jadi strip ikon-saja dan kembali, tanpa reload, perilaku sama dengan versi Blade (ticket 03) untuk input yang sama.
-- [ ] Toggle menulis ke `localStorage` key `sidebar-collapsed-full` dengan format yang sama seperti yang dibaca/ditulis versi Blade (ticket 03) — collapse di satu stack lalu pindah ke stack lain (atau reload) menghasilkan state yang sama.
-- [ ] Saat mode icon-only aktif, hover ikon menu menampilkan tooltip native (`title`) berisi nama menu.
-- [ ] Klik item berChildren saat mode icon-only aktif meng-expand sidebar kembali ke mode normal lebih dulu (bukan flyout).
-- [ ] Navigasi Inertia antar halaman tidak mereset state collapsed (sidebar di-mount ulang tiap navigasi, state harus tetap terbaca dari `localStorage` setiap kali).
-- [ ] Tidak ada exception di console saat `localStorage` kosong/belum pernah diisi (first visit).
+- [x] Tombol toggle di `.brand` sidebar Vue mempersempit/melebarkan seluruh sidebar jadi strip ikon-saja dan kembali, tanpa reload, perilaku sama dengan versi Blade (ticket 03) untuk input yang sama.
+- [x] Toggle menulis ke `localStorage` key `sidebar-collapsed-full` dengan format yang sama seperti yang dibaca/ditulis versi Blade (ticket 03) — collapse di satu stack lalu pindah ke stack lain (atau reload) menghasilkan state yang sama.
+- [x] Saat mode icon-only aktif, hover ikon menu menampilkan tooltip native (`title`) berisi nama menu.
+- [x] Klik item berChildren saat mode icon-only aktif meng-expand sidebar kembali ke mode normal lebih dulu (bukan flyout).
+- [x] Navigasi Inertia antar halaman tidak mereset state collapsed (sidebar di-mount ulang tiap navigasi, state harus tetap terbaca dari `localStorage` setiap kali).
+- [x] Tidak ada exception di console saat `localStorage` kosong/belum pernah diisi (first visit).
 
 ## Blocked by
 
