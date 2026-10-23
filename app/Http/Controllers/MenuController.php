@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -15,6 +16,8 @@ class MenuController extends Controller
         abort_unless($page, 404);
 
         $search = trim((string) $request->query('q'));
+        $dateColumn = $page['date_filter_column'] ?? null;
+        $tanggal = $dateColumn !== null ? $this->resolveTanggal($request) : null;
         $tables = [];
 
         foreach ($page['tables'] as $table) {
@@ -24,6 +27,10 @@ class MenuController extends Controller
 
             $columns = config("marketama.tables.{$table}.columns", []);
             $query = DB::table($table);
+
+            if ($dateColumn !== null) {
+                $query->where($dateColumn, $tanggal);
+            }
 
             if ($search !== '') {
                 // PostgreSQL: LIKE hanya untuk teks dan peka huruf besar/kecil, jadi pakai CAST + ILIKE.
@@ -59,6 +66,20 @@ class MenuController extends Controller
             ],
             'tables' => $tables,
             'search' => $search,
+            'tanggal' => $tanggal,
+            'hasDateFilter' => $dateColumn !== null,
         ]);
+    }
+
+    /**
+     * Tanggal filter dari query string (Y-m-d). Hari ini jika kosong atau tidak valid.
+     */
+    private function resolveTanggal(Request $request): string
+    {
+        $input = (string) $request->query('tanggal');
+
+        return Carbon::canBeCreatedFromFormat($input, 'Y-m-d')
+            ? $input
+            : Carbon::today()->toDateString();
     }
 }

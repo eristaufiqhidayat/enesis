@@ -745,6 +745,7 @@ return [
                 'checkin_pagi',
             ],
             'same_as' => null,
+            'date_filter_column' => 'tanggal_data',
         ],
         'sales_tidak_penjualan' => [
             'title' => 'Sales Tidak Penjualan',
