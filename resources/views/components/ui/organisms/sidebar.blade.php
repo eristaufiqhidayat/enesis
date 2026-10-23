@@ -65,6 +65,8 @@
                 const labels = readCollapsed().filter((item) => item !== label);
                 if (collapsed) labels.push(label);
                 writeCollapsed(labels);
+
+                toggle.scrollIntoView({ behavior: 'smooth', block: 'start' });
             });
 
             toggle.addEventListener('keydown', (e) => {
