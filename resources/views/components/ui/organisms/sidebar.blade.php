@@ -1,6 +1,9 @@
 @php($current = request()->route('slug') ?? request()->path())
 <nav class="sidebar">
-    <div class="brand"><i class="fas fa-leaf me-1"></i> {{ config('app.name') }}</div>
+    <div class="brand">
+        <span><i class="fas fa-leaf me-1"></i> {{ config('app.name') }}</span>
+        <button type="button" data-sidebar-toggle aria-label="Persempit/lebarkan sidebar"><i class="fas fa-bars"></i></button>
+    </div>
     <ul class="nav flex flex-col list-none m-0 p-0">
         @foreach (config('marketama.menu') as $section)
             @php($groupId = 'group-' . $loop->index)
