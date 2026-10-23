@@ -2119,7 +2119,6 @@ return [
         'checkin_pagi' => [
             'title' => 'checkin_pagi',
             'columns' => [
-                'tanggal_data' => 'Tanggal Data',
                 'no' => 'No',
                 'depo' => 'Depo',
                 'koordinator' => 'Koordinator',
