@@ -3,6 +3,7 @@
 namespace App\Support\Marketama;
 
 use Closure;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\DB;
 
 // Menarik data dari aplikasi lama Marketama ke tabel mk_* (baca saja di sisi sumber).
@@ -402,7 +403,7 @@ class Penarik
         $total = null;
 
         do {
-            $halaman = $this->client->datatable($info['url'], $info['token'], $start, $per, $extra);
+            $halaman = $this->halamanTahanTimeout($kunci, $info, $start, $per, $extra);
             $total = $halaman['filtered'];
             $baris = [];
 
@@ -432,6 +433,35 @@ class Penarik
 
         $selesai = $start >= $total;
         $this->catat($kunci, ['selesai' => $selesai && $this->batas === null, 'selesai_pada' => $selesai ? now() : null]);
+    }
+
+    /**
+     * Ambil satu halaman DataTables. Bila server lama timeout (mis. master_area yang menghitung
+     * total toko per area), tunggu lalu ulangi dengan halaman lebih kecil: 100 -> 50 -> 25 -> 12 -> 10.
+     * Ukuran yang berhasil dipakai untuk halaman berikutnya ($per diubah lewat referensi).
+     */
+    private function halamanTahanTimeout(string $kunci, array $info, int $start, int &$per, array $extra): array
+    {
+        $gagalDiUkuranMinimum = 0;
+
+        while (true) {
+            try {
+                return $this->client->datatable($info['url'], $info['token'], $start, $per, $extra);
+            } catch (ConnectionException $e) {
+                if (! MarketamaClient::timeout($e) || $gagalDiUkuranMinimum >= 3) {
+                    throw $e;
+                }
+
+                if ($per > 10) {
+                    $per = max(10, intdiv($per, 2));
+                } else {
+                    $gagalDiUkuranMinimum++;
+                }
+
+                ($this->log)(sprintf('%s: timeout di baris %s, coba lagi per %d baris', $kunci, number_format($start, 0, ',', '.'), $per));
+                sleep((int) config('marketama_sumber.jeda_gagal_detik', 10));
+            }
+        }
     }
 
     /**

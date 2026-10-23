@@ -22,6 +22,9 @@ class TarikMarketamaTest extends TestCase
     /** @var list<string> */
     private array $postKe = [];
 
+    /** Simulasi server lambat: halaman master_area > N baris timeout. */
+    private ?int $areaTimeoutDiAtas = null;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -32,6 +35,7 @@ class TarikMarketamaTest extends TestCase
             'marketama_sumber.password' => 'rahasia',
             'marketama_sumber.jeda_ms' => 0,
             'marketama_sumber.per_halaman' => 2,
+            'marketama_sumber.jeda_gagal_detik' => 0,
         ]);
     }
 
@@ -202,6 +206,10 @@ class TarikMarketamaTest extends TestCase
                     $param = $request->data();
                 }
 
+                if ($nama === 'master_area' && $this->areaTimeoutDiAtas !== null && (int) $param['length'] > $this->areaTimeoutDiAtas) {
+                    return Http::failedConnection('cURL error 28: Operation timed out after 60001 milliseconds with 0 bytes received');
+                }
+
                 $baris = $def['baris'];
 
                 if (isset($baris['aktif'])) {
@@ -319,6 +327,34 @@ class TarikMarketamaTest extends TestCase
             ->expectsOutputToContain('sudah selesai sebelumnya')
             ->assertSuccessful();
         $this->assertSame([], array_filter($this->postKe, fn ($p) => str_contains($p, '/datatable')));
+    }
+
+    public function test_halaman_timeout_diulang_dengan_ukuran_lebih_kecil(): void
+    {
+        config(['marketama_sumber.per_halaman' => 100]);
+        $this->areaTimeoutDiAtas = 25;
+        $this->pasangServer();
+
+        $this->artisan('marketama:tarik', ['bagian' => ['master']])
+            ->expectsOutputToContain('timeout di baris 0, coba lagi per 50 baris')
+            ->expectsOutputToContain('coba lagi per 25 baris')
+            ->assertSuccessful();
+
+        $this->assertSame(4, DB::table('mk_area')->count());
+        $this->assertTrue((bool) DB::table('mk_tarikan')->where('kunci', 'list:master_area')->value('selesai'));
+    }
+
+    public function test_timeout_terus_menerus_menghentikan_dengan_progres_tersimpan(): void
+    {
+        $this->areaTimeoutDiAtas = 0;
+        $this->pasangServer();
+
+        $this->artisan('marketama:tarik', ['bagian' => ['master']])
+            ->expectsOutputToContain('Progres tersimpan')
+            ->assertFailed();
+
+        $this->assertTrue((bool) DB::table('mk_tarikan')->where('kunci', 'list:master_depo')->value('selesai'));
+        $this->assertFalse((bool) DB::table('mk_tarikan')->where('kunci', 'list:master_area')->value('selesai'));
     }
 
     public function test_parser_halaman(): void
