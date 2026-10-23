@@ -78,7 +78,9 @@ class MenuController extends Controller
     {
         $input = (string) $request->query('tanggal');
 
-        return Carbon::canBeCreatedFromFormat($input, 'Y-m-d')
+        $parsed = Carbon::createFromFormat('Y-m-d', $input);
+
+        return $parsed !== false && $parsed->format('Y-m-d') === $input
             ? $input
             : Carbon::today()->toDateString();
     }

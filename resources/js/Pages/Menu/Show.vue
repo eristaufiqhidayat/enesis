@@ -37,7 +37,7 @@ function submitSearch() {
         <div class="flex flex-wrap items-center justify-between mb-3 gap-2">
             <h5 class="mb-0 font-semibold">{{ page.title }}</h5>
             <form v-if="tables.length" class="flex gap-2" @submit.prevent="submitSearch">
-                <Input v-if="hasDateFilter" v-model="tanggal" type="date" />
+                <Input v-if="hasDateFilter" v-model="tanggal" type="date" required aria-label="Tanggal data" />
                 <Input v-model="search" type="search" placeholder="Cari..." />
                 <Button type="submit">Cari</Button>
             </form>

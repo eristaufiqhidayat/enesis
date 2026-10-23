@@ -74,6 +74,12 @@ class CheckinPagiFilterTest extends TestCase
                 ->where('tables.0.rows.total', 1)
                 ->where('tanggal', '2026-10-23')
             );
+
+        $this->get('/checkin_pagi?tanggal=2026-10-1')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('tanggal', '2026-10-23')
+            );
     }
 
     public function test_page_without_date_filter_is_not_affected(): void
