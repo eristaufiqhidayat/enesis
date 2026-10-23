@@ -20,46 +20,45 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-2 mb-2">
         <div class="lg:col-span-5">
-            <div class="card h-full">
-                <div class="card-header card-header-compact bg-gray-50"><h6 class="mb-0 font-semibold">Filter &amp; Zoom Area</h6></div>
-                <div class="card-body card-body-compact">
-                    <label class="form-label mb-1" for="map_search"><i class="fas fa-search-location me-1"></i>Cari Alamat di Peta</label>
-                    <input class="form-control form-control-sm mb-2" id="map_search" type="text" placeholder="Ketik alamat lalu tekan Enter..." autocomplete="off">
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <label class="form-label mb-1" for="filter_province">Provinsi <span class="text-red-600">*</span></label>
-                            <select class="form-select form-select-sm" id="filter_province" data-level="province">
-                                <option value="">Pilih Provinsi</option>
-                                @foreach ($provinces as $province)
-                                    <option>{{ $province }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div>
-                            <label class="form-label mb-1" for="filter_city">Kota / Kabupaten</label>
-                            <select class="form-select form-select-sm" id="filter_city" data-level="city"><option value="">Semua</option></select>
-                        </div>
-                        <div>
-                            <label class="form-label mb-1" for="filter_district">Kecamatan</label>
-                            <select class="form-select form-select-sm" id="filter_district" data-level="district"><option value="">Semua</option></select>
-                        </div>
-                        <div>
-                            <label class="form-label mb-1" for="filter_village">Kelurahan / Desa</label>
-                            <select class="form-select form-select-sm" id="filter_village" data-level="village"><option value="">Semua</option></select>
-                        </div>
-                        <div class="col-span-2 flex gap-2">
-                            <button type="button" class="btn btn-primary btn-sm grow" id="btn_filter"><i class="fas fa-search me-1"></i>Tampilkan</button>
-                            <button type="button" class="btn btn-outline-secondary btn-sm" id="btn_reset"><i class="fas fa-undo me-1"></i>Reset</button>
-                        </div>
+            <x-ui.molecules.card class="h-full" body-class="card-body card-body-compact">
+                <x-slot:header><h6 class="mb-0 font-semibold">Filter &amp; Zoom Area</h6></x-slot:header>
+
+                <x-ui.atoms.label for="map_search" class="mb-1"><i class="fas fa-search-location me-1"></i>Cari Alamat di Peta</x-ui.atoms.label>
+                <x-ui.atoms.input id="map_search" class="mb-2" placeholder="Ketik alamat lalu tekan Enter..." autocomplete="off" />
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <x-ui.atoms.label for="filter_province" class="mb-1">Provinsi <span class="text-red-600">*</span></x-ui.atoms.label>
+                        <x-ui.atoms.select id="filter_province" data-level="province">
+                            <option value="">Pilih Provinsi</option>
+                            @foreach ($provinces as $province)
+                                <option>{{ $province }}</option>
+                            @endforeach
+                        </x-ui.atoms.select>
+                    </div>
+                    <div>
+                        <x-ui.atoms.label for="filter_city" class="mb-1">Kota / Kabupaten</x-ui.atoms.label>
+                        <x-ui.atoms.select id="filter_city" data-level="city"><option value="">Semua</option></x-ui.atoms.select>
+                    </div>
+                    <div>
+                        <x-ui.atoms.label for="filter_district" class="mb-1">Kecamatan</x-ui.atoms.label>
+                        <x-ui.atoms.select id="filter_district" data-level="district"><option value="">Semua</option></x-ui.atoms.select>
+                    </div>
+                    <div>
+                        <x-ui.atoms.label for="filter_village" class="mb-1">Kelurahan / Desa</x-ui.atoms.label>
+                        <x-ui.atoms.select id="filter_village" data-level="village"><option value="">Semua</option></x-ui.atoms.select>
+                    </div>
+                    <div class="col-span-2 flex gap-2">
+                        <x-ui.atoms.button variant="primary" class="grow" id="btn_filter"><i class="fas fa-search me-1"></i>Tampilkan</x-ui.atoms.button>
+                        <x-ui.atoms.button variant="outline-secondary" id="btn_reset"><i class="fas fa-undo me-1"></i>Reset</x-ui.atoms.button>
                     </div>
                 </div>
-            </div>
+            </x-ui.molecules.card>
         </div>
         <div class="lg:col-span-7">
             <div class="card h-full">
                 <div class="card-header card-header-compact bg-gray-50"><h6 class="mb-0 font-semibold">Area Tersimpan (<span id="area_count">0</span>)</h6></div>
                 <div class="card-body card-body-compact pb-0">
-                    <input type="search" class="form-control form-control-sm mb-2" id="search_area" placeholder="Cari area...">
+                    <x-ui.atoms.input type="search" id="search_area" class="mb-2" placeholder="Cari area..." />
                 </div>
                 <div class="h-50 overflow-y-auto">
                     <div class="list-group list-group-flush" id="area_list">
@@ -70,49 +69,48 @@
         </div>
     </div>
 
-    <div class="card mb-2">
-        <div class="card-header card-header-compact bg-gray-50"><h6 class="mb-0 font-semibold"><i class="fas fa-draw-polygon me-1"></i>Gambar Polygon Baru</h6></div>
-        <div class="card-body card-body-compact flex items-center gap-2 flex-wrap">
-            <button type="button" class="btn btn-success btn-sm" id="btn_start_draw"><i class="fas fa-pencil-alt me-1"></i>Mulai Gambar</button>
-            <button type="button" class="btn btn-primary btn-sm hidden" id="btn_finish_draw"><i class="fas fa-check me-1"></i>Selesai</button>
-            <button type="button" class="btn btn-outline-warning btn-sm hidden" id="btn_undo_point"><i class="fas fa-undo me-1"></i>Hapus Titik Terakhir</button>
-            <button type="button" class="btn btn-outline-danger btn-sm hidden" id="btn_cancel_draw"><i class="fas fa-times me-1"></i>Batal</button>
-            <span class="badge badge-secondary" id="map_mode_badge">Mode: Lihat</span>
-            <small class="text-gray-500" id="draw_status">Pilih provinsi lalu klik "Mulai Gambar" untuk membuat area baru.</small>
-        </div>
-    </div>
+    <x-ui.molecules.card class="mb-2" body-class="card-body card-body-compact flex items-center gap-2 flex-wrap">
+        <x-slot:header><h6 class="mb-0 font-semibold"><i class="fas fa-draw-polygon me-1"></i>Gambar Polygon Baru</h6></x-slot:header>
 
-    <div class="card">
-        <div class="card-body p-2"><div id="polygon_map"></div></div>
-    </div>
+        <x-ui.atoms.button variant="success" id="btn_start_draw"><i class="fas fa-pencil-alt me-1"></i>Mulai Gambar</x-ui.atoms.button>
+        <x-ui.atoms.button variant="primary" class="hidden" id="btn_finish_draw"><i class="fas fa-check me-1"></i>Selesai</x-ui.atoms.button>
+        <x-ui.atoms.button variant="outline-warning" class="hidden" id="btn_undo_point"><i class="fas fa-undo me-1"></i>Hapus Titik Terakhir</x-ui.atoms.button>
+        <x-ui.atoms.button variant="outline-danger" class="hidden" id="btn_cancel_draw"><i class="fas fa-times me-1"></i>Batal</x-ui.atoms.button>
+        <x-ui.atoms.badge variant="secondary" id="map_mode_badge">Mode: Lihat</x-ui.atoms.badge>
+        <small class="text-gray-500" id="draw_status">Pilih provinsi lalu klik "Mulai Gambar" untuk membuat area baru.</small>
+    </x-ui.molecules.card>
+
+    <x-ui.molecules.card body-class="card-body p-2">
+        <div id="polygon_map"></div>
+    </x-ui.molecules.card>
 
     {{-- Form simpan area baru --}}
-    <div class="modal-container hidden" id="save_modal">
+    <x-ui.molecules.modal id="save_modal">
         <form class="modal-content" id="save_form">
             <div class="modal-header">
                 <h6 class="m-0 font-semibold">Simpan Area Baru</h6>
                 <button type="button" class="btn-close" data-modal-dismiss="save_modal">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="mb-2"><label class="form-label">Nama Area <span class="text-red-600">*</span></label><input class="form-control form-control-sm" name="name" required></div>
+                <div class="mb-2"><x-ui.atoms.label>Nama Area <span class="text-red-600">*</span></x-ui.atoms.label><x-ui.atoms.input name="name" required /></div>
                 <div class="mb-2">
-                    <label class="form-label">Depo</label>
-                    <select class="form-select form-select-sm" name="warehouse_id">
+                    <x-ui.atoms.label>Depo</x-ui.atoms.label>
+                    <x-ui.atoms.select name="warehouse_id">
                         <option value="">-</option>
                         @foreach ($warehouses as $w)
                             <option value="{{ $w->warehouse_id }}">{{ $w->name }}</option>
                         @endforeach
-                    </select>
+                    </x-ui.atoms.select>
                 </div>
-                <div class="mb-2"><label class="form-label">Keterangan</label><textarea class="form-control form-control-sm" name="info" rows="2"></textarea></div>
+                <div class="mb-2"><x-ui.atoms.label>Keterangan</x-ui.atoms.label><x-ui.atoms.textarea name="info" rows="2" /></div>
                 <small class="text-gray-500">Wilayah mengikuti filter: <span id="save_region">-</span></small>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-sm btn-light" data-modal-dismiss="save_modal">Batal</button>
-                <button class="btn btn-sm btn-primary">Simpan</button>
+                <x-ui.atoms.button variant="light" data-modal-dismiss="save_modal">Batal</x-ui.atoms.button>
+                <x-ui.atoms.button variant="primary" type="submit">Simpan</x-ui.atoms.button>
             </div>
         </form>
-    </div>
+    </x-ui.molecules.modal>
 @endsection
 
 @push('scripts')

@@ -19,58 +19,57 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-3">
         <div class="lg:col-span-4">
-            <div class="card">
-                <div class="card-header card-header-compact bg-gray-50"><h6 class="mb-0 font-semibold">Filter Tracking</h6></div>
-                <div class="card-body">
-                    <label class="form-label" for="tracking_date">Tanggal</label>
-                    <input type="date" id="tracking_date" class="form-control form-control-sm mb-3" value="{{ $tanggal }}">
+            <x-ui.molecules.card>
+                <x-slot:header><h6 class="mb-0 font-semibold">Filter Tracking</h6></x-slot:header>
 
-                    @if (! empty($groups))
-                        <label class="form-label" for="group_filter">Koordinator</label>
-                        <select id="group_filter" class="form-select form-select-sm mb-3">
-                            <option value="">Semua koordinator</option>
-                            @foreach ($groups as $groupId => $groupName)
-                                <option value="{{ $groupId }}">{{ $groupName }}</option>
-                            @endforeach
-                        </select>
-                    @endif
+                <x-ui.atoms.label for="tracking_date">Tanggal</x-ui.atoms.label>
+                <x-ui.atoms.input type="date" id="tracking_date" class="mb-3" value="{{ $tanggal }}" />
 
-                    <label class="form-label" for="person_search">{{ $label }}</label>
-                    <input type="search" id="person_search" class="form-control form-control-sm mb-2" placeholder="Cari {{ strtolower($label) }}...">
-                    <div class="text-xs text-gray-500 mb-2" id="person_summary"></div>
-                    <div class="list-group max-h-[50vh] overflow-y-auto" id="person_list">
-                        @forelse ($people as $k)
-                            <a class="list-group-item list-group-item-action person-item py-2" data-id="{{ $k->id }}" data-name="{{ $k->nama }}" data-group="{{ $k->group_id ?? '' }}">
-                                <div class="flex justify-between items-start gap-2">
-                                    <span class="font-semibold">{{ $k->nama }}</span>
-                                    <span class="badge point-count"></span>
-                                </div>
-                                @if (! empty($k->koordinator_nama))
-                                    <small class="text-gray-500 block"><i class="fas fa-user-tie me-1"></i>{{ $k->koordinator_nama }}</small>
-                                @endif
-                                <small class="text-gray-500"><i class="fas fa-warehouse me-1"></i>{{ $k->depo ?: '-' }}
-                                    @if ($k->telepon)<span class="ml-2"><i class="fas fa-phone me-1"></i>{{ $k->telepon }}</span>@endif
-                                </small>
-                            </a>
-                        @empty
-                            <div class="text-gray-500 text-xs p-3">Belum ada data. Jalankan <code>php artisan marketama:import</code>.</div>
-                        @endforelse
-                    </div>
+                @if (! empty($groups))
+                    <x-ui.atoms.label for="group_filter">Koordinator</x-ui.atoms.label>
+                    <x-ui.atoms.select id="group_filter" class="mb-3">
+                        <option value="">Semua koordinator</option>
+                        @foreach ($groups as $groupId => $groupName)
+                            <option value="{{ $groupId }}">{{ $groupName }}</option>
+                        @endforeach
+                    </x-ui.atoms.select>
+                @endif
+
+                <x-ui.atoms.label for="person_search">{{ $label }}</x-ui.atoms.label>
+                <x-ui.atoms.input type="search" id="person_search" class="mb-2" placeholder="Cari {{ strtolower($label) }}..." />
+                <div class="text-xs text-gray-500 mb-2" id="person_summary"></div>
+                <div class="list-group max-h-[50vh] overflow-y-auto" id="person_list">
+                    @forelse ($people as $k)
+                        <a class="list-group-item list-group-item-action person-item py-2" data-id="{{ $k->id }}" data-name="{{ $k->nama }}" data-group="{{ $k->group_id ?? '' }}">
+                            <div class="flex justify-between items-start gap-2">
+                                <span class="font-semibold">{{ $k->nama }}</span>
+                                <x-ui.atoms.badge variant="light" class="point-count" />
+                            </div>
+                            @if (! empty($k->koordinator_nama))
+                                <small class="text-gray-500 block"><i class="fas fa-user-tie me-1"></i>{{ $k->koordinator_nama }}</small>
+                            @endif
+                            <small class="text-gray-500"><i class="fas fa-warehouse me-1"></i>{{ $k->depo ?: '-' }}
+                                @if ($k->telepon)<span class="ml-2"><i class="fas fa-phone me-1"></i>{{ $k->telepon }}</span>@endif
+                            </small>
+                        </a>
+                    @empty
+                        <div class="text-gray-500 text-xs p-3">Belum ada data. Jalankan <code>php artisan marketama:import</code>.</div>
+                    @endforelse
                 </div>
-            </div>
+            </x-ui.molecules.card>
         </div>
 
         <div class="lg:col-span-8">
-            <div class="card">
-                <div class="card-header card-header-compact bg-gray-50 flex flex-wrap gap-3 text-xs">
-                    <span><b>{{ $label }}:</b> <span id="person_name_display">-</span></span>
-                    <span><b>Tanggal:</b> <span id="date_display">-</span></span>
-                    <span><b>Info:</b> <span id="location_info">Pilih {{ strtolower($label) }}</span></span>
-                </div>
-                <div class="card-body p-2">
-                    <div id="tracking_map"></div>
-                </div>
-            </div>
+            <x-ui.molecules.card body-class="card-body p-2">
+                <x-slot:header>
+                    <div class="flex flex-wrap gap-3 text-xs">
+                        <span><b>{{ $label }}:</b> <span id="person_name_display">-</span></span>
+                        <span><b>Tanggal:</b> <span id="date_display">-</span></span>
+                        <span><b>Info:</b> <span id="location_info">Pilih {{ strtolower($label) }}</span></span>
+                    </div>
+                </x-slot:header>
+                <div id="tracking_map"></div>
+            </x-ui.molecules.card>
         </div>
     </div>
 @endsection

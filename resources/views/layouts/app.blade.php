@@ -10,9 +10,9 @@
     @stack('head')
 </head>
 <body>
-    @include('layouts.sidebar')
+    <x-ui.organisms.sidebar />
     <main>
-        @include('layouts.topbar')
+        <x-ui.organisms.topbar />
         @yield('content')
     </main>
     <script>
