@@ -1,10 +1,11 @@
 <script setup>
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Button from '@/Components/ui/atoms/Button.vue';
 import Input from '@/Components/ui/atoms/Input.vue';
 import Alert from '@/Components/ui/molecules/Alert.vue';
+import Card from '@/Components/ui/molecules/Card.vue';
 import DataTable from '@/Components/ui/organisms/DataTable.vue';
 
 const props = defineProps({
@@ -14,11 +15,18 @@ const props = defineProps({
     search: { type: String, default: '' },
     tanggal: { type: String, default: null },
     hasDateFilter: { type: Boolean, default: false },
+    kpi: { type: Object, default: null },
 });
 
 const search = ref(props.search);
 const tanggal = ref(props.tanggal);
 const appName = usePage().props.appName;
+
+const kpiItems = computed(() => props.kpi ? [
+    { label: 'Sudah Absen', value: props.kpi.sudah_absen },
+    { label: 'Belum Absen', value: props.kpi.belum_absen },
+    { label: 'Terlambat', value: props.kpi.terlambat },
+] : []);
 
 function submitSearch() {
     const query = { q: search.value };
@@ -47,6 +55,13 @@ function submitSearch() {
             Data menu ini sama dengan
             <Link :href="`/${page.same_as}`">{{ page.same_as_title }}</Link>.
         </Alert>
+
+        <div v-if="kpiItems.length" class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+            <Card v-for="item in kpiItems" :key="item.label">
+                <div class="text-xs text-gray-500">{{ item.label }}</div>
+                <div class="text-2xl font-semibold">{{ item.value }}</div>
+            </Card>
+        </div>
 
         <template v-if="tables.length">
             <DataTable

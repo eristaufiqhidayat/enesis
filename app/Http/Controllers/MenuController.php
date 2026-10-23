@@ -18,6 +18,10 @@ class MenuController extends Controller
         $search = trim((string) $request->query('q'));
         $dateColumn = $page['date_filter_column'] ?? null;
         $tanggal = $dateColumn !== null ? $this->resolveTanggal($request) : null;
+        $kpi = $tanggal !== null ? match ($page['kpi'] ?? null) {
+            'checkin_pagi' => $this->kpiCheckinPagi($tanggal),
+            default => null,
+        } : null;
         $tables = [];
 
         foreach ($page['tables'] as $table) {
@@ -68,7 +72,27 @@ class MenuController extends Controller
             'search' => $search,
             'tanggal' => $tanggal,
             'hasDateFilter' => $dateColumn !== null,
+            'kpi' => $kpi,
         ]);
+    }
+
+    /**
+     * Rekap KPI check-in pagi untuk satu tanggal. Dihitung dari COUNT, bukan dari baris halaman yang dipaginasi.
+     */
+    private function kpiCheckinPagi(string $tanggal): array
+    {
+        $checkin = DB::table('checkin_pagi')->where('tanggal_data', $tanggal);
+        $total = (clone $checkin)->count();
+        $sudahAbsen = (clone $checkin)
+            ->whereNotNull('checkin_pertama_hari_ini')
+            ->where('checkin_pertama_hari_ini', '!=', '')
+            ->count();
+
+        return [
+            'sudah_absen' => $sudahAbsen,
+            'belum_absen' => $total - $sudahAbsen,
+            'terlambat' => DB::table('absensi_sales_terlambat')->where('tanggal', $tanggal)->count(),
+        ];
     }
 
     /**
