@@ -47,6 +47,7 @@ function submitSearch() {
                 :rows="table.rows.data"
                 :total="table.rows.total"
                 :links="table.rows.links"
+                :badge-columns="slug === 'checkin_pagi' ? ['checkin_pertama_hari_ini'] : []"
             />
         </template>
         <div v-else-if="!page.same_as" class="card">
