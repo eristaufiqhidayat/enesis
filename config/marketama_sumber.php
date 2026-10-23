@@ -13,5 +13,9 @@ return [
     // Server membatasi 100 baris per halaman DataTables.
     'per_halaman' => 100,
 
-    'timeout' => (int) env('MARKETAMA_TIMEOUT', 60),
+    // Batas waktu per permintaan (detik). Bila timeout, halaman diperkecil otomatis.
+    'timeout' => (int) env('MARKETAMA_TIMEOUT', 120),
+
+    // Jeda sebelum mengulang halaman yang timeout (detik).
+    'jeda_gagal_detik' => (int) env('MARKETAMA_JEDA_GAGAL', 10),
 ];
