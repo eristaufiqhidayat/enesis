@@ -13,21 +13,21 @@
 @endpush
 
 @section('content')
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h5 class="mb-0">Design Polygon Area</h5>
-        <a class="text-secondary" href="{{ route('menu', 'master_area') }}">Kembali</a>
+    <div class="flex justify-between items-center mb-3">
+        <h5 class="mb-0 font-semibold">Design Polygon Area</h5>
+        <a class="text-gray-500 hover:underline" href="{{ route('menu', 'master_area') }}">Kembali</a>
     </div>
 
-    <div class="row g-2 mb-2">
-        <div class="col-lg-5">
-            <div class="card h-100">
-                <div class="card-header bg-light py-2"><h6 class="mb-0">Filter &amp; Zoom Area</h6></div>
-                <div class="card-body py-2">
-                    <label class="form-label small mb-1" for="map_search"><i class="fas fa-search-location me-1"></i>Cari Alamat di Peta</label>
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-2 mb-2">
+        <div class="lg:col-span-5">
+            <div class="card h-full">
+                <div class="card-header card-header-compact bg-gray-50"><h6 class="mb-0 font-semibold">Filter &amp; Zoom Area</h6></div>
+                <div class="card-body card-body-compact">
+                    <label class="form-label mb-1" for="map_search"><i class="fas fa-search-location me-1"></i>Cari Alamat di Peta</label>
                     <input class="form-control form-control-sm mb-2" id="map_search" type="text" placeholder="Ketik alamat lalu tekan Enter..." autocomplete="off">
-                    <div class="row g-2">
-                        <div class="col-6">
-                            <label class="form-label small mb-1" for="filter_province">Provinsi <span class="text-danger">*</span></label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="form-label mb-1" for="filter_province">Provinsi <span class="text-red-600">*</span></label>
                             <select class="form-select form-select-sm" id="filter_province" data-level="province">
                                 <option value="">Pilih Provinsi</option>
                                 @foreach ($provinces as $province)
@@ -35,35 +35,35 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div class="col-6">
-                            <label class="form-label small mb-1" for="filter_city">Kota / Kabupaten</label>
+                        <div>
+                            <label class="form-label mb-1" for="filter_city">Kota / Kabupaten</label>
                             <select class="form-select form-select-sm" id="filter_city" data-level="city"><option value="">Semua</option></select>
                         </div>
-                        <div class="col-6">
-                            <label class="form-label small mb-1" for="filter_district">Kecamatan</label>
+                        <div>
+                            <label class="form-label mb-1" for="filter_district">Kecamatan</label>
                             <select class="form-select form-select-sm" id="filter_district" data-level="district"><option value="">Semua</option></select>
                         </div>
-                        <div class="col-6">
-                            <label class="form-label small mb-1" for="filter_village">Kelurahan / Desa</label>
+                        <div>
+                            <label class="form-label mb-1" for="filter_village">Kelurahan / Desa</label>
                             <select class="form-select form-select-sm" id="filter_village" data-level="village"><option value="">Semua</option></select>
                         </div>
-                        <div class="col-12 d-flex gap-2">
-                            <button type="button" class="btn btn-primary btn-sm flex-grow-1" id="btn_filter"><i class="fas fa-search me-1"></i>Tampilkan</button>
+                        <div class="col-span-2 flex gap-2">
+                            <button type="button" class="btn btn-primary btn-sm grow" id="btn_filter"><i class="fas fa-search me-1"></i>Tampilkan</button>
                             <button type="button" class="btn btn-outline-secondary btn-sm" id="btn_reset"><i class="fas fa-undo me-1"></i>Reset</button>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-lg-7">
-            <div class="card h-100">
-                <div class="card-header bg-light py-2"><h6 class="mb-0">Area Tersimpan (<span id="area_count">0</span>)</h6></div>
-                <div class="card-body py-2 pb-0">
+        <div class="lg:col-span-7">
+            <div class="card h-full">
+                <div class="card-header card-header-compact bg-gray-50"><h6 class="mb-0 font-semibold">Area Tersimpan (<span id="area_count">0</span>)</h6></div>
+                <div class="card-body card-body-compact pb-0">
                     <input type="search" class="form-control form-control-sm mb-2" id="search_area" placeholder="Cari area...">
                 </div>
-                <div style="height: 200px; overflow-y: auto;">
+                <div class="h-50 overflow-y-auto">
                     <div class="list-group list-group-flush" id="area_list">
-                        <div class="list-group-item text-center text-muted py-4">Klik "Tampilkan" untuk memuat data area</div>
+                        <div class="list-group-item text-center text-gray-500 py-4">Klik "Tampilkan" untuk memuat data area</div>
                     </div>
                 </div>
             </div>
@@ -71,14 +71,14 @@
     </div>
 
     <div class="card mb-2">
-        <div class="card-header bg-light py-2"><h6 class="mb-0"><i class="fas fa-draw-polygon me-1"></i>Gambar Polygon Baru</h6></div>
-        <div class="card-body py-2 d-flex align-items-center gap-2 flex-wrap">
+        <div class="card-header card-header-compact bg-gray-50"><h6 class="mb-0 font-semibold"><i class="fas fa-draw-polygon me-1"></i>Gambar Polygon Baru</h6></div>
+        <div class="card-body card-body-compact flex items-center gap-2 flex-wrap">
             <button type="button" class="btn btn-success btn-sm" id="btn_start_draw"><i class="fas fa-pencil-alt me-1"></i>Mulai Gambar</button>
-            <button type="button" class="btn btn-primary btn-sm d-none" id="btn_finish_draw"><i class="fas fa-check me-1"></i>Selesai</button>
-            <button type="button" class="btn btn-outline-warning btn-sm d-none" id="btn_undo_point"><i class="fas fa-undo me-1"></i>Hapus Titik Terakhir</button>
-            <button type="button" class="btn btn-outline-danger btn-sm d-none" id="btn_cancel_draw"><i class="fas fa-times me-1"></i>Batal</button>
-            <span class="badge bg-secondary" id="map_mode_badge">Mode: Lihat</span>
-            <small class="text-muted" id="draw_status">Pilih provinsi lalu klik "Mulai Gambar" untuk membuat area baru.</small>
+            <button type="button" class="btn btn-primary btn-sm hidden" id="btn_finish_draw"><i class="fas fa-check me-1"></i>Selesai</button>
+            <button type="button" class="btn btn-outline-warning btn-sm hidden" id="btn_undo_point"><i class="fas fa-undo me-1"></i>Hapus Titik Terakhir</button>
+            <button type="button" class="btn btn-outline-danger btn-sm hidden" id="btn_cancel_draw"><i class="fas fa-times me-1"></i>Batal</button>
+            <span class="badge badge-secondary" id="map_mode_badge">Mode: Lihat</span>
+            <small class="text-gray-500" id="draw_status">Pilih provinsi lalu klik "Mulai Gambar" untuk membuat area baru.</small>
         </div>
     </div>
 
@@ -87,27 +87,31 @@
     </div>
 
     {{-- Form simpan area baru --}}
-    <div class="modal fade" id="save_modal" tabindex="-1">
-        <div class="modal-dialog">
-            <form class="modal-content" id="save_form">
-                <div class="modal-header"><h6 class="modal-title">Simpan Area Baru</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-                <div class="modal-body">
-                    <div class="mb-2"><label class="form-label small">Nama Area <span class="text-danger">*</span></label><input class="form-control form-control-sm" name="name" required></div>
-                    <div class="mb-2">
-                        <label class="form-label small">Depo</label>
-                        <select class="form-select form-select-sm" name="warehouse_id">
-                            <option value="">-</option>
-                            @foreach ($warehouses as $w)
-                                <option value="{{ $w->warehouse_id }}">{{ $w->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="mb-2"><label class="form-label small">Keterangan</label><textarea class="form-control form-control-sm" name="info" rows="2"></textarea></div>
-                    <small class="text-muted">Wilayah mengikuti filter: <span id="save_region">-</span></small>
+    <div class="modal-container hidden" id="save_modal">
+        <form class="modal-content" id="save_form">
+            <div class="modal-header">
+                <h6 class="m-0 font-semibold">Simpan Area Baru</h6>
+                <button type="button" class="btn-close" data-modal-dismiss="save_modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-2"><label class="form-label">Nama Area <span class="text-red-600">*</span></label><input class="form-control form-control-sm" name="name" required></div>
+                <div class="mb-2">
+                    <label class="form-label">Depo</label>
+                    <select class="form-select form-select-sm" name="warehouse_id">
+                        <option value="">-</option>
+                        @foreach ($warehouses as $w)
+                            <option value="{{ $w->warehouse_id }}">{{ $w->name }}</option>
+                        @endforeach
+                    </select>
                 </div>
-                <div class="modal-footer"><button type="button" class="btn btn-sm btn-light" data-bs-dismiss="modal">Batal</button><button class="btn btn-sm btn-primary">Simpan</button></div>
-            </form>
-        </div>
+                <div class="mb-2"><label class="form-label">Keterangan</label><textarea class="form-control form-control-sm" name="info" rows="2"></textarea></div>
+                <small class="text-gray-500">Wilayah mengikuti filter: <span id="save_region">-</span></small>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm btn-light" data-modal-dismiss="save_modal">Batal</button>
+                <button class="btn btn-sm btn-primary">Simpan</button>
+            </div>
+        </form>
     </div>
 @endsection
 
@@ -125,6 +129,13 @@
         const $ = (id) => document.getElementById(id);
         const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         const COLORS = ['#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4', '#42d4f4', '#f032e6', '#469990', '#9A6324', '#800000', '#808000', '#000075'];
+
+        function showModal(id) { $(id).classList.remove('hidden'); }
+        function hideModal(id) { $(id).classList.add('hidden'); }
+        document.querySelectorAll('[data-modal-dismiss]').forEach((btn) => {
+            btn.addEventListener('click', () => hideModal(btn.dataset.modalDismiss));
+        });
+        $('save_modal').addEventListener('click', (e) => { if (e.target === $('save_modal')) hideModal('save_modal'); });
 
         // ---------- Peta ----------
         const map = L.map('polygon_map', { center: [-6.2, 106.8], zoom: 10 });
@@ -144,7 +155,7 @@
 
         function areaPopup(a) {
             return '<div style="min-width:220px;font-size:12px">'
-                + '<strong style="font-size:13px">' + esc(a.name) + '</strong><br><span class="text-muted">' + esc(a.code) + '</span><hr class="my-1">'
+                + '<strong style="font-size:13px">' + esc(a.name) + '</strong><br><span class="text-gray-500">' + esc(a.code) + '</span><hr class="my-1">'
                 + '<div><b>Depo:</b> ' + esc(a.warehouse || '-') + '</div>'
                 + '<div><b>Wilayah Depo:</b> ' + esc(a.branch_area || '-') + '</div>'
                 + '<div><b>Kelurahan:</b> ' + esc(a.village || '-') + ', ' + esc(a.district || '-') + '</div>'
@@ -174,9 +185,9 @@
             const shown = areas.filter((a) => !q || (a.name + ' ' + a.code + ' ' + (a.village || '')).toLowerCase().includes(q));
             $('area_count').textContent = areas.length;
             $('area_list').innerHTML = shown.length
-                ? shown.slice(0, 300).map((a) => '<a class="list-group-item list-group-item-action py-1" data-id="' + a.id + '"><b>' + esc(a.name) + '</b> <span class="text-muted">' + esc(a.code) + '</span><br><small class="text-muted">' + esc(a.village || '-') + ', ' + esc(a.district || '-') + ' &middot; ' + (a.outlet_count ?? 0) + ' toko</small></a>').join('')
-                    + (shown.length > 300 ? '<div class="list-group-item text-center text-muted small">' + (shown.length - 300) + ' area lainnya, persempit filter atau pencarian</div>' : '')
-                : '<div class="list-group-item text-center text-muted py-4">Tidak ada area</div>';
+                ? shown.slice(0, 300).map((a) => '<a class="list-group-item list-group-item-action py-1" data-id="' + a.id + '"><b>' + esc(a.name) + '</b> <span class="text-gray-500">' + esc(a.code) + '</span><br><small class="text-gray-500">' + esc(a.village || '-') + ', ' + esc(a.district || '-') + ' &middot; ' + (a.outlet_count ?? 0) + ' toko</small></a>').join('')
+                    + (shown.length > 300 ? '<div class="list-group-item text-center text-gray-500 text-xs">' + (shown.length - 300) + ' area lainnya, persempit filter atau pencarian</div>' : '')
+                : '<div class="list-group-item text-center text-gray-500 py-4">Tidak ada area</div>';
         }
 
         $('area_list').addEventListener('click', (e) => {
@@ -218,7 +229,7 @@
         async function loadAreas() {
             const f = filters();
             if (!f.province) { alert('Harap pilih Provinsi terlebih dahulu.'); return; }
-            $('area_list').innerHTML = '<div class="list-group-item text-center py-4"><span class="spinner-border spinner-border-sm me-2"></span>Memuat data...</div>';
+            $('area_list').innerHTML = '<div class="list-group-item text-center py-4"><span class="spinner me-2"></span>Memuat data...</div>';
             const data = await fetch(urls.areas + '?' + new URLSearchParams(f)).then((r) => r.json());
             areas = data.areas;
             renderList();
@@ -235,7 +246,7 @@
             $('filter_province').value = '';
             levels.slice(1).forEach((l) => { $('filter_' + l).innerHTML = '<option value="">Semua</option>'; });
             areas = []; renderList(); areaLayer.clearLayers(); depoLayer.clearLayers();
-            $('area_list').innerHTML = '<div class="list-group-item text-center text-muted py-4">Klik "Tampilkan" untuk memuat data area</div>';
+            $('area_list').innerHTML = '<div class="list-group-item text-center text-gray-500 py-4">Klik "Tampilkan" untuk memuat data area</div>';
         });
 
         // Hapus area dari popup
@@ -268,10 +279,10 @@
         function setDrawUi(on) {
             drawing = on;
             $('polygon_map').classList.toggle('drawing-mode', on);
-            $('btn_start_draw').classList.toggle('d-none', on);
-            ['btn_finish_draw', 'btn_undo_point', 'btn_cancel_draw'].forEach((id) => $(id).classList.toggle('d-none', !on));
+            $('btn_start_draw').classList.toggle('hidden', on);
+            ['btn_finish_draw', 'btn_undo_point', 'btn_cancel_draw'].forEach((id) => $(id).classList.toggle('hidden', !on));
             $('map_mode_badge').textContent = on ? 'Mode: Menggambar' : 'Mode: Lihat';
-            $('map_mode_badge').className = 'badge ' + (on ? 'bg-danger' : 'bg-secondary');
+            $('map_mode_badge').className = 'badge ' + (on ? 'badge-danger' : 'badge-secondary');
             areaLayer.eachLayer((l) => l.setStyle({ fillOpacity: on ? 0.08 : 0.25, opacity: on ? 0.4 : 1 }));
         }
 
@@ -292,7 +303,7 @@
             if (points.length < 3) { alert('Polygon minimal 3 titik.'); return; }
             const f = filters();
             $('save_region').textContent = levels.map((l) => f[l]).filter(Boolean).join(', ');
-            bootstrap.Modal.getOrCreateInstance($('save_modal')).show();
+            showModal('save_modal');
         });
         map.on('click', (e) => { if (drawing) { points.push([e.latlng.lat, e.latlng.lng]); redraw(); } });
 
@@ -303,7 +314,7 @@
             const res = await fetch(urls.store, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrf }, body: JSON.stringify(body) });
             if (!res.ok) { alert('Gagal menyimpan area.'); return; }
             const saved = await res.json();
-            bootstrap.Modal.getInstance($('save_modal')).hide();
+            hideModal('save_modal');
             e.target.reset();
             points = []; drawLayer.clearLayers(); setDrawUi(false);
             $('draw_status').textContent = 'Area ' + saved.code + ' tersimpan.';

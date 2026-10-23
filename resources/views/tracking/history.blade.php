@@ -15,12 +15,12 @@
 @endpush
 
 @section('content')
-    <h5 class="mb-3">{{ $page['title'] }}</h5>
+    <h5 class="mb-3 font-semibold">{{ $page['title'] }}</h5>
 
-    <div class="row g-3">
-        <div class="col-lg-4">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-3">
+        <div class="lg:col-span-4">
             <div class="card">
-                <div class="card-header bg-light"><h6 class="mb-0">Filter Tracking</h6></div>
+                <div class="card-header card-header-compact bg-gray-50"><h6 class="mb-0 font-semibold">Filter Tracking</h6></div>
                 <div class="card-body">
                     <label class="form-label" for="tracking_date">Tanggal</label>
                     <input type="date" id="tracking_date" class="form-control form-control-sm mb-3" value="{{ $tanggal }}">
@@ -37,32 +37,32 @@
 
                     <label class="form-label" for="person_search">{{ $label }}</label>
                     <input type="search" id="person_search" class="form-control form-control-sm mb-2" placeholder="Cari {{ strtolower($label) }}...">
-                    <div class="small text-muted mb-2" id="person_summary"></div>
-                    <div class="list-group" id="person_list" style="max-height: 50vh; overflow-y: auto;">
+                    <div class="text-xs text-gray-500 mb-2" id="person_summary"></div>
+                    <div class="list-group max-h-[50vh] overflow-y-auto" id="person_list">
                         @forelse ($people as $k)
                             <a class="list-group-item list-group-item-action person-item py-2" data-id="{{ $k->id }}" data-name="{{ $k->nama }}" data-group="{{ $k->group_id ?? '' }}">
-                                <div class="d-flex justify-content-between align-items-start gap-2">
-                                    <span class="fw-semibold">{{ $k->nama }}</span>
-                                    <span class="badge rounded-pill point-count"></span>
+                                <div class="flex justify-between items-start gap-2">
+                                    <span class="font-semibold">{{ $k->nama }}</span>
+                                    <span class="badge point-count"></span>
                                 </div>
                                 @if (! empty($k->koordinator_nama))
-                                    <small class="text-muted d-block"><i class="fas fa-user-tie me-1"></i>{{ $k->koordinator_nama }}</small>
+                                    <small class="text-gray-500 block"><i class="fas fa-user-tie me-1"></i>{{ $k->koordinator_nama }}</small>
                                 @endif
-                                <small class="text-muted"><i class="fas fa-warehouse me-1"></i>{{ $k->depo ?: '-' }}
-                                    @if ($k->telepon)<span class="ms-2"><i class="fas fa-phone me-1"></i>{{ $k->telepon }}</span>@endif
+                                <small class="text-gray-500"><i class="fas fa-warehouse me-1"></i>{{ $k->depo ?: '-' }}
+                                    @if ($k->telepon)<span class="ml-2"><i class="fas fa-phone me-1"></i>{{ $k->telepon }}</span>@endif
                                 </small>
                             </a>
                         @empty
-                            <div class="text-muted small">Belum ada data. Jalankan <code>php artisan marketama:import</code>.</div>
+                            <div class="text-gray-500 text-xs p-3">Belum ada data. Jalankan <code>php artisan marketama:import</code>.</div>
                         @endforelse
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-lg-8">
+        <div class="lg:col-span-8">
             <div class="card">
-                <div class="card-header bg-light d-flex flex-wrap gap-3 small">
+                <div class="card-header card-header-compact bg-gray-50 flex flex-wrap gap-3 text-xs">
                     <span><b>{{ $label }}:</b> <span id="person_name_display">-</span></span>
                     <span><b>Tanggal:</b> <span id="date_display">-</span></span>
                     <span><b>Info:</b> <span id="location_info">Pilih {{ strtolower($label) }}</span></span>
@@ -100,8 +100,8 @@
         const LayerToggle = L.Control.extend({
             options: { position: 'topright' },
             onAdd() {
-                const el = L.DomUtil.create('div', 'layer-toggle d-flex flex-column align-items-end gap-1');
-                el.innerHTML = '<div class="btn-group shadow-sm"><button type="button" class="btn btn-sm btn-primary" data-layer="sat"><i class="fas fa-satellite me-1"></i>Satelit</button>'
+                const el = L.DomUtil.create('div', 'layer-toggle flex flex-col items-end gap-1');
+                el.innerHTML = '<div class="flex gap-1 shadow-sm rounded-md overflow-hidden"><button type="button" class="btn btn-sm btn-primary" data-layer="sat"><i class="fas fa-satellite me-1"></i>Satelit</button>'
                     + '<button type="button" class="btn btn-sm btn-light" data-layer="2d"><i class="fas fa-map me-1"></i>2D Map</button></div>'
                     + '<button type="button" class="btn btn-sm btn-light shadow-sm" data-layer="roads"><i class="fas fa-road me-1"></i>Garis Jalan</button>';
                 L.DomEvent.disableClickPropagation(el);
@@ -141,7 +141,7 @@
             + '<line x1="16" y1="38" x2="32" y2="28" stroke="#fff" stroke-width="2.5"/><line x1="32" y1="28" x2="48" y2="38" stroke="#fff" stroke-width="2.5"/><circle cx="38" cy="22" r="5" fill="#fff"/>';
         const house = '<rect x="18" y="32" width="28" height="18" fill="#fff"/><polygon points="12,33 32,14 52,33" fill="#fff"/>';
 
-        const gmaps = (lat, lng) => '<a class="btn btn-sm btn-primary mt-2 text-white" style="font-size:11px" target="_blank" rel="noopener" href="https://maps.google.com/maps?q=loc:' + lat + ',' + lng + '&t=k"><i class="fas fa-map-marked-alt me-1"></i>Lihat di Google Map</a>';
+        const gmaps = (lat, lng) => '<a class="btn btn-sm btn-primary mt-2" style="font-size:11px" target="_blank" rel="noopener" href="https://maps.google.com/maps?q=loc:' + lat + ',' + lng + '&t=k"><i class="fas fa-map-marked-alt me-1"></i>Lihat di Google Map</a>';
         const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
         function reverseGeocode(lat, lng) {
@@ -156,9 +156,9 @@
         function pointPopup(label, loc, address) {
             return '<div style="min-width:200px"><strong>' + label + '</strong><br>'
                 + '<small>Waktu: ' + escapeHtml(loc.waktu) + '</small><br>'
-                + '<small class="text-secondary">&#x1F4CD; ' + (address ? escapeHtml(address) : '<i>Memuat alamat...</i>') + '</small><br>'
-                + '<small class="text-muted">Lat: ' + loc.lat + ' | Lng: ' + loc.lng + '</small>'
-                + (loc.akurasi ? '<br><small class="text-muted">Akurasi: ' + loc.akurasi + 'm</small>' : '')
+                + '<small class="text-gray-500">&#x1F4CD; ' + (address ? escapeHtml(address) : '<i>Memuat alamat...</i>') + '</small><br>'
+                + '<small class="text-gray-500">Lat: ' + loc.lat + ' | Lng: ' + loc.lng + '</small>'
+                + (loc.akurasi ? '<br><small class="text-gray-500">Akurasi: ' + loc.akurasi + 'm</small>' : '')
                 + '<br>' + gmaps(loc.lat, loc.lng) + '</div>';
         }
 
@@ -193,7 +193,7 @@
             if (data.depo && parseFloat(data.depo.latitude) && parseFloat(data.depo.longitude)) {
                 const d = [parseFloat(data.depo.latitude), parseFloat(data.depo.longitude)];
                 L.marker(d, { icon: iconSvg('#6f42c1', house), zIndexOffset: 50 })
-                    .bindPopup('<div class="text-center"><h6 class="mb-0">' + escapeHtml(data.depo.nama) + '</h6><small class="text-muted">Depo</small><br>' + gmaps(d[0], d[1]) + '</div>')
+                    .bindPopup('<div class="text-center"><h6 class="mb-0">' + escapeHtml(data.depo.nama) + '</h6><small class="text-gray-500">Depo</small><br>' + gmaps(d[0], d[1]) + '</div>')
                     .addTo(routeLayer);
             }
 
@@ -224,14 +224,14 @@
             load();
         }));
         const groupFilter = document.getElementById('group_filter');
-        const isShown = (el) => !el.classList.contains('d-none');
+        const isShown = (el) => !el.classList.contains('hidden');
 
         // Sembunyikan item yang tidak cocok dengan pencarian nama atau filter koordinator.
         function applyFilter() {
             const q = document.getElementById('person_search').value.toLowerCase();
             const group = groupFilter ? groupFilter.value : '';
             document.querySelectorAll('.person-item').forEach((el) => {
-                el.classList.toggle('d-none', !el.dataset.name.toLowerCase().includes(q) || (group !== '' && el.dataset.group !== group));
+                el.classList.toggle('hidden', !el.dataset.name.toLowerCase().includes(q) || (group !== '' && el.dataset.group !== group));
             });
         }
 
@@ -248,7 +248,7 @@
                 el.classList.toggle('no-data', n === 0);
                 const badge = el.querySelector('.point-count');
                 badge.textContent = n ? n + ' titik' : 'tidak ada GPS';
-                badge.className = 'badge rounded-pill point-count ' + (n ? 'bg-primary' : 'bg-light text-muted');
+                badge.className = 'badge point-count ' + (n ? 'badge-primary' : 'badge-light');
             });
             items.sort((a, b) => (b.dataset.count > 0) - (a.dataset.count > 0) || a.dataset.name.localeCompare(b.dataset.name))
                 .forEach((el) => list.appendChild(el));
@@ -281,9 +281,9 @@
         map.on('click', (e) => {
             const { lat, lng } = e.latlng;
             const popup = L.popup().setLatLng(e.latlng)
-                .setContent('<strong>&#x1F4CD; Informasi Lokasi</strong><br><i class="text-muted">Memuat alamat...</i><br><small>Lat: ' + lat.toFixed(6) + ', Lng: ' + lng.toFixed(6) + '</small>')
+                .setContent('<strong>&#x1F4CD; Informasi Lokasi</strong><br><i class="text-gray-500">Memuat alamat...</i><br><small>Lat: ' + lat.toFixed(6) + ', Lng: ' + lng.toFixed(6) + '</small>')
                 .openOn(map);
-            reverseGeocode(lat, lng).then((addr) => popup.setContent('<strong>&#x1F4CD; Informasi Lokasi</strong><br>' + escapeHtml(addr) + '<br><small class="text-muted">Lat: ' + lat.toFixed(6) + ' | Lng: ' + lng.toFixed(6) + '</small>'));
+            reverseGeocode(lat, lng).then((addr) => popup.setContent('<strong>&#x1F4CD; Informasi Lokasi</strong><br>' + escapeHtml(addr) + '<br><small class="text-gray-500">Lat: ' + lat.toFixed(6) + ' | Lng: ' + lng.toFixed(6) + '</small>'));
         });
     </script>
 @endpush

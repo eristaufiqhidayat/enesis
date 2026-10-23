@@ -10,7 +10,7 @@ Dokumen ini merangkum teknologi yang dipakai di aplikasi Enesis Canvassing, berd
 | Framework backend | Laravel 13 (`laravel/framework` ^13.17) |
 | Template / rendering | Laravel Blade (server-side rendering) |
 | Database | MySQL (default `.env.example`), PostgreSQL 16 (didukung), SQLite (default `config/database.php` dan dipakai di test) |
-| Styling | Bootstrap 5 (layout utama), Tailwind CSS 4 (lewat Vite, lihat catatan) |
+| Styling | Tailwind CSS 4 (lewat Vite) |
 | Ikon | Font Awesome 5 Free |
 | JavaScript | Vanilla JS, tanpa framework SPA |
 | Peta | Leaflet, tile OpenStreetMap dan Esri |
@@ -39,10 +39,12 @@ Dokumen ini merangkum teknologi yang dipakai di aplikasi Enesis Canvassing, berd
 
 ## Frontend
 
-- **Blade** untuk semua halaman. Layout utama ada di `resources/views/layouts/app.blade.php`, dengan sidebar dan topbar sebagai include.
-- **Bootstrap 5** (`public/vendor/bootstrap/`) dipakai untuk layout, komponen (modal, tooltip), dan pagination (`pagination::bootstrap-5`). File disalin ke `public/vendor`, bukan diinstal lewat npm.
-- **Font Awesome 5 Free** (`public/vendor/fontawesome/`) untuk ikon sidebar dan topbar.
-- **Vanilla JavaScript** dengan `fetch` untuk memanggil endpoint JSON. Token CSRF dikirim lewat header `X-CSRF-TOKEN`. Tidak ada React, Vue, Inertia, Livewire, atau Alpine.
+- **Vue 3 + Inertia.js** untuk halaman menu tabel generik (`MenuController` me-render `Inertia::render('Menu/Show', ...)`, komponen di `resources/js/Pages/Menu/Show.vue`, layout sidebar/topbar di `resources/js/Layouts/AppLayout.vue`).
+- **Blade** untuk halaman lain (tracking, design area polygon, coming soon). Layout utama ada di `resources/views/layouts/app.blade.php`, dengan sidebar dan topbar sebagai include.
+- **Tailwind CSS 4** (`resources/css/app.css`, lewat Vite) adalah satu-satunya sistem styling — tidak ada Bootstrap. Sebagian komponen umum (card, btn, form, badge, list-group, pagination, alert, modal, dropdown) didefinisikan sebagai class pendek di `app.css` lewat `@layer components` + `@apply`.
+- **Font Awesome 5 Free** (`public/vendor/fontawesome/`) untuk ikon sidebar dan topbar. File disalin ke `public/vendor`, bukan diinstal lewat npm.
+- Tidak ada lagi JS komponen Bootstrap (tooltip/collapse/dropdown/modal) — diganti helper vanilla JS kecil (toggle class `hidden`) di `layouts/app.blade.php` untuk halaman Blade, dan state reaktif Vue di `AppLayout.vue`.
+- **Vanilla JavaScript** dengan `fetch` untuk memanggil endpoint JSON di halaman Blade. Token CSRF dikirim lewat header `X-CSRF-TOKEN`. Tidak ada Livewire atau Alpine.
 - **Leaflet** (`public/vendor/leaflet/`) untuk peta tracking koordinator, tracking sales, dan design polygon area. Dimuat statis, bukan lewat npm.
 - **Layanan eksternal di browser**: tile OpenStreetMap dan Esri, serta Nominatim (OSM) untuk pencarian dan reverse geocoding alamat. Fitur peta butuh koneksi internet.
 
@@ -70,6 +72,5 @@ Langkah lengkap ada di `README.md`.
 
 ## Catatan dan hal yang perlu diperhatikan
 
-- **Tailwind belum dimuat di layout.** Bundle Vite (`app.css`, `app.js`) belum dipanggil dengan `@vite` di view mana pun. Layout utama hanya memakai Bootstrap, jadi kelas utilitas Tailwind tidak berpengaruh di halaman. Perlu dibuat keputusan: hapus Tailwind dari build, atau tambahkan `@vite` ke layout.
 - **Default database tidak konsisten.** `config/database.php` default ke SQLite, sedangkan `.env.example` dan `README.md` memakai MySQL. Pastikan `.env` lokal sesuai dengan database yang dipakai.
-- **Dependensi frontend di `public/vendor`** (Bootstrap, Font Awesome, Leaflet) tidak tercatat di `package.json`, sehingga update versinya harus dilakukan manual.
+- **Dependensi frontend di `public/vendor`** (Font Awesome, Leaflet) tidak tercatat di `package.json`, sehingga update versinya harus dilakukan manual.
