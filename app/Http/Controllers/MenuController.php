@@ -81,16 +81,15 @@ class MenuController extends Controller
      */
     private function kpiCheckinPagi(string $tanggal): array
     {
-        $checkin = DB::table('checkin_pagi')->where('tanggal_data', $tanggal);
-        $total = (clone $checkin)->count();
-        $sudahAbsen = (clone $checkin)
-            ->whereNotNull('checkin_pertama_hari_ini')
-            ->where('checkin_pertama_hari_ini', '!=', '')
-            ->count();
+        $checkin = DB::table('checkin_pagi')
+            ->where('tanggal_data', $tanggal)
+            ->selectRaw("COUNT(*) AS total, SUM(CASE WHEN checkin_pertama_hari_ini IS NOT NULL AND checkin_pertama_hari_ini <> '' THEN 1 ELSE 0 END) AS sudah_absen")
+            ->first();
+        $sudahAbsen = (int) $checkin->sudah_absen;
 
         return [
             'sudah_absen' => $sudahAbsen,
-            'belum_absen' => $total - $sudahAbsen,
+            'belum_absen' => (int) $checkin->total - $sudahAbsen,
             'terlambat' => DB::table('absensi_sales_terlambat')->where('tanggal', $tanggal)->count(),
         ];
     }

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Button from '@/Components/ui/atoms/Button.vue';
@@ -21,6 +21,10 @@ const props = defineProps({
 const search = ref(props.search);
 const tanggal = ref(props.tanggal);
 const appName = usePage().props.appName;
+
+// Komponen ini dipakai ulang saat navigasi Inertia, jadi nilai input ikut props terbaru.
+watch(() => props.search, (value) => search.value = value);
+watch(() => props.tanggal, (value) => tanggal.value = value);
 
 const kpiItems = computed(() => props.kpi ? [
     { label: 'Sudah Absen', value: props.kpi.sudah_absen },
