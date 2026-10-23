@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 
 defineProps({ title: { type: String, default: '' } });
@@ -8,14 +8,26 @@ const page = usePage();
 const menu = computed(() => page.props.menu ?? []);
 const currentSlug = computed(() => page.props.currentSlug ?? '');
 
+const manuallyToggled = ref({});
+const notifOpen = ref(false);
+const notifWrapper = ref(null);
+
+function closeNotifOnOutsideClick(e) {
+    if (notifWrapper.value && !notifWrapper.value.contains(e.target)) notifOpen.value = false;
+}
+
+onMounted(() => document.addEventListener('click', closeNotifOnOutsideClick));
+onUnmounted(() => document.removeEventListener('click', closeNotifOnOutsideClick));
+
 function isChildOpen(item) {
     if (!item.children) return false;
+    if (item.id in manuallyToggled.value) return manuallyToggled.value[item.id];
     return item.children.some((child) => child.slug === currentSlug.value);
 }
 
-onMounted(() => {
-    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => new window.bootstrap.Tooltip(el));
-});
+function toggleSubmenu(item) {
+    manuallyToggled.value = { ...manuallyToggled.value, [item.id]: !isChildOpen(item) };
+}
 </script>
 
 <template>
@@ -27,17 +39,16 @@ onMounted(() => {
                 <template v-for="item in section.items" :key="item.id ?? item.slug">
                     <li v-if="item.children" class="nav-item">
                         <a
-                            class="nav-link"
-                            :class="{ collapsed: !isChildOpen(item) }"
+                            class="nav-link flex items-center justify-between"
+                            :class="{ 'is-open': isChildOpen(item) }"
                             href="#"
-                            :data-bs-toggle="'collapse'"
-                            :data-bs-target="'#' + item.id"
                             :aria-expanded="isChildOpen(item) ? 'true' : 'false'"
-                            @click.prevent
+                            @click.prevent="toggleSubmenu(item)"
                         >
-                            <span class="nav-link-icon"><i :class="item.icon"></i></span>{{ item.title }}
+                            <span class="flex items-center"><span class="nav-link-icon"><i :class="item.icon"></i></span>{{ item.title }}</span>
+                            <i class="fas fa-chevron-down nav-chevron"></i>
                         </a>
-                        <ul class="nav flex-column collapse" :class="{ show: isChildOpen(item) }" :id="item.id">
+                        <ul class="nav flex-column" :class="{ hidden: !isChildOpen(item) }" :id="item.id">
                             <li v-for="child in item.children" :key="child.slug" class="nav-item">
                                 <Link class="nav-link" :class="{ active: currentSlug === child.slug }" :href="`/${child.slug}`">
                                     <span v-if="child.icon" class="nav-link-icon"><i :class="child.icon"></i></span>{{ child.title }}
@@ -55,13 +66,13 @@ onMounted(() => {
         </ul>
     </nav>
     <main>
-        <div class="topbar d-flex justify-content-end align-items-center gap-2 mb-3">
-            <a class="shortcut-btn" href="/loading_barang/add" title="Tambah Loading Barang" data-bs-toggle="tooltip"><i class="fas fa-truck-loading"></i></a>
-            <a class="shortcut-btn" href="/barang_canvassing/add" title="Tambah Barang Canvassing" data-bs-toggle="tooltip"><i class="fas fa-boxes"></i></a>
-            <a class="shortcut-btn" href="/master_area/design_area" title="Design Polygon Area" data-bs-toggle="tooltip"><i class="fas fa-draw-polygon"></i></a>
-            <div class="dropdown">
-                <a class="notif-bell" href="#" data-bs-toggle="dropdown" title="Notifikasi Transaksi" aria-label="Notifikasi Transaksi"><i class="fas fa-bell"></i></a>
-                <div class="dropdown-menu dropdown-menu-end p-3 text-muted small" style="min-width: 240px;">
+        <div class="topbar flex justify-end items-center gap-2 mb-3">
+            <a class="shortcut-btn" href="/loading_barang/add" title="Tambah Loading Barang"><i class="fas fa-truck-loading"></i></a>
+            <a class="shortcut-btn" href="/barang_canvassing/add" title="Tambah Barang Canvassing"><i class="fas fa-boxes"></i></a>
+            <a class="shortcut-btn" href="/master_area/design_area" title="Design Polygon Area"><i class="fas fa-draw-polygon"></i></a>
+            <div class="relative" ref="notifWrapper">
+                <a class="notif-bell" href="#" title="Notifikasi Transaksi" aria-label="Notifikasi Transaksi" @click.prevent="notifOpen = !notifOpen"><i class="fas fa-bell"></i></a>
+                <div class="dropdown-menu" :class="{ hidden: !notifOpen }">
                     <i class="fas fa-bell-slash me-1"></i> Tidak ada notifikasi baru
                 </div>
             </div>

@@ -28,3 +28,65 @@ main { margin-left: 260px; padding: 1rem 1.5rem 1.5rem; }
 .notif-bell:hover { color: #2c7be5; }
 .notif-bell::before { content: ""; position: absolute; right: .3rem; top: .35rem; width: .7rem; height: .7rem; border-radius: 40%; background-color: #2c7be5; border: 2px solid #edf2f9; }
 @media (max-width: 991px) { .sidebar { position: static; width: 100%; height: auto; } main { margin-left: 0; } }
+.nav-chevron { font-size: 10px; transition: transform .15s ease; }
+.sidebar .nav-link.is-open .nav-chevron { transform: rotate(180deg); }
+
+/* Komponen kecil ala Bootstrap, dibangun dari utility Tailwind supaya markup lama (card, btn, badge, dst.)
+   tetap mudah dibaca tanpa menuliskan daftar utility class yang panjang di setiap halaman. */
+@layer components {
+    .btn { @apply inline-flex items-center justify-center gap-1 rounded-md border border-transparent font-medium whitespace-nowrap transition cursor-pointer select-none; }
+    .btn-sm { @apply px-2.5 py-1 text-xs; }
+    .btn-primary { @apply bg-blue-600 text-white hover:bg-blue-700; }
+    .btn-success { @apply bg-green-600 text-white hover:bg-green-700; }
+    .btn-light { @apply bg-gray-100 text-gray-700 hover:bg-gray-200; }
+    .btn-outline-secondary { @apply border-gray-300 bg-white text-gray-600 hover:bg-gray-50; }
+    .btn-outline-danger { @apply border-red-300 bg-white text-red-600 hover:bg-red-50; }
+    .btn-outline-warning { @apply border-amber-300 bg-white text-amber-600 hover:bg-amber-50; }
+
+    .card { @apply bg-white rounded-md border border-gray-200; }
+    .card-header { @apply px-3 py-2.5 border-b border-gray-200; }
+    .card-header-compact { @apply py-2; }
+    .card-body { @apply p-3; }
+    .card-body-compact { @apply py-2; }
+    .card-footer { @apply px-3 py-2 border-t border-gray-200; }
+
+    .form-label { @apply block text-xs font-medium text-gray-600 mb-1; }
+    .form-control, .form-select { @apply block w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500; }
+    .form-control-sm, .form-select-sm { @apply px-2 py-1 text-xs; }
+
+    .badge { @apply inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold leading-tight; }
+    .badge-primary { @apply bg-blue-600 text-white; }
+    .badge-secondary { @apply bg-gray-200 text-gray-700; }
+    .badge-light { @apply bg-gray-100 text-gray-500; }
+    .badge-danger { @apply bg-red-600 text-white; }
+
+    .list-group { @apply divide-y divide-gray-200 border border-gray-200 rounded-md overflow-hidden; }
+    .list-group-flush { @apply border-0 rounded-none; }
+    .list-group-item { @apply block px-3 py-2 text-xs; }
+    .list-group-item-action { @apply cursor-pointer hover:bg-gray-50; }
+
+    .data-table { @apply w-full text-xs border-collapse; }
+    .data-table thead { @apply bg-gray-50; }
+    .data-table th, .data-table td { @apply px-3 py-2 text-left border-b border-gray-100 whitespace-nowrap; }
+    .data-table tbody tr:nth-child(odd) { @apply bg-gray-50/60; }
+    .data-table tbody tr:hover { @apply bg-blue-50/50; }
+
+    .pagination { @apply flex items-center gap-1; }
+    .page-link { @apply inline-flex min-w-[1.75rem] items-center justify-center rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50; }
+    .page-item.active .page-link { @apply bg-blue-600 text-white border-blue-600 hover:bg-blue-600; }
+    .page-item.disabled .page-link { @apply opacity-50 cursor-not-allowed hover:bg-transparent; }
+
+    .alert { @apply rounded-md px-3 py-2 text-sm; }
+    .alert-info { @apply bg-sky-50 text-sky-700 border border-sky-100; }
+
+    .dropdown-menu { @apply absolute right-0 z-20 mt-2 min-w-[14rem] rounded-md border border-gray-200 bg-white p-3 text-sm text-gray-500 shadow-lg; }
+
+    .modal-container { @apply fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4; }
+    .modal-content { @apply w-full max-w-md rounded-md bg-white shadow-lg; }
+    .modal-header { @apply flex items-center justify-between border-b border-gray-200 px-4 py-3; }
+    .modal-body { @apply px-4 py-3; }
+    .modal-footer { @apply flex justify-end gap-2 border-t border-gray-200 px-4 py-3; }
+    .btn-close { @apply text-gray-400 hover:text-gray-600 text-lg leading-none; }
+
+    .spinner { @apply inline-block h-3 w-3 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600 align-[-2px]; }
+}

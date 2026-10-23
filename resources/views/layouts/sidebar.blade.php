@@ -10,10 +10,11 @@
                 @if (isset($item['children']))
                     @php($open = in_array($current, array_column($item['children'], 'slug'), true))
                     <li class="nav-item">
-                        <a class="nav-link {{ $open ? '' : 'collapsed' }}" href="#{{ $item['id'] }}" data-bs-toggle="collapse" aria-expanded="{{ $open ? 'true' : 'false' }}">
-                            <span class="nav-link-icon"><i class="{{ $item['icon'] }}"></i></span>{{ $item['title'] }}
+                        <a class="nav-link flex items-center justify-between {{ $open ? 'is-open' : '' }}" href="#" data-collapse-toggle="{{ $item['id'] }}" aria-expanded="{{ $open ? 'true' : 'false' }}">
+                            <span class="flex items-center"><span class="nav-link-icon"><i class="{{ $item['icon'] }}"></i></span>{{ $item['title'] }}</span>
+                            <i class="fas fa-chevron-down nav-chevron"></i>
                         </a>
-                        <ul class="nav flex-column collapse {{ $open ? 'show' : '' }}" id="{{ $item['id'] }}">
+                        <ul class="nav flex-column {{ $open ? '' : 'hidden' }}" id="{{ $item['id'] }}">
                             @foreach ($item['children'] as $child)
                                 <li class="nav-item">
                                     <a class="nav-link {{ $current === $child['slug'] ? 'active' : '' }}" href="{{ route('menu', $child['slug']) }}">
