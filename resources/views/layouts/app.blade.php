@@ -15,7 +15,7 @@
 <body>
     <x-ui.organisms.sidebar />
     <main>
-        <x-ui.organisms.topbar />
+        <x-ui.organisms.topbar :breadcrumb-slug="trim($__env->yieldContent('breadcrumb_slug')) ?: null" />
         @yield('content')
     </main>
     <script>

@@ -1,6 +1,8 @@
 {{-- Ikon kanan atas, sama seperti header Marketama. --}}
+@props(['breadcrumbSlug' => null])
+
 <div class="topbar flex justify-between items-center gap-2">
-    <x-ui.molecules.breadcrumb />
+    <x-ui.molecules.breadcrumb :slug="$breadcrumbSlug" />
     <div class="flex items-center gap-2">
         <a class="shortcut-btn" href="{{ url('loading_barang/add') }}" title="Tambah Loading Barang"><i class="fas fa-truck-loading"></i></a>
         <a class="shortcut-btn" href="{{ url('barang_canvassing/add') }}" title="Tambah Barang Canvassing"><i class="fas fa-boxes"></i></a>

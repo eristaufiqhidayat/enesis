@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @section('title', 'Design Polygon Area')
+@section('breadcrumb_slug', 'master_area')
 
 @push('head')
     <link rel="stylesheet" href="{{ asset('vendor/leaflet/leaflet.css') }}">
