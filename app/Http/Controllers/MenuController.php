@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Inertia\Inertia;
 
 class MenuController extends Controller
 {
@@ -36,17 +37,26 @@ class MenuController extends Controller
                 });
             }
 
+            $rows = $query->orderBy('id')->paginate(50, ['*'], "page_{$table}")->withQueryString();
+
             $tables[] = [
                 'name' => $table,
                 'title' => config("marketama.tables.{$table}.title"),
                 'columns' => $columns,
-                'rows' => $query->orderBy('id')->paginate(50, ['*'], "page_{$table}")->withQueryString(),
+                'rows' => [
+                    'data' => $rows->items(),
+                    'total' => $rows->total(),
+                    'links' => $rows->onEachSide(1)->linkCollection()->toArray(),
+                ],
             ];
         }
 
-        return view('menu.show', [
+        return Inertia::render('Menu/Show', [
             'slug' => $slug,
-            'page' => $page,
+            'page' => [
+                ...$page,
+                'same_as_title' => $page['same_as'] ? config("marketama.pages.{$page['same_as']}.title") : null,
+            ],
             'tables' => $tables,
             'search' => $search,
         ]);

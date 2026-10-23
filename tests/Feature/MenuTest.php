@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class MenuTest extends TestCase
@@ -28,8 +29,11 @@ class MenuTest extends TestCase
 
         $this->get('/provinsi')
             ->assertOk()
-            ->assertSee('Jawa Barat')
-            ->assertSee('Total 1 data');
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Menu/Show')
+                ->where('tables.0.rows.data.0.nama_provinsi', 'Jawa Barat')
+                ->where('tables.0.rows.total', 1)
+            );
     }
 
     public function test_unknown_menu_returns_404(): void
