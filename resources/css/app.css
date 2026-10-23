@@ -27,7 +27,7 @@ body { background: var(--color-surface); font-size: .875rem; }
 .sidebar .nav-link-text { flex: 1 1 auto; min-width: 0; }
 .sidebar .nav-link .nav-chevron { flex: 0 0 auto; align-self: center; }
 .sidebar .nav .nav .nav-link { padding-left: 2.25rem; }
-.sidebar .section-label { font-size: .7rem; text-transform: uppercase; color: rgba(255, 255, 255, .4); font-weight: 600; margin: 1rem .5rem .25rem; border-top: 1px solid rgba(255, 255, 255, .2); padding-top: .75rem; }
+.sidebar .section-label { display: flex; align-items: center; justify-content: space-between; gap: .5rem; cursor: pointer; font-size: .7rem; text-transform: uppercase; color: rgba(255, 255, 255, .4); font-weight: 600; margin: 1rem .5rem .25rem; border-top: 1px solid rgba(255, 255, 255, .2); padding-top: .75rem; }
 .sidebar .section-label:first-child { border-top: 0; padding-top: 0; }
 main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
 /* Topbar fixed di atas, mulai dari tepi sidebar sampai kanan, sejajar dengan konten (bukan menutupi sidebar). */
@@ -81,6 +81,7 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
 @media (max-width: 991px) { .sidebar { position: static; width: 100%; height: auto; } main { margin-left: 0; padding-top: 1rem; } .topbar { position: static; left: 0; height: auto; padding: 0; margin-bottom: .75rem; } }
 .nav-chevron { font-size: 10px; transition: transform .15s ease; }
 .sidebar .nav-link.is-open .nav-chevron { transform: rotate(180deg); }
+.sidebar .section-label.is-open .nav-chevron { transform: rotate(180deg); }
 
 /* Komponen kecil ala Bootstrap, dibangun dari utility Tailwind supaya markup lama (card, btn, badge, dst.)
    tetap mudah dibaca tanpa menuliskan daftar utility class yang panjang di setiap halaman. */
