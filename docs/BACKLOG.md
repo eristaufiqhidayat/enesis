@@ -9,3 +9,5 @@
 | 005 | [ ] | Normalisasi relasi provinsi/kota_kabupaten/kecamatan/kelurahan (pakai *_id, bukan nama string) | [docs/backlog_items/005-normalisasi-relasi-wilayah/spec.md](backlog_items/005-normalisasi-relasi-wilayah/spec.md) ([#16](https://github.com/eristaufiqhidayat/enesis/issues/16)) |
 | 006 | [ ] | Util format tanggal & datetime untuk tampilan (dd Mmm yyyy[, HH:mm], mis. "01 Okt 2026") | [docs/backlog_items/006-util-format-tanggal-tampilan/spec.md](backlog_items/006-util-format-tanggal-tampilan/spec.md) |
 | 007 | [ ] | Seragamkan tampilan nilai rupiah (mis. "Rp 15.000") | [docs/backlog_items/007-format-tampilan-rupiah/spec.md](backlog_items/007-format-tampilan-rupiah/spec.md) |
+| 008 | [ ] | Breadcrumb di topnav (grup > menu aktif) | [docs/backlog_items/008-breadcrumb-topnav/spec.md](backlog_items/008-breadcrumb-topnav/spec.md) |
+| 009 | [ ] | Sidebar collapsible (per grup menu & seluruh sidebar) | [docs/backlog_items/009-sidebar-grup-collapsible/spec.md](backlog_items/009-sidebar-grup-collapsible/spec.md) |
