@@ -19,6 +19,21 @@
         @yield('content')
     </main>
     <script>
+        // Halaman Blade (bukan Inertia) full reload tiap navigasi, jadi scroll
+        // sidebar disimpan di sessionStorage supaya tidak kembali ke atas tiap pindah menu.
+        (() => {
+            const SCROLL_KEY = 'sidebar-scroll-top';
+            const sidebar = document.querySelector('.sidebar');
+            if (!sidebar) return;
+
+            const saved = sessionStorage.getItem(SCROLL_KEY);
+            if (saved) sidebar.scrollTop = parseInt(saved, 10) || 0;
+
+            sidebar.addEventListener('scroll', () => {
+                sessionStorage.setItem(SCROLL_KEY, sidebar.scrollTop);
+            });
+        })();
+
         // Pengganti ringan Bootstrap collapse/dropdown (tanpa Bootstrap JS).
         document.querySelectorAll('[data-collapse-toggle]').forEach((toggle) => {
             const target = document.getElementById(toggle.dataset.collapseToggle);

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 
 const page = usePage();
@@ -7,6 +7,20 @@ const menu = computed(() => page.props.menu ?? []);
 const currentSlug = computed(() => page.props.currentSlug ?? '');
 
 const manuallyToggled = ref({});
+const navRef = ref(null);
+
+// Sidebar di-mount ulang setiap navigasi Inertia, jadi scroll posisinya
+// disimpan di sessionStorage supaya tidak kembali ke atas tiap pindah menu.
+const SCROLL_KEY = 'sidebar-scroll-top';
+
+onMounted(() => {
+    const saved = sessionStorage.getItem(SCROLL_KEY);
+    if (saved && navRef.value) navRef.value.scrollTop = parseInt(saved, 10) || 0;
+
+    navRef.value?.addEventListener('scroll', () => {
+        sessionStorage.setItem(SCROLL_KEY, navRef.value.scrollTop);
+    });
+});
 
 function isChildOpen(item) {
     if (!item.children) return false;
@@ -20,7 +34,7 @@ function toggleSubmenu(item) {
 </script>
 
 <template>
-    <nav class="sidebar">
+    <nav class="sidebar" ref="navRef">
         <div class="brand"><i class="fas fa-leaf me-1"></i> {{ page.props.appName ?? 'Enesis Canvassing' }}</div>
         <ul class="nav flex flex-col list-none m-0 p-0">
             <template v-for="section in menu" :key="section.label ?? 'root'">
