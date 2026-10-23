@@ -130,6 +130,9 @@ class Penarik
         $this->simpan('mk_area', $baru, ['id'], ['nama', 'ditarik_pada']);
         $this->lupaPeta('mk_area');
         ($this->log)(sprintf('mk_area: %d area (%d dari daftar area sales)', DB::table('mk_area')->count(), count($baru)));
+
+        // Outlet yang ditarik sebelum area lengkap: sambungkan area_id-nya sekarang.
+        $this->sambung();
     }
 
     public function distributor(): void
@@ -352,6 +355,41 @@ class Penarik
         });
 
         ($this->log)(sprintf('mk_outlet: %d outlet', DB::table('mk_outlet')->count()));
+    }
+
+    /**
+     * Isi relasi yang masih kosong dari data yang sudah tersimpan (tanpa menarik ulang):
+     * mk_outlet.area_id dari nama area, mk_user.karyawan_id dari nama karyawan.
+     * Nama yang kembar tidak dipetakan.
+     */
+    public function sambung(): void
+    {
+        $this->lupaPeta('mk_area');
+        $this->lupaPeta('mk_karyawan');
+        $outlet = 0;
+
+        $namaArea = DB::table('mk_outlet')->whereNull('area_id')->whereNotNull('area')->distinct()->pluck('area');
+
+        foreach ($namaArea as $nama) {
+            if ($id = $this->idNama('mk_area', $nama)) {
+                $outlet += DB::table('mk_outlet')->whereNull('area_id')->where('area', $nama)->update(['area_id' => $id]);
+            }
+        }
+
+        $user = 0;
+
+        foreach (DB::table('mk_user')->whereNull('karyawan_id')->whereNotNull('nama_karyawan')->get(['jenis', 'id', 'nama_karyawan']) as $u) {
+            if ($id = $this->idNama('mk_karyawan', $u->nama_karyawan)) {
+                $user += DB::table('mk_user')->where(['jenis' => $u->jenis, 'id' => $u->id])->update(['karyawan_id' => $id]);
+            }
+        }
+
+        ($this->log)(sprintf(
+            'sambung: %s outlet dapat area_id (sisa tanpa area: %s), %d user dapat karyawan_id',
+            number_format($outlet, 0, ',', '.'),
+            number_format(DB::table('mk_outlet')->whereNull('area_id')->count(), 0, ',', '.'),
+            $user,
+        ));
     }
 
     // ------------------------------------------------------------------ mentah

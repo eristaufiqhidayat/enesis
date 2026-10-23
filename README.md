@@ -144,6 +144,7 @@ php artisan marketama:tarik karyawan          # semua sales (aktif + tidak aktif
 php artisan marketama:tarik user              # user sales/koordinator/lainnya/super admin + id karyawan
 php artisan marketama:tarik outlet            # ±552 ribu outlet (±2 jam)
 php artisan marketama:tarik mentah:penjualan_barang   # menu lain apa adanya ke mk_baris_mentah
+php artisan marketama:tarik sambung           # isi area_id outlet / karyawan_id user dari data tersimpan
 php artisan marketama:tarik --status          # progres per menu vs total di sumber
 ```
 
