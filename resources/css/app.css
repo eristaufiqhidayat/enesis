@@ -18,8 +18,10 @@
 
 body { background: var(--color-surface); font-size: .875rem; }
 /* Warna sidebar sama dengan Marketama (tema Falcon "navbar-vibrant"). */
-.sidebar { width: 260px; height: 100vh; position: fixed; top: 0; left: 0; overflow-y: auto; background-image: linear-gradient(rgba(0, 0, 0, .18), rgba(0, 0, 0, .18)), linear-gradient(-45deg, var(--color-brand-light), var(--color-brand-dark)); padding: 1rem .75rem 2rem; scrollbar-color: rgba(255, 255, 255, .3) transparent; }
-.sidebar .brand { font-weight: 700; font-size: 1.1rem; color: #fff; padding: 0 .5rem 1rem; text-shadow: 0 1px 2px rgba(0, 0, 0, .35); }
+.sidebar { width: 260px; height: 100vh; position: fixed; top: 0; left: 0; overflow-y: auto; overflow-x: hidden; background-image: linear-gradient(rgba(0, 0, 0, .18), rgba(0, 0, 0, .18)), linear-gradient(-45deg, var(--color-brand-light), var(--color-brand-dark)); padding: 1rem .75rem 2rem; scrollbar-color: rgba(255, 255, 255, .3) transparent; transition: width .15s ease; }
+.sidebar .brand { display: flex; align-items: center; justify-content: space-between; gap: .5rem; font-weight: 700; font-size: 1.1rem; color: #fff; padding: 0 .5rem 1rem; text-shadow: 0 1px 2px rgba(0, 0, 0, .35); }
+.sidebar .brand [data-sidebar-toggle] { flex: 0 0 auto; background: transparent; border: 0; color: rgba(255, 255, 255, .8); font-size: 1rem; line-height: 1; padding: .25rem; cursor: pointer; }
+.sidebar .brand [data-sidebar-toggle]:hover { color: #fff; }
 .sidebar .nav-link { display: flex; align-items: flex-start; gap: .25rem; color: rgba(255, 255, 255, .9); padding: .35rem .5rem; border-radius: .25rem; text-shadow: 0 1px 2px rgba(0, 0, 0, .35); }
 .sidebar .nav-link:hover, .sidebar .nav-link:focus { color: #fff; background: rgba(255, 255, 255, .08); }
 .sidebar .nav-link.active { color: #fff; font-weight: 600; background: rgba(255, 255, 255, .12); }
@@ -31,6 +33,19 @@ body { background: var(--color-surface); font-size: .875rem; }
 .sidebar .section-label:first-child { border-top: 0; padding-top: .25rem; margin-top: 0; }
 .sidebar .section-label:hover, .sidebar .section-label:focus { color: rgba(255, 255, 255, .8); background: rgba(255, 255, 255, .08); }
 main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
+/* Mode collapse seluruh sidebar jadi strip ikon-saja (lihat sidebar.blade.php/layouts/app.blade.php). Desktop saja: di mobile sidebar tetap full-width. */
+@media (min-width: 992px) {
+    body.sidebar-collapsed .sidebar { width: 4.5rem; }
+    body.sidebar-collapsed main { margin-left: 4.5rem; }
+    body.sidebar-collapsed .topbar { left: 4.5rem; }
+    body.sidebar-collapsed .sidebar:not(:hover) .brand > span,
+    body.sidebar-collapsed .sidebar:not(:hover) .nav-link-text,
+    body.sidebar-collapsed .sidebar:not(:hover) .section-label,
+    body.sidebar-collapsed .sidebar:not(:hover) .nav-chevron { display: none; }
+    /* Hover sementara melebarkan sidebar jadi overlay di atas topbar/main (tanpa mengubah margin-left
+       main/topbar, jadi konten tidak ikut terdorong), lalu menyempit lagi saat mouse keluar. */
+    body.sidebar-collapsed .sidebar:hover { width: 260px; z-index: 30; box-shadow: 2px 0 12px rgba(0, 0, 0, .2); }
+}
 /* Topbar fixed di atas, mulai dari tepi sidebar sampai kanan, sejajar dengan konten (bukan menutupi sidebar). */
 .topbar { position: fixed; top: 0; left: 260px; right: 0; height: 3.5rem; z-index: 20; background: #fff; padding: 0 1.5rem; margin-bottom: 0; border-bottom: 1px solid #e5e7eb; }
 /* Ikon kanan atas sama dengan Marketama: tombol bulat biru (.shortcut-btn) dan lonceng abu-abu dengan titik biru. */
@@ -79,7 +94,7 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
 .tooltip-left::before { right: calc(100% + 1px); top: 50%; --tooltip-shift: translateY(-50%); transform-origin: center right; border-left-color: #1f2937; }
 .tooltip-right::after { left: calc(100% + 6px); top: 50%; --tooltip-shift: translateY(-50%); transform-origin: center left; }
 .tooltip-right::before { left: calc(100% + 1px); top: 50%; --tooltip-shift: translateY(-50%); transform-origin: center left; border-right-color: #1f2937; }
-@media (max-width: 991px) { .sidebar { position: static; width: 100%; height: auto; } main { margin-left: 0; padding-top: 1rem; } .topbar { position: static; left: 0; height: auto; padding: 0; margin-bottom: .75rem; } }
+@media (max-width: 991px) { .sidebar { position: static; width: 100%; height: auto; } main { margin-left: 0; padding-top: 1rem; } .topbar { position: static; left: 0; height: auto; padding: 0; margin-bottom: .75rem; } [data-sidebar-toggle] { display: none; } }
 .nav-chevron { font-size: 10px; transition: transform .15s ease; }
 .sidebar .nav-link.is-open .nav-chevron { transform: rotate(180deg); }
 .sidebar .section-label.is-open .nav-chevron { transform: rotate(180deg); }

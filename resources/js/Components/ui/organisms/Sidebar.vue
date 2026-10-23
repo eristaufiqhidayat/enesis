@@ -35,7 +35,34 @@ function writeCollapsedGroups(labels) {
     }
 }
 
+// Collapse seluruh sidebar jadi strip ikon-saja. Key localStorage dan class di
+// <body> sama dengan versi Blade (ticket 03), jadi state-nya ikut ke stack lain.
+const COLLAPSED_FULL_KEY = 'sidebar-collapsed-full';
+
+function readCollapsedFull() {
+    try {
+        return localStorage.getItem(COLLAPSED_FULL_KEY) === '1';
+    } catch {
+        return false;
+    }
+}
+
+const collapsedFull = ref(readCollapsedFull());
+
+function setCollapsedFull(value) {
+    collapsedFull.value = value;
+    document.body.classList.toggle('sidebar-collapsed', value);
+    try {
+        if (value) localStorage.setItem(COLLAPSED_FULL_KEY, '1');
+        else localStorage.removeItem(COLLAPSED_FULL_KEY);
+    } catch {
+        // localStorage tidak tersedia (mode privat dll.), state collapse tidak persist.
+    }
+}
+
 onMounted(() => {
+    document.body.classList.toggle('sidebar-collapsed', collapsedFull.value);
+
     const saved = sessionStorage.getItem(SCROLL_KEY);
     if (saved && navRef.value) navRef.value.scrollTop = parseInt(saved, 10) || 0;
 
@@ -77,13 +104,17 @@ function isChildOpen(item) {
 }
 
 function toggleSubmenu(item) {
+    if (collapsedFull.value) setCollapsedFull(false);
     manuallyToggled.value = { ...manuallyToggled.value, [item.id]: !isChildOpen(item) };
 }
 </script>
 
 <template>
     <nav class="sidebar" ref="navRef">
-        <div class="brand"><i class="fas fa-leaf me-1"></i> {{ page.props.appName ?? 'Enesis Canvassing' }}</div>
+        <div class="brand">
+            <span><i class="fas fa-leaf me-1"></i> {{ page.props.appName ?? 'Enesis Canvassing' }}</span>
+            <button type="button" data-sidebar-toggle aria-label="Persempit/lebarkan sidebar" @click="setCollapsedFull(!collapsedFull)"><i class="fas fa-bars"></i></button>
+        </div>
         <ul class="nav flex flex-col list-none m-0 p-0">
             <template v-for="section in menu" :key="section.label ?? 'root'">
                 <li
@@ -108,6 +139,7 @@ function toggleSubmenu(item) {
                                 :class="{ 'is-open': isChildOpen(item) }"
                                 href="#"
                                 :aria-expanded="isChildOpen(item) ? 'true' : 'false'"
+                                :title="item.title"
                                 @click.prevent="toggleSubmenu(item)"
                             >
                                 <span class="nav-link-icon"><i :class="item.icon"></i></span>
@@ -116,7 +148,7 @@ function toggleSubmenu(item) {
                             </a>
                             <ul class="nav flex flex-col list-none m-0 p-0" :class="{ hidden: !isChildOpen(item) }" :id="item.id">
                                 <li v-for="child in item.children" :key="child.slug" class="nav-item">
-                                    <Link class="nav-link" :class="{ active: currentSlug === child.slug }" :href="`/${child.slug}`">
+                                    <Link class="nav-link" :class="{ active: currentSlug === child.slug }" :href="`/${child.slug}`" :title="child.title">
                                         <span v-if="child.icon" class="nav-link-icon"><i :class="child.icon"></i></span>
                                         <span class="nav-link-text">{{ child.title }}</span>
                                     </Link>
@@ -124,7 +156,7 @@ function toggleSubmenu(item) {
                             </ul>
                         </li>
                         <li v-else class="nav-item">
-                            <Link class="nav-link" :class="{ active: currentSlug === item.slug }" :href="`/${item.slug}`">
+                            <Link class="nav-link" :class="{ active: currentSlug === item.slug }" :href="`/${item.slug}`" :title="item.title">
                                 <span class="nav-link-icon"><i :class="item.icon"></i></span>
                                 <span class="nav-link-text">{{ item.title }}</span>
                             </Link>

@@ -1,4 +1,5 @@
 import { mount } from '@vue/test-utils';
+import { nextTick } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Sidebar from './Sidebar.vue';
 
@@ -14,6 +15,12 @@ const menu = [
         items: [
             { id: 2, slug: 'outlet', title: 'Outlet', icon: 'fas fa-store' },
             { id: 3, slug: 'area', title: 'Area', icon: 'fas fa-map' },
+            {
+                id: 4,
+                title: 'Laporan',
+                icon: 'fas fa-file',
+                children: [{ slug: 'laporan-harian', title: 'Laporan Harian', icon: null }],
+            },
         ],
     },
 ];
@@ -44,7 +51,9 @@ describe('Sidebar group collapse', () => {
         const wrapper = mount(Sidebar);
         await wrapper.vm.$nextTick();
 
-        expect(wrapper.find('ul.hidden').exists()).toBe(false);
+        const groupList = wrapper.findAll('ul:not(.nav)').find((ul) => ul.text().includes('Outlet'));
+
+        expect(groupList.classes()).not.toContain('hidden');
     });
 
     it('collapses a labelled group when clicked and persists it to localStorage', async () => {
@@ -100,5 +109,61 @@ describe('Sidebar group collapse', () => {
 
     it('does not throw when localStorage has never been written', () => {
         expect(() => mount(Sidebar)).not.toThrow();
+    });
+});
+
+describe('Sidebar full collapse', () => {
+    const FULL_KEY = 'sidebar-collapsed-full';
+
+    beforeEach(() => {
+        localStorage.clear();
+        document.body.classList.remove('sidebar-collapsed');
+        currentSlug = 'dashboard';
+        Element.prototype.scrollIntoView = vi.fn();
+    });
+
+    it('does not throw and stays expanded when localStorage has never been written', () => {
+        expect(() => mount(Sidebar)).not.toThrow();
+        expect(document.body.classList.contains('sidebar-collapsed')).toBe(false);
+    });
+
+    it('reads the collapsed flag from localStorage on mount', async () => {
+        localStorage.setItem(FULL_KEY, '1');
+
+        mount(Sidebar);
+        await nextTick();
+
+        expect(document.body.classList.contains('sidebar-collapsed')).toBe(true);
+    });
+
+    it('toggles body class and persists flag when the brand toggle is clicked', async () => {
+        const wrapper = mount(Sidebar);
+
+        await wrapper.find('[data-sidebar-toggle]').trigger('click');
+        expect(document.body.classList.contains('sidebar-collapsed')).toBe(true);
+        expect(localStorage.getItem(FULL_KEY)).toBe('1');
+
+        await wrapper.find('[data-sidebar-toggle]').trigger('click');
+        expect(document.body.classList.contains('sidebar-collapsed')).toBe(false);
+        expect(localStorage.getItem(FULL_KEY)).toBeNull();
+    });
+
+    it('expands the sidebar before toggling a submenu when collapsed', async () => {
+        localStorage.setItem(FULL_KEY, '1');
+        const wrapper = mount(Sidebar);
+        await nextTick();
+
+        const submenuToggle = wrapper.findAll('a.nav-link').find((a) => a.text().includes('Laporan'));
+        await submenuToggle.trigger('click');
+
+        expect(document.body.classList.contains('sidebar-collapsed')).toBe(false);
+        expect(localStorage.getItem(FULL_KEY)).toBeNull();
+    });
+
+    it('exposes the item title as a native tooltip on each nav link', () => {
+        const wrapper = mount(Sidebar);
+
+        const outlet = wrapper.findAll('a.nav-link').find((a) => a.text().includes('Outlet'));
+        expect(outlet.attributes('title')).toBe('Outlet');
     });
 });
