@@ -25,9 +25,13 @@ class MenuController extends Controller
             $query = DB::table($table);
 
             if ($search !== '') {
-                $query->where(function ($q) use ($columns, $search) {
+                // PostgreSQL: LIKE hanya untuk teks dan peka huruf besar/kecil, jadi pakai CAST + ILIKE.
+                $pgsql = DB::getDriverName() === 'pgsql';
+                $query->where(function ($q) use ($columns, $search, $pgsql) {
                     foreach (array_keys($columns) as $column) {
-                        $q->orWhere($column, 'like', "%{$search}%");
+                        $pgsql
+                            ? $q->orWhereRaw('CAST('.$q->getGrammar()->wrap($column).' AS TEXT) ILIKE ?', ["%{$search}%"])
+                            : $q->orWhere($column, 'like', "%{$search}%");
                     }
                 });
             }

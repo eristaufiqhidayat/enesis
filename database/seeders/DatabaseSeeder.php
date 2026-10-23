@@ -14,6 +14,9 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call(ReferenceDataSeeder::class);
+        $this->call([
+            ReferenceDataSeeder::class,
+            MarketamaDataSeeder::class,
+        ]);
     }
 }

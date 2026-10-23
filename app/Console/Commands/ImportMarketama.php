@@ -15,7 +15,7 @@ class ImportMarketama extends Command
     protected $description = 'Impor data hasil tarikan Marketama (CSV per tabel) ke database';
 
     // Tabel di luar config/marketama.php (dibuat oleh migration tersendiri).
-    private const EXTRA_TABLES = ['tracking_koordinator', 'tracking_koordinator_lokasi', 'area_polygon', 'area_depo'];
+    private const EXTRA_TABLES = ['tracking_koordinator', 'tracking_koordinator_lokasi', 'tracking_sales', 'tracking_sales_lokasi', 'area_polygon', 'area_depo'];
 
     public function handle(): int
     {
@@ -33,9 +33,9 @@ class ImportMarketama extends Command
                 continue;
             }
 
-            $path = "{$dir}/{$table}.csv";
+            $path = CsvTableLoader::find($dir, $table);
 
-            if (! is_file($path) || ! Schema::hasTable($table)) {
+            if (! $path || ! Schema::hasTable($table)) {
                 $this->line("<fg=gray>{$table}: dilewati (file tidak ada)</>");
 
                 continue;
