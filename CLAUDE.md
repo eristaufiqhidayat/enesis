@@ -25,5 +25,24 @@ Default DB is SQLite (`database/database.sqlite`); tests use in-memory SQLite. F
 
 - **Config-driven menus**: `config/marketama.php` is the single source of truth. `menu` defines sidebar groups/items (slug, title, icon); `pages` maps slug → tables to show; `tables` gives each table's title and column labels (column keys are also the searchable columns). `routes/web.php` registers the catch-all `/{slug}` route restricted via `whereIn` to the keys of `marketama.pages`, handled by the generic `MenuController@show` (queries tables with `DB::table`, skipping tables that don't exist — there are no Eloquent models besides `User`). Adding a plain data menu = edit the config (+ migration if a new table).
 - **Custom pages** take precedence over the catch-all because their routes are declared first in `routes/web.php`: `TrackingKoordinatorController` (GPS route map), `DesignAreaController` (polygon area designer, JSON endpoints `options`/`areas` plus store/destroy), and `Route::view` placeholders (`menu.coming_soon`) for unbuilt "Tambah" forms. Map views use Leaflet served from `public/vendor/leaflet` and need internet for OSM/Esri tiles.
+- **Two rendering stacks**: `MenuController@show` (the catch-all `/{slug}` page) renders through Inertia + Vue (`resources/js/Pages/Menu/Show.vue`). The custom pages above (`tracking/`, `area/`, `menu.coming_soon`) render as plain Blade views under `layouts.app`. Both stacks share the same Tailwind component classes defined in `resources/css/app.css` (`.card`, `.btn`, `.badge`, `.form-control`, `.data-table`, `.pagination`, `.alert`, `.modal-container`, …).
 - **Data loading**: `database/migrations/2026_10_22_000001_create_marketama_tables.php` defines the ~101 Marketama tables; the tracking and area-polygon tables are in the later two migrations. `ReferenceDataSeeder` seeds non-personal reference data from CSVs in `database/seeders/data/`. Transaction/employee/user/outlet data is intentionally NOT in the repo (personal data, up to 1.7M rows/table) and is loaded by `ImportMarketama` via `App\Support\CsvTableLoader` (one CSV per table, filename = table name; truncates the table first, ignores CSV columns missing from the table, strips BOM).
-- Views: `resources/views/layouts/` (app, sidebar, topbar), `menu/`, `tracking/`, `area/`.
+- Views: `resources/views/layouts/app.blade.php` (shell, includes the `ui.organisms.sidebar`/`ui.organisms.topbar` components), `menu/`, `tracking/`, `area/`. Vue pages: `resources/js/Pages/`, `resources/js/Layouts/AppLayout.vue`.
+
+## Komponen UI (atomic design) — WAJIB dipakai
+
+Semua markup UI **harus** disusun dari komponen reusable, bukan HTML mentah yang diulang-ulang di setiap view. Ada dua pustaka komponen paralel karena ada dua stack rendering (lihat di atas), tapi strukturnya sama-sama atomic design (atoms → molecules → organisms) dan sama-sama berdiri di atas class CSS di `resources/css/app.css`:
+
+| Layer | Blade (`resources/views/components/ui/`) | Vue (`resources/js/Components/ui/`) |
+| --- | --- | --- |
+| atoms | `button`, `badge`, `icon`, `label`, `input`, `select`, `textarea` | `Button.vue`, `Badge.vue`, `Icon.vue` |
+| molecules | `card`, `alert`, `modal` | `Card.vue`, `Alert.vue`, `Pagination.vue` |
+| organisms | `sidebar`, `topbar` | `Sidebar.vue`, `Topbar.vue`, `DataTable.vue` |
+
+Aturan:
+- **Jangan** menulis ulang markup `<div class="card">...`, `<button class="btn ...">`, `<span class="badge ...">`, dst. Pakai komponennya: `<x-ui.molecules.card>` / `<Card>`, `<x-ui.atoms.button>` / `<Button>`, dst.
+- Atom/molecule baru yang dipakai berkali-kali (≥2 tempat) wajib diekstrak ke folder yang sesuai sebelum di-copy-paste ke view lain.
+- Komponen Blade adalah anonymous component (`@props` di baris pertama) sehingga atribut tambahan (`id`, `name`, `data-*`, `value`, dst.) otomatis diteruskan ke elemen root lewat `$attributes->merge()` — penting karena banyak halaman (`tracking/`, `area/`) memakai `id`/`data-*` tersebut dari JS vanilla.
+- Komponen Vue meneruskan atribut non-prop ke elemen root secara otomatis (Vue attribute fallthrough) selama komponennya single-root.
+- Halaman Inertia (`Menu/Show.vue`) tidak boleh menulis tabel/pagination manual — pakai organism `DataTable` yang sudah membungkus `Card` + `Pagination`.
+- Kalau sebuah tampilan butuh variasi yang tidak ditangani props komponen yang ada, tambah prop baru pada komponennya (misal `bodyClass`, `headerClass`) — jangan bikin salinan komponen baru untuk variasi kecil.
