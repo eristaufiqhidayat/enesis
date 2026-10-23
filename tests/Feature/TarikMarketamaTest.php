@@ -357,6 +357,21 @@ class TarikMarketamaTest extends TestCase
         $this->assertFalse((bool) DB::table('mk_tarikan')->where('kunci', 'list:master_area')->value('selesai'));
     }
 
+    public function test_outlet_sebelum_area_disambung_belakangan(): void
+    {
+        $this->pasangServer();
+
+        // Outlet ditarik lebih dulu: area belum ada, area_id kosong.
+        $this->artisan('marketama:tarik', ['bagian' => ['outlet']])->assertSuccessful();
+        $this->assertNull(DB::table('mk_outlet')->where('id', 11)->value('area_id'));
+
+        // Setelah master (area) ditarik, sambung otomatis mengisi area_id.
+        $this->artisan('marketama:tarik', ['bagian' => ['master']])
+            ->expectsOutputToContain('sambung: 1 outlet dapat area_id')
+            ->assertSuccessful();
+        $this->assertSame(18685, (int) DB::table('mk_outlet')->where('id', 11)->value('area_id'));
+    }
+
     public function test_parser_halaman(): void
     {
         $html = $this->halaman('tabel_x', ['', '', 'Kode Outlet', 'Kota/Kabupaten'], '/x/datatable_x');
