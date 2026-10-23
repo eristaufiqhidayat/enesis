@@ -745,6 +745,8 @@ return [
                 'checkin_pagi',
             ],
             'same_as' => null,
+            'date_filter_column' => 'tanggal_data',
+            'kpi' => 'checkin_pagi',
         ],
         'sales_tidak_penjualan' => [
             'title' => 'Sales Tidak Penjualan',
@@ -2117,7 +2119,6 @@ return [
         'checkin_pagi' => [
             'title' => 'checkin_pagi',
             'columns' => [
-                'tanggal_data' => 'Tanggal Data',
                 'no' => 'No',
                 'depo' => 'Depo',
                 'koordinator' => 'Koordinator',

@@ -4,3 +4,4 @@
 | --- | --- | --- |
 | 001 | Perbaikan sistem autentikasi | [docs/backlog_items/001-perbaikan-sistem-autentikasi/spec.md](backlog_items/001-perbaikan-sistem-autentikasi/spec.md) |
 | 002 | Perbaikan halaman checkin_pagi (filter tanggal & pencarian) | [docs/backlog_items/002-perbaikan-halaman-checkin-pagi/spec.md](backlog_items/002-perbaikan-halaman-checkin-pagi/spec.md) |
+| 003 | Checkin pertama hari ini disimpan sebagai datetime | [docs/backlog_items/003-checkin-pertama-hari-ini-datetime/spec.md](backlog_items/003-checkin-pertama-hari-ini-datetime/spec.md) |
