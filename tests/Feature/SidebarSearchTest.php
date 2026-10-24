@@ -52,6 +52,14 @@ class SidebarSearchTest extends TestCase
         );
     }
 
+    public function test_navigasi_hanya_punya_satu_link_monitoring_harian_sales(): void
+    {
+        $html = $this->renderSidebar();
+
+        $this->assertSame(1, preg_match_all('#href="[^"]*/monitoring_harian_sales"#', $html));
+        $this->assertDoesNotMatchRegularExpression('#href="[^"]*/(checkin_pagi|sales_tidak_penjualan|sales_tidak_absen)"#', $html);
+    }
+
     public function test_data_pencarian_memuat_seluruh_menu_termasuk_children(): void
     {
         $html = $this->renderSidebar();
@@ -67,10 +75,34 @@ class SidebarSearchTest extends TestCase
                 $jumlahDiharapkan += isset($item['children']) ? count($item['children']) : 1;
             }
         }
+        // monitoring_harian_sales (halaman bertab) menambah satu entri pencarian per tab.
+        $jumlahDiharapkan += count(config('marketama.pages.monitoring_harian_sales.tables'));
 
         $this->assertCount($jumlahDiharapkan, $menu);
         $this->assertContains(
-            ['title' => 'Sales Checkin Outlet Pagi', 'slug' => 'checkin_pagi'],
+            ['title' => 'Monitoring Harian Sales', 'slug' => 'monitoring_harian_sales'],
+            $menu
+        );
+        $this->assertNotContains('checkin_pagi', array_column($menu, 'slug'));
+    }
+
+    public function test_menu_lama_yang_sudah_jadi_tab_tetap_bisa_dicari_dan_membuka_tab_yang_sesuai(): void
+    {
+        $html = $this->renderSidebar();
+
+        preg_match('/const searchMenus = (\[.*?\]);\n/s', $html, $cocok);
+        $menu = json_decode($cocok[1], true);
+
+        $this->assertContains(
+            ['title' => 'Sales Checkin Outlet Pagi', 'slug' => 'monitoring_harian_sales?tab=checkin_pagi'],
+            $menu
+        );
+        $this->assertContains(
+            ['title' => 'Sales Tidak Penjualan', 'slug' => 'monitoring_harian_sales?tab=sales_tidak_penjualan'],
+            $menu
+        );
+        $this->assertContains(
+            ['title' => 'Sales Tidak Absen Pagi', 'slug' => 'monitoring_harian_sales?tab=sales_tidak_absen'],
             $menu
         );
     }

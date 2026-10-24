@@ -43,23 +43,23 @@ class CheckinPagiKpiTest extends TestCase
 
     public function test_kpi_counts_for_today(): void
     {
-        $this->get('/checkin_pagi')
+        $this->get('/monitoring_harian_sales')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('kpi.sudah_absen', 2)
-                ->where('kpi.belum_absen', 2)
-                ->where('kpi.terlambat', 2)
+                ->where('tables.0.kpi.sudah_absen', 2)
+                ->where('tables.0.kpi.belum_absen', 2)
+                ->where('tables.0.kpi.terlambat', 2)
             );
     }
 
     public function test_kpi_follows_selected_tanggal(): void
     {
-        $this->get('/checkin_pagi?tanggal=2026-10-22')
+        $this->get('/monitoring_harian_sales?tanggal=2026-10-22')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('kpi.sudah_absen', 1)
-                ->where('kpi.belum_absen', 0)
-                ->where('kpi.terlambat', 1)
+                ->where('tables.0.kpi.sudah_absen', 1)
+                ->where('tables.0.kpi.belum_absen', 0)
+                ->where('tables.0.kpi.terlambat', 1)
             );
     }
 
@@ -73,12 +73,12 @@ class CheckinPagiKpiTest extends TestCase
             ], range(1, 60))
         );
 
-        $this->get('/checkin_pagi')
+        $this->get('/monitoring_harian_sales')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->where('tables.0.rows.total', 64)
-                ->where('kpi.sudah_absen', 62)
-                ->where('kpi.belum_absen', 2)
+                ->where('tables.0.kpi.sudah_absen', 62)
+                ->where('tables.0.kpi.belum_absen', 2)
             );
     }
 
@@ -87,7 +87,7 @@ class CheckinPagiKpiTest extends TestCase
         $this->get('/provinsi')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('kpi', null)
+                ->where('tables.0.kpi', null)
             );
     }
 }

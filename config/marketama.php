@@ -14,19 +14,9 @@ return [
                     'icon' => 'home',
                 ],
                 [
-                    'slug' => 'checkin_pagi',
-                    'title' => 'Sales Checkin Outlet Pagi',
+                    'slug' => 'monitoring_harian_sales',
+                    'title' => 'Monitoring Harian Sales',
                     'icon' => 'clock',
-                ],
-                [
-                    'slug' => 'sales_tidak_penjualan',
-                    'title' => 'Sales Tidak Penjualan',
-                    'icon' => 'shopping-cart',
-                ],
-                [
-                    'slug' => 'sales_tidak_absen',
-                    'title' => 'Sales Tidak Absen Pagi',
-                    'icon' => 'user-x',
                 ],
                 [
                     'slug' => 'rekap_pencapaian_sku_motoris',
@@ -751,26 +741,30 @@ return [
             'tables' => [],
             'same_as' => null,
         ],
-        'checkin_pagi' => [
-            'title' => 'Sales Checkin Outlet Pagi',
+        // Gabungan menu monitoring harian sales. Filter tanggal dan KPI diatur per tabel.
+        // 'tabs' => true: hanya tabel tab aktif (query ?tab=) yang ditampilkan.
+        'monitoring_harian_sales' => [
+            'title' => 'Monitoring Harian Sales',
+            'tabs' => true,
             'tables' => [
-                'checkin_pagi',
-            ],
-            'same_as' => null,
-            'date_filter_column' => 'tanggal_data',
-            'kpi' => 'checkin_pagi',
-        ],
-        'sales_tidak_penjualan' => [
-            'title' => 'Sales Tidak Penjualan',
-            'tables' => [
-                'sales_tidak_penjualan',
-            ],
-            'same_as' => null,
-        ],
-        'sales_tidak_absen' => [
-            'title' => 'Sales Tidak Absen Pagi',
-            'tables' => [
-                'sales_tidak_absen',
+                [
+                    'table' => 'checkin_pagi',
+                    'tab_label' => 'Sales Checkin Outlet Pagi',
+                    'date_filter_column' => 'tanggal_data',
+                    'kpi' => 'checkin_pagi',
+                ],
+                [
+                    'table' => 'sales_tidak_penjualan',
+                    'tab_label' => 'Sales Tidak Penjualan',
+                    'date_filter_column' => null,
+                    'kpi' => null,
+                ],
+                [
+                    'table' => 'sales_tidak_absen',
+                    'tab_label' => 'Sales Tidak Absen Pagi',
+                    'date_filter_column' => null,
+                    'kpi' => null,
+                ],
             ],
             'same_as' => null,
         ],

@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -35,6 +37,120 @@ class MenuTest extends TestCase
                 ->where('tables.0.rows.data.0.nama_provinsi', 'Jawa Barat')
                 ->where('tables.0.rows.total', 1)
             );
+    }
+
+    public function test_monitoring_harian_sales_returns_three_tables_by_name(): void
+    {
+        $this->get('/monitoring_harian_sales')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Menu/Show')
+                ->has('tables', 3)
+                ->where('tables.0.name', 'checkin_pagi')
+                ->where('tables.1.name', 'sales_tidak_penjualan')
+                ->where('tables.2.name', 'sales_tidak_absen')
+            );
+    }
+
+    public function test_kpi_is_only_filled_for_table_with_kpi_configured(): void
+    {
+        $this->get('/monitoring_harian_sales')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('tables.1.kpi', null)
+                ->where('tables.2.kpi', null)
+            );
+    }
+
+    public function test_tanggal_filter_only_applies_to_table_with_date_filter(): void
+    {
+        Carbon::setTestNow('2026-10-23 08:00:00');
+
+        DB::table('sales_tidak_penjualan')->insert([
+            ['tanggal_data' => '2026-10-23', 'nama_sales' => 'Hari Ini'],
+            ['tanggal_data' => '2026-10-22', 'nama_sales' => 'Kemarin'],
+        ]);
+
+        $this->get('/monitoring_harian_sales?tanggal=2026-10-22')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('tables.1.rows.total', 2)
+                ->where('tanggal', '2026-10-22')
+                ->where('hasDateFilter', true)
+            );
+    }
+
+    public function test_active_tab_defaults_to_first_table_when_tab_is_empty(): void
+    {
+        $this->get('/monitoring_harian_sales')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('activeTab', 'checkin_pagi')
+            );
+    }
+
+    public function test_active_tab_follows_valid_tab_query(): void
+    {
+        $this->get('/monitoring_harian_sales?tab=sales_tidak_absen')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('activeTab', 'sales_tidak_absen')
+            );
+    }
+
+    public function test_active_tab_falls_back_to_default_when_tab_query_is_invalid(): void
+    {
+        $this->get('/monitoring_harian_sales?tab=tidak_ada')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('activeTab', 'checkin_pagi')
+            );
+    }
+
+    public function test_slug_lama_checkin_pagi_redirects_to_tab_checkin(): void
+    {
+        $this->get('/checkin_pagi')
+            ->assertRedirect('/monitoring_harian_sales?tab=checkin_pagi');
+    }
+
+    public function test_slug_lama_sales_tidak_penjualan_redirects_to_tab_tidak_penjualan(): void
+    {
+        $this->get('/sales_tidak_penjualan')
+            ->assertRedirect('/monitoring_harian_sales?tab=sales_tidak_penjualan');
+    }
+
+    public function test_slug_lama_sales_tidak_absen_redirects_to_tab_tidak_absen(): void
+    {
+        $this->get('/sales_tidak_absen')
+            ->assertRedirect('/monitoring_harian_sales?tab=sales_tidak_absen');
+    }
+
+    public function test_redirect_slug_lama_meneruskan_query_string_lain(): void
+    {
+        $this->get('/checkin_pagi?q=budi&tanggal=2026-10-22')
+            ->assertRedirect('/monitoring_harian_sales?q=budi&tanggal=2026-10-22&tab=checkin_pagi');
+    }
+
+    public function test_redirect_slug_lama_ditolak_untuk_role_tanpa_hak_menu_tujuan(): void
+    {
+        // Hak dicek di hop redirect ini juga (bukan hanya di halaman tujuan), sama seperti rute menu lain.
+        $roleId = DB::table('roles')->insertGetId([
+            'kode' => 'tanpa_monitoring', 'nama' => 'Tanpa Monitoring', 'bawaan' => false, 'cakupan' => 'semua',
+            'login_web' => true, 'login_mobile' => false, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        DB::table('role_hak')->insert([
+            'role_id' => $roleId, 'menu' => 'home', 'lihat' => true, 'tambah' => false, 'ubah' => false, 'hapus' => false, 'ekspor' => false,
+        ]);
+        $this->actingAs(User::factory()->make(['id' => 2, 'role_id' => $roleId, 'aktif' => true, 'wajib_ganti_password' => false]));
+
+        $this->get('/checkin_pagi')->assertForbidden();
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
     }
 
     public function test_unknown_menu_returns_404(): void

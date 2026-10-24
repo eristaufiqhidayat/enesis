@@ -124,18 +124,14 @@ function toggleSubmenu(item) {
     manuallyToggled.value = { ...manuallyToggled.value, [item.id]: !isChildOpen(item) };
 }
 
-// Pencarian menu: judul menu (termasuk children) diratakan jadi satu array,
-// lalu difilter substring case-insensitive, maksimal 8 hasil. Sama dengan versi Blade (ticket 01).
+// Pencarian menu: data dari prop searchMenu (menu yang diratakan + entri per tab untuk halaman
+// bertab, lihat Akses::menuPencarian), difilter substring case-insensitive, maksimal 8 hasil.
+// Sama dengan versi Blade (ticket 01).
 const SEARCH_LIMIT = 8;
 const query = ref('');
 const showResults = ref(false);
 
-const searchMenus = computed(() =>
-    menu.value
-        .flatMap((section) => section.items.flatMap((item) => (item.children ? item.children : [item])))
-        .filter((item) => item.slug)
-        .map((item) => ({ title: item.title, slug: item.slug })),
-);
+const searchMenus = computed(() => page.props.searchMenu ?? []);
 
 const searchResults = computed(() => {
     const keyword = query.value.trim().toLowerCase();
