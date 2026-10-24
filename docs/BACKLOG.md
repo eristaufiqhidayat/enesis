@@ -16,3 +16,5 @@
 | 012 | [x] | Input pencarian menu di top sidebar (border bawah pemisah + dropdown hasil) | [docs/backlog_items/012-pencarian-menu-sidebar/spec.md](backlog_items/012-pencarian-menu-sidebar/spec.md) |
 | 013 | [x] | Ganti sistem ikon dari Font Awesome solid ke Lucide (outline) | [docs/backlog_items/013-ganti-ikon-lucide/spec.md](backlog_items/013-ganti-ikon-lucide/spec.md) |
 | 014 | [ ] | Header grup sidebar lebih kontras, ikon grup tetap tampil saat collapsed, submenu jadi flyout bertingkat ke kanan | [docs/backlog_items/014-sidebar-header-kontras-flyout-submenu/spec.md](backlog_items/014-sidebar-header-kontras-flyout-submenu/spec.md) |
+| 015 | [ ] | Gabung menu Rekap Pencapaian SKU per Motoris & per Depo jadi satu halaman bertab | [docs/backlog_items/015-gabung-rekap-pencapaian-sku-tab/spec.md](backlog_items/015-gabung-rekap-pencapaian-sku-tab/spec.md) |
+| 016 | [ ] | Gabung menu Motoris Coverage, Motoris Performance, Monitor Absensi Motoris jadi satu halaman bertab | [docs/backlog_items/016-gabung-menu-motoris-tab/spec.md](backlog_items/016-gabung-menu-motoris-tab/spec.md) |
