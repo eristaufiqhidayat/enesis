@@ -1820,15 +1820,17 @@ return [
                 'tipe_outlet' => 'Tipe Outlet',
             ],
         ],
+        // Akun login Enesis kategori super_admin (tabel users), bukan salinan layar aplikasi lama.
         'super_admin' => [
             'title' => 'Super Admin',
+            'sumber' => [SumberUser::class, 'superAdmin'],
             'columns' => [
                 'username' => 'Username',
                 'nickname' => 'Nickname',
                 'karyawan' => 'Karyawan',
                 'status' => 'Status',
-                'diupdate_oleh' => 'Diupdate Oleh',
-                'diupdate_pada' => 'Diupdate Pada',
+                'keterangan' => 'Keterangan',
+                'login_terakhir_pada' => 'Login Terakhir',
             ],
         ],
         'satuan_produk' => [
@@ -1852,16 +1854,19 @@ return [
                 'diupdate_pada' => 'Diupdate Pada',
             ],
         ],
+        // Akun login Enesis kategori lainnya (tabel users), bukan salinan layar aplikasi lama.
         'user_lainnya' => [
             'title' => 'User Lainnya',
+            'sumber' => [SumberUser::class, 'lainnya'],
             'columns' => [
                 'username' => 'Username',
                 'nickname' => 'Nickname',
-                'kategori' => 'Kategori',
+                'kategori_user' => 'Kategori',
                 'karyawan' => 'Karyawan',
+                'depo' => 'Depo',
                 'status' => 'Status',
-                'diupdate_oleh' => 'Diupdate Oleh',
-                'diupdate_pada' => 'Diupdate Pada',
+                'keterangan' => 'Keterangan',
+                'login_terakhir_pada' => 'Login Terakhir',
             ],
         ],
         'pengumuman' => [
@@ -2093,16 +2098,18 @@ return [
                 'diupdate_pada' => 'Diupdate Pada',
             ],
         ],
+        // Akun login Enesis kategori koordinator (tabel users), bukan salinan layar aplikasi lama.
         'user_koordinator' => [
             'title' => 'User Koordinator',
+            'sumber' => [SumberUser::class, 'koordinator'],
             'columns' => [
                 'username' => 'Username',
                 'nickname' => 'Nickname',
                 'karyawan' => 'Karyawan',
                 'depo' => 'Depo',
                 'status' => 'Status',
-                'diupdate_oleh' => 'Diupdate Oleh',
-                'diupdate_pada' => 'Diupdate Pada',
+                'keterangan' => 'Keterangan',
+                'login_terakhir_pada' => 'Login Terakhir',
             ],
         ],
         'karyawan_koordinator' => [

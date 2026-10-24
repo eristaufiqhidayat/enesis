@@ -74,6 +74,45 @@ class MenuTest extends TestCase
             ->where('tables.0.rows.data.0.username', 'andi'));
     }
 
+    public function test_user_koordinator_lainnya_dan_super_admin_dari_tabel_users(): void
+    {
+        DB::table('mk_depo')->insert(['id' => 46, 'nama' => 'Sidoarjo']);
+        DB::table('mk_karyawan')->insert([
+            ['id' => 137, 'kategori' => 'koordinator', 'nama' => 'Koor Satu', 'depo_id' => 46],
+            ['id' => 500, 'kategori' => 'lainnya', 'nama' => 'Staf Gudang', 'depo_id' => 46],
+        ]);
+        DB::table('mk_user')->insert([
+            ['jenis' => 'lainnya', 'id' => 31, 'username' => 'gudang', 'nickname' => 'Gudang', 'karyawan_id' => 500,
+                'data' => json_encode(['kategori' => 'Admin Depo'])],
+        ]);
+        $user = fn (string $username, string $kategori, ?int $karyawan, array $lain = []) => $lain + [
+            'name' => ucfirst($username), 'username' => $username, 'password' => 'x', 'kategori' => $kategori, 'karyawan_id' => $karyawan,
+            'aktif' => true, 'wajib_ganti_password' => false, 'perlu_keputusan' => false, 'sumber_jenis' => null, 'sumber_id' => null,
+        ];
+        DB::table('users')->insert([
+            $user('koor', 'koordinator', 137, ['perlu_keputusan' => true]),
+            $user('gudang', 'lainnya', 500, ['sumber_jenis' => 'lainnya', 'sumber_id' => 31]),
+            $user('admin', 'super_admin', null),
+        ]);
+
+        $this->get('/user_koordinator')->assertInertia(fn (Assert $page) => $page
+            ->where('tables.0.rows.total', 1)
+            ->where('tables.0.rows.data.0.karyawan', 'Koor Satu')
+            ->where('tables.0.rows.data.0.depo', 'Sidoarjo')
+            ->where('tables.0.rows.data.0.keterangan', 'Perlu keputusan admin'));
+
+        $this->get('/user_lainnya')->assertInertia(fn (Assert $page) => $page
+            ->where('tables.0.rows.total', 1)
+            ->where('tables.0.rows.data.0.kategori_user', 'Admin Depo')
+            ->where('tables.0.rows.data.0.karyawan', 'Staf Gudang'));
+
+        // Super admin tanpa karyawan bukan masalah: keterangan kosong.
+        $this->get('/super_admin')->assertInertia(fn (Assert $page) => $page
+            ->where('tables.0.rows.total', 1)
+            ->where('tables.0.rows.data.0.username', 'admin')
+            ->where('tables.0.rows.data.0.keterangan', ''));
+    }
+
     public function test_unknown_menu_returns_404(): void
     {
         $this->get('/tidak_ada')->assertNotFound();
