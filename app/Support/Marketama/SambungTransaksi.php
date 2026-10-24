@@ -157,9 +157,9 @@ class SambungTransaksi
         $depoNama = DB::table('mk_depo')->pluck('nama', 'id')->map(fn ($n) => mb_strtolower(trim($n)));
         $orang = ['sales' => [], 'koordinator' => [], 'semua' => []];
 
-        foreach (DB::table('mk_karyawan')->get(['id', 'nama', 'kategori', 'depo_id']) as $k) {
+        foreach (DB::table('mk_karyawan')->get(['id', 'nama', 'kategori', 'depo_id', 'aktif']) as $k) {
             $kunci = mb_strtolower(trim((string) $k->nama));
-            $calon = ['id' => (int) $k->id, 'depo' => $depoNama[$k->depo_id] ?? null];
+            $calon = ['id' => (int) $k->id, 'depo' => $depoNama[$k->depo_id] ?? null, 'aktif' => (bool) $k->aktif];
             $orang['semua'][$kunci][] = $calon;
 
             if (isset($orang[$k->kategori])) {
@@ -213,9 +213,10 @@ class SambungTransaksi
 
     /**
      * Calon orang bernama sama => [depo => id]. Satu calon: depo '' (berlaku di semua depo).
-     * Beberapa calon: hanya depo yang berisi tepat satu orang bernama itu.
+     * Beberapa calon: per depo, pakai orang satu-satunya di depo itu; bila di satu depo ada
+     * beberapa (mis. karyawan yang didaftarkan ulang), pakai yang aktif bila hanya satu.
      *
-     * @param  list<array{id:int, depo:?string}>  $calon
+     * @param  list<array{id:int, depo:?string, aktif:bool}>  $calon
      * @return array<string, int>
      */
     private function petaOrang(array $calon): array
@@ -228,11 +229,22 @@ class SambungTransaksi
 
         foreach ($calon as $c) {
             if ($c['depo'] !== null) {
-                $perDepo[$c['depo']][] = $c['id'];
+                $perDepo[$c['depo']][] = $c;
             }
         }
 
-        return array_map(fn ($ids) => $ids[0], array_filter($perDepo, fn ($ids) => count($ids) === 1));
+        $hasil = [];
+
+        foreach ($perDepo as $depo => $orang) {
+            $aktif = array_values(array_filter($orang, fn ($c) => $c['aktif']));
+            $pilih = count($orang) === 1 ? $orang[0] : (count($aktif) === 1 ? $aktif[0] : null);
+
+            if ($pilih) {
+                $hasil[$depo] = $pilih['id'];
+            }
+        }
+
+        return $hasil;
     }
 
     /** nama (huruf kecil) => id, hanya untuk nama yang tidak kembar. */

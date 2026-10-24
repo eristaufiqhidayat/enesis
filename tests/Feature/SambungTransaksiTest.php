@@ -27,6 +27,13 @@ class SambungTransaksiTest extends TestCase
             ['id' => 139, 'kategori' => 'koordinator', 'nama' => 'Koor Kembar', 'depo_id' => 22],
             ['id' => 140, 'kategori' => 'koordinator', 'nama' => 'Dulu Sales', 'depo_id' => 46], // kini koordinator
         ]);
+        // Didaftarkan ulang di depo yang sama: satu nonaktif, satu aktif.
+        DB::table('mk_karyawan')->insert([
+            ['id' => 20, 'kategori' => 'sales', 'nama' => 'Ulang', 'depo_id' => 46, 'aktif' => false],
+            ['id' => 21, 'kategori' => 'sales', 'nama' => 'Ulang', 'depo_id' => 46, 'aktif' => true],
+            ['id' => 30, 'kategori' => 'sales', 'nama' => 'Ganda', 'depo_id' => 46, 'aktif' => true],
+            ['id' => 31, 'kategori' => 'sales', 'nama' => 'Ganda', 'depo_id' => 46, 'aktif' => true],
+        ]);
     }
 
     public function test_mengisi_id_master_di_tabel_transaksi(): void
@@ -45,6 +52,8 @@ class SambungTransaksiTest extends TestCase
             $jual('S4', 'Orang Lain', 'Sidoarjo', 'OUT-TIDAK-ADA'),
             $jual('S5', '-', 'Sidoarjo'),
             ['koordinator_name' => 'Koor Kembar'] + $jual('S6', 'Dulu Sales', 'Balaraja'),
+            $jual('S7', 'Ulang', 'Sidoarjo'),
+            $jual('S8', 'Ganda', 'Sidoarjo'),
         ]);
 
         DB::table('lap_penjualan_barang_detail')->insert([
@@ -73,6 +82,10 @@ class SambungTransaksiTest extends TestCase
         // Koordinator kembar diselesaikan dengan depo; sales yang kini koordinator tetap ketemu.
         $this->assertSame(139, (int) $hasil['S6']->koordinator_id);
         $this->assertSame(140, (int) $hasil['S6']->karyawan_id);
+
+        // Nama sama di depo sama: pakai yang aktif; bila keduanya aktif, dibiarkan kosong.
+        $this->assertSame(21, (int) $hasil['S7']->karyawan_id);
+        $this->assertNull($hasil['S8']->karyawan_id);
 
         $detail = DB::table('lap_penjualan_barang_detail')->first();
         $this->assertSame(3, (int) $detail->produk_id, 'product_sku angka cocok ke produk.kode teks');
