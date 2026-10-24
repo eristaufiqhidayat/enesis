@@ -13,7 +13,8 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
-// Absensi sales dan checkin/checkout depo dari tabel motoris (trx_absensi, trx_checkin_depo):
+// Absensi sales, checkin/checkout depo, dan checkin outlet dari tabel motoris (trx_absensi,
+// trx_checkin_depo, trx_kunjungan):
 // berisi data dari aplikasi motoris dan riwayat aplikasi lama hasil enesis:migrasi-transaksi.
 class KehadiranController extends Controller
 {
@@ -69,13 +70,59 @@ class KehadiranController extends Controller
         return view('kehadiran.checkin-depo', $this->dataView($menu, $filter, $baris) + ['ringkas' => $ringkas]);
     }
 
-    /** Foto unggahan HP (selfie absen), hanya untuk yang boleh melihat absensi sales tersebut. */
+    public const STATUS_KUNJUNGAN = ['semua' => 'Semua', 'beli' => 'Beli', 'tidak_beli' => 'Tidak beli', 'di_luar_rute' => 'Di luar rute'];
+
+    public function kunjungan(Request $request): View
+    {
+        $menu = (string) $request->route('menu');
+        $filter = $this->filter($request);
+        $status = array_key_exists($request->query('status'), self::STATUS_KUNJUNGAN) ? $request->query('status') : 'semua';
+        $cariOutlet = trim((string) $request->query('outlet'));
+        $beli = fn ($q) => $q->select(DB::raw(1))->from('trx_penjualan as p')->whereColumn('p.kunjungan_id', 't.id')->whereNull('p.dibatalkan_at');
+
+        $dasar = $this->dasar($request, 'trx_kunjungan', $filter)
+            ->leftJoin('mk_outlet as o', 'o.id', '=', 't.outlet_id')
+            ->when($cariOutlet !== '', fn ($q) => $q->where(function ($w) use ($cariOutlet) {
+                foreach (['o.nama', 'o.kode'] as $kolom) {
+                    $w->orWhereRaw("LOWER({$kolom}) LIKE ?", ['%'.mb_strtolower($cariOutlet).'%']);
+                }
+            }));
+
+        $ringkas = [
+            'total' => (clone $dasar)->count(),
+            'beli' => (clone $dasar)->whereExists($beli)->count(),
+            'tidak_beli' => (clone $dasar)->whereNotNull('t.tidak_beli_kategori')->count(),
+            'di_luar_rute' => (clone $dasar)->where('t.di_luar_rute', true)->count(),
+        ];
+
+        $baris = $dasar
+            ->when($status === 'beli', fn ($q) => $q->whereExists($beli))
+            ->when($status === 'tidak_beli', fn ($q) => $q->whereNotNull('t.tidak_beli_kategori'))
+            ->when($status === 'di_luar_rute', fn ($q) => $q->where('t.di_luar_rute', true))
+            ->addSelect([
+                't.checkin_at as masuk_at', 't.checkout_at as pulang_at', 't.durasi_detik', 't.lat', 't.lng', 't.jarak_m',
+                't.foto_id', 't.foto_url', 't.di_luar_rute', 't.mock_location', 't.tidak_beli_kategori', 't.tidak_beli_keterangan',
+                't.kategori_lama', 't.keterangan_lama', 'o.kode as outlet_kode', 'o.nama as outlet',
+            ])
+            ->selectSub(DB::table('trx_penjualan as p')->whereColumn('p.kunjungan_id', 't.id')->whereNull('p.dibatalkan_at')->selectRaw('SUM(p.total)'), 'total_jual')
+            ->orderByDesc('t.tanggal')->orderByDesc('t.checkin_at')
+            ->paginate(50)->withQueryString();
+
+        return view('kehadiran.kunjungan', $this->dataView($menu, $filter, $baris) + [
+            'status' => $status,
+            'cariOutlet' => $cariOutlet,
+            'ringkas' => $ringkas,
+            'alasan' => config('mobile.alasan_tidak_beli'),
+        ]);
+    }
+
+    /** Foto unggahan HP (selfie absen, foto kunjungan), hanya untuk yang boleh melihat absensi/kunjungan sales tersebut. */
     public function foto(Request $request, string $id): StreamedResponse
     {
         $foto = DB::table('mobile_uploads as m')->join('users as u', 'u.id', '=', 'm.user_id')
             ->where('m.id', $id)->first(['m.disk', 'm.path', 'm.mime', 'u.karyawan_id']) ?? abort(404);
 
-        $bolehMenu = collect(['absensi_sales', 'lap_absensi_sales', 'absensi_sales_terlambat'])
+        $bolehMenu = collect(['absensi_sales', 'lap_absensi_sales', 'absensi_sales_terlambat', 'checkin_outlet', 'lap_checkin_outlet'])
             ->contains(fn ($slug) => Akses::bisa($request->user(), $slug));
         $dalamCakupan = $foto->karyawan_id && Akses::batasiKaryawan(
             DB::table('mk_karyawan as k')->where('k.id', $foto->karyawan_id), $request->user()

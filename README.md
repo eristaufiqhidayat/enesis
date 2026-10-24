@@ -219,6 +219,7 @@ aslinya; baris dari HP bertanda `sumber = 'motoris'`. Tabel `lap_*` tidak diubah
 | --- | --- | --- | --- |
 | `absensi` | `lap_absensi_sales` | `trx_absensi` | jam masuk/pulang; terlambat dihitung dari batas jam masuk; tanpa GPS & selfie |
 | `checkin_depo` | `lap_checkin_checkout` | `trx_checkin_depo` | jam checkin/checkout, GPS; depo kosong memakai depo karyawan |
+| `kunjungan` | `lap_checkin_outlet` | `trx_kunjungan` | outlet dari kode outlet; jarak sales–outlet & durasi dihitung; foto lama disimpan sebagai link (`foto_url`); `category`/`description` disimpan apa adanya (`kategori_lama`, `keterangan_lama`) |
 
 ```bash
 php artisan enesis:migrasi-transaksi                 # semua jenis
@@ -226,13 +227,14 @@ php artisan enesis:migrasi-transaksi absensi         # satu jenis
 php artisan enesis:migrasi-transaksi --tanpa-sambung # lewati pengisian ID karyawan/depo di tabel lama
 ```
 
-Aman diulang: hanya baris lama yang belum pernah dimigrasi yang ditambahkan. Satu sales satu baris
+Aman diulang: hanya baris lama yang belum pernah dimigrasi yang ditambahkan. Absensi & checkin depo: satu sales satu baris
 per tanggal; bila tanggal itu sudah ada (mis. sales sudah absen lewat motoris), baris lama dilewati dan
 data motoris tidak ditimpa. Waktu di data lama dibaca sebagai jam lokal (`MOBILE_ZONA_WAKTU`) lalu
 disimpan dalam UTC, sama seperti data dari HP.
 
-Menu **Absensi Sales**, **Absensi Sales Terlambat**, **Lap. Absensi Sales**, **Checkin Checkout Depo**, dan
-**Lap. Checkin Checkout** membaca `trx_absensi` / `trx_checkin_depo` (`KehadiranController`): filter rentang
+Menu **Absensi Sales**, **Absensi Sales Terlambat**, **Lap. Absensi Sales**, **Checkin Checkout Depo**,
+**Lap. Checkin Checkout**, **Checkin Outlet**, dan **Lap. Checkin Outlet** membaca `trx_absensi` /
+`trx_checkin_depo` / `trx_kunjungan` (`KehadiranController`): filter rentang
 tanggal (bawaan 7 hari terakhir, maks. 92 hari), depo, koordinator, nama sales, dan sumber data; jam
 ditampilkan dalam WIB; selfie absen dibuka lewat `/foto/{id}` (hanya untuk yang boleh melihat menu absensi
 dan sales itu ada dalam cakupan datanya).

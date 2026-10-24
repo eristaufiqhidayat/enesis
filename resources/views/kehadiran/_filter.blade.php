@@ -1,4 +1,4 @@
-{{-- Filter bersama halaman kehadiran (absensi & checkin depo): rentang tanggal, depo, koordinator, nama sales, sumber data. --}}
+{{-- Filter bersama halaman kehadiran (absensi, checkin depo, checkin outlet): rentang tanggal, sales, outlet, depo, koordinator, sumber data. --}}
 <form method="GET" class="flex flex-wrap items-end gap-2" role="search">
     @isset($status) @if ($status !== 'semua') <input type="hidden" name="status" value="{{ $status }}"> @endif @endisset
     <div>
@@ -13,6 +13,12 @@
         <x-ui.atoms.label for="q">Nama sales</x-ui.atoms.label>
         <x-ui.atoms.input type="search" id="q" name="q" value="{{ $filter['q'] }}" placeholder="Cari nama sales…" />
     </div>
+    @isset($cariOutlet)
+        <div class="grow min-w-[12rem]">
+            <x-ui.atoms.label for="outlet">Outlet</x-ui.atoms.label>
+            <x-ui.atoms.input type="search" id="outlet" name="outlet" value="{{ $cariOutlet }}" placeholder="Nama atau kode outlet…" />
+        </div>
+    @endisset
     <div>
         <x-ui.atoms.label for="depo">Depo</x-ui.atoms.label>
         <x-ui.atoms.select id="depo" name="depo">

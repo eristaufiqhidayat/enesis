@@ -100,6 +100,41 @@ class MigrasiTransaksiTest extends TestCase
         $this->assertSame(2, DB::table('trx_checkin_depo')->count());
     }
 
+    public function test_kunjungan_lama_masuk_ke_trx_kunjungan(): void
+    {
+        DB::table('mk_outlet')->insert([['id' => 11, 'kode' => 'OUT-1', 'nama' => 'Toko Satu']]);
+        $kunjungan = fn ($src, $nama, $kode, $masuk, $keluar = null, $lain = []) => $lain + [
+            'source_id' => $src, 'salesperson_name' => $nama, 'warehouse_name' => 'Sidoarjo', 'outlet_code' => $kode,
+            'date_checkin' => substr($masuk, 0, 10), 'datetime_checkin' => $masuk, 'datetime_checkout' => $keluar,
+            'sales_latitude' => -7.4500, 'sales_longitude' => 112.7100, 'outlet_latitude' => -7.4505, 'outlet_longitude' => 112.7100,
+            'category' => null, 'description' => null, 'photo' => null,
+        ];
+        DB::table('lap_checkin_outlet')->insert([
+            $kunjungan(301, 'Andi', 'OUT-1', '2026-10-01 09:00:00', '2026-10-01 09:12:30', ['category' => 2, 'description' => 'Toko tutup', 'photo' => 'https://app.lama/foto/a.jpg']),
+            $kunjungan(302, 'Andi', 'OUT-1', '2026-10-01 13:00:00'),           // kunjungan kedua di hari yang sama tetap masuk
+            $kunjungan(303, 'Andi', 'OUT-TIDAK-ADA', '2026-10-01 14:00:00'),
+            $kunjungan(304, 'Andi', 'OUT-1', '2026-10-02 10:00:00', null, ['photo' => 'foto/relatif.jpg']),
+        ]);
+        DB::table('lap_checkin_outlet')->where('source_id', 304)->update(['datetime_checkin' => null]);
+
+        $this->artisan('enesis:migrasi-transaksi kunjungan')->assertSuccessful();
+
+        $this->assertSame(2, DB::table('trx_kunjungan')->where('sumber', 'lama')->count());
+        $k = DB::table('trx_kunjungan')->where('sumber_id', 301)->first();
+        $this->assertSame(11, (int) $k->outlet_id);
+        $this->assertSame(46, (int) $k->depo_id);
+        $this->assertSame('2026-10-01 02:00:00', substr($k->checkin_at, 0, 19));
+        $this->assertSame(750, (int) $k->durasi_detik);
+        $this->assertEqualsWithDelta(56, (int) $k->jarak_m, 2);
+        $this->assertSame('https://app.lama/foto/a.jpg', $k->foto_url);
+        $this->assertSame(2, (int) $k->kategori_lama);
+        $this->assertSame('Toko tutup', $k->keterangan_lama);
+        $this->assertNull($k->tidak_beli_kategori);
+
+        $this->artisan('enesis:migrasi-transaksi kunjungan')->assertSuccessful();
+        $this->assertSame(2, DB::table('trx_kunjungan')->count());
+    }
+
     public function test_jenis_tidak_dikenal_ditolak(): void
     {
         $this->artisan('enesis:migrasi-transaksi penjualan')->assertFailed();

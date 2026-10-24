@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 class MigrasiTransaksi extends Command
 {
     protected $signature = 'enesis:migrasi-transaksi
-                            {jenis?* : absensi, checkin_depo (kosong = semua)}
+                            {jenis?* : absensi, checkin_depo, kunjungan (kosong = semua)}
                             {--tanpa-sambung : Lewati pengisian ID karyawan/depo di tabel lama (sudah dijalankan)}';
 
     protected $description = 'Salin data aplikasi lama (lap_*) ke tabel motoris (trx_*); aman diulang, data motoris tidak ditimpa';

@@ -2,6 +2,7 @@
 
 namespace App\Support\Marketama;
 
+use App\Support\Mobile\Lokasi;
 use App\Support\Mobile\Pengaturan;
 use Carbon\CarbonImmutable;
 use Closure;
@@ -19,6 +20,7 @@ class MigrasiTransaksi
     public const JENIS = [
         'absensi' => ['lap_absensi_sales', 'trx_absensi', ['karyawan_id', 'depo_id']],
         'checkin_depo' => ['lap_checkin_checkout', 'trx_checkin_depo', ['karyawan_id', 'depo_id']],
+        'kunjungan' => ['lap_checkin_outlet', 'trx_kunjungan', ['karyawan_id', 'depo_id', 'outlet_id']],
     ];
 
     private const POTONGAN = 1000;
@@ -86,10 +88,15 @@ class MigrasiTransaksi
             $masuk = $this->waktu($r->checkin_time);
             $tanggal = $r->attendance_date ?? $masuk?->toDateString();
             [$lat, $lng] = $this->titik($r->location_lat, $r->location_long);
+            $depo = $r->depo_id ?? $this->depo($r->karyawan_id);
+
+            if (! $depo) {
+                return 'depo tidak dikenali';
+            }
 
             return [
                 'karyawan_id' => $r->karyawan_id,
-                'depo_id' => $r->depo_id ?? $this->depo($r->karyawan_id),
+                'depo_id' => $depo,
                 'tanggal' => $tanggal ? substr((string) $tanggal, 0, 10) : null,
                 'checkin_at' => $masuk?->utc(),
                 'lat' => $lat,
@@ -100,10 +107,47 @@ class MigrasiTransaksi
         });
     }
 
+    private function kunjungan(string $lama, string $trx): array
+    {
+        return $this->pindahkan('kunjungan', $lama, $trx, 'datetime_checkin', function (object $r) {
+            if (! $r->outlet_id) {
+                return 'outlet tidak dikenali';
+            }
+
+            $masuk = $this->waktu($r->datetime_checkin);
+
+            if (! $masuk) {
+                return 'tanpa jam checkin';
+            }
+
+            $keluar = $this->waktu($r->datetime_checkout);
+            [$lat, $lng] = $this->titik($r->sales_latitude, $r->sales_longitude);
+            [$oLat, $oLng] = $this->titik($r->outlet_latitude, $r->outlet_longitude);
+            $foto = trim((string) $r->photo);
+
+            return [
+                'karyawan_id' => $r->karyawan_id,
+                'depo_id' => $r->depo_id ?? $this->depo($r->karyawan_id),
+                'outlet_id' => $r->outlet_id,
+                'tanggal' => substr((string) ($r->date_checkin ?? $masuk->toDateString()), 0, 10),
+                'checkin_at' => $masuk->utc(),
+                'lat' => $lat,
+                'lng' => $lng,
+                'jarak_m' => $lat !== null && $oLat !== null ? Lokasi::jarak($lat, $lng, $oLat, $oLng) : null,
+                'checkout_at' => $keluar?->utc(),
+                'durasi_detik' => $keluar && $keluar->gte($masuk) ? (int) $masuk->diffInSeconds($keluar) : null,
+                'foto_url' => preg_match('#^https?://#i', $foto) ? mb_substr($foto, 0, 255) : null,
+                'kategori_lama' => $r->category,
+                'keterangan_lama' => $r->description !== null ? mb_substr(trim($r->description), 0, 255) : null,
+                'recorded_at' => $masuk->utc(),
+            ];
+        }, 'sudah ada');
+    }
+
     /**
-     * @param  Closure(object): array<string, mixed>  $petakan
+     * @param  Closure(object): (array<string, mixed>|string)  $petakan  string = alasan baris dilewati
      */
-    private function pindahkan(string $jenis, string $lama, string $trx, string $kolomWaktu, Closure $petakan): array
+    private function pindahkan(string $jenis, string $lama, string $trx, string $kolomWaktu, Closure $petakan, string $bentrok = 'tanggal itu sudah ada'): array
     {
         $hasil = ['jenis' => $jenis, 'sumber' => 0, 'dipindah' => 0, 'sudah' => 0, 'lewati' => []];
         $lewati = function (string $alasan) use (&$hasil) {
@@ -111,7 +155,7 @@ class MigrasiTransaksi
         };
         $sekarang = now();
 
-        DB::table($lama)->orderBy('id')->chunkById(self::POTONGAN, function ($baris) use ($trx, $petakan, $lewati, &$hasil, $sekarang) {
+        DB::table($lama)->orderBy('id')->chunkById(self::POTONGAN, function ($baris) use ($trx, $petakan, $lewati, &$hasil, $sekarang, $bentrok) {
             $hasil['sumber'] += $baris->count();
             $sudah = DB::table($trx)->whereIn('sumber_id', $baris->pluck('source_id')->filter())->pluck('sumber_id')->flip();
             $kirim = [];
@@ -137,14 +181,14 @@ class MigrasiTransaksi
 
                 $data = $petakan($r);
 
-                if (! $data['tanggal']) {
-                    $lewati('tanpa tanggal');
+                if (is_string($data)) {
+                    $lewati($data);
 
                     continue;
                 }
 
-                if (array_key_exists('checkin_at', $data) && ! $data['depo_id']) {
-                    $lewati('depo tidak dikenali');
+                if (! $data['tanggal']) {
+                    $lewati('tanpa tanggal');
 
                     continue;
                 }
@@ -163,7 +207,7 @@ class MigrasiTransaksi
             $hasil['dipindah'] += $masuk;
 
             if ($kirim->count() > $masuk) {
-                $hasil['lewati']['tanggal itu sudah ada'] = ($hasil['lewati']['tanggal itu sudah ada'] ?? 0) + $kirim->count() - $masuk;
+                $hasil['lewati'][$bentrok] = ($hasil['lewati'][$bentrok] ?? 0) + $kirim->count() - $masuk;
             }
         });
 
