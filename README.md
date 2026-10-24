@@ -170,6 +170,10 @@ Semua halaman wajib login (`/login`, username + password; logout dari tombol **K
 Akun dengan password awal dari admin diarahkan ke `/ganti-password` sampai password diganti.
 Lima kali gagal login dari username + IP yang sama dikunci 60 detik.
 
+**Demo masuk cepat**: bila `DEMO_LOGIN=true` (bawaan hanya di `APP_ENV=local`), form login
+menampilkan tombol Super Admin / Koordinator / Sales / Lainnya yang masuk tanpa password sebagai
+akun demo `demo.<peran>` (dibuat otomatis, bukan akun karyawan). Jangan aktifkan di server berisi data asli.
+
 - Lokal/dev: `php artisan migrate --seed` membuat akun `admin` / `password` (`UserSeeder`).
 - Production: akun dari data lama lewat `enesis:sinkron-user` (di bawah), password awal lewat
   `enesis:atur-password <username>`. `UserSeeder` hanya membuat `admin` bila `SEED_ADMIN_PASSWORD` diisi.

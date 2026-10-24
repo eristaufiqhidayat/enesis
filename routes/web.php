@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\DemoLoginController;
 use App\Http\Controllers\Auth\GantiPasswordController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\DesignAreaController;
@@ -12,6 +13,7 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'create'])->name('login');
     Route::post('/login', [LoginController::class, 'store']);
+    Route::post('/login/demo/{peran}', [DemoLoginController::class, 'store'])->name('login.demo');
 });
 
 Route::middleware('auth')->group(function () {

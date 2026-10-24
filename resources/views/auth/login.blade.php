@@ -20,10 +20,31 @@
 
             <div>
                 <x-ui.atoms.label for="password">Password</x-ui.atoms.label>
-                <x-ui.atoms.input type="password" id="password" name="password" autocomplete="current-password" required />
+                <x-ui.molecules.password-input id="password" name="password" autocomplete="current-password" required />
             </div>
 
+            <label class="form-check">
+                <x-ui.atoms.checkbox name="ingat" value="1" :checked="old('ingat')" />
+                <span>Ingat saya</span>
+            </label>
+
             <x-ui.atoms.button type="submit" class="w-full">Masuk</x-ui.atoms.button>
+
+            <p class="text-center text-xs text-gray-500">Lupa password? Hubungi admin.</p>
         </form>
+
+        @if (config('auth.demo_login'))
+            <div class="demo-login">
+                <div class="demo-login-title"><strong>Demo masuk cepat</strong> · mode uji coba, tanpa password</div>
+                <div class="demo-login-buttons">
+                    @foreach (config('auth.demo_peran') as $peran => $label)
+                        <form method="POST" action="{{ route('login.demo', $peran) }}">
+                            @csrf
+                            <x-ui.atoms.button type="submit" variant="outline-secondary">{{ $label }}</x-ui.atoms.button>
+                        </form>
+                    @endforeach
+                </div>
+            </div>
+        @endif
     </x-ui.molecules.card>
 @endsection

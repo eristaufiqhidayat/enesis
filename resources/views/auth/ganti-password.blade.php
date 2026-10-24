@@ -23,18 +23,18 @@
             @unless ($wajib)
                 <div>
                     <x-ui.atoms.label for="password_lama">Password lama</x-ui.atoms.label>
-                    <x-ui.atoms.input type="password" id="password_lama" name="password_lama" autocomplete="current-password" required />
+                    <x-ui.molecules.password-input id="password_lama" name="password_lama" autocomplete="current-password" required />
                 </div>
             @endunless
 
             <div>
                 <x-ui.atoms.label for="password">Password baru (minimal 8 karakter)</x-ui.atoms.label>
-                <x-ui.atoms.input type="password" id="password" name="password" autocomplete="new-password" required />
+                <x-ui.molecules.password-input id="password" name="password" autocomplete="new-password" required />
             </div>
 
             <div>
                 <x-ui.atoms.label for="password_confirmation">Ulangi password baru</x-ui.atoms.label>
-                <x-ui.atoms.input type="password" id="password_confirmation" name="password_confirmation" autocomplete="new-password" required />
+                <x-ui.molecules.password-input id="password_confirmation" name="password_confirmation" autocomplete="new-password" required />
             </div>
 
             <div class="flex items-center justify-between gap-2">

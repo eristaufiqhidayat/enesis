@@ -127,6 +127,45 @@ class LoginTest extends TestCase
             ->missing('auth.user.password'));
     }
 
+    public function test_demo_masuk_cepat_mati_secara_bawaan(): void
+    {
+        $this->get('/login')->assertOk()->assertDontSee('Demo masuk cepat');
+        $this->post('/login/demo/super_admin')->assertNotFound();
+        $this->assertGuest();
+        $this->assertDatabaseMissing('users', ['username' => 'demo.super_admin']);
+    }
+
+    public function test_demo_masuk_cepat_bila_diaktifkan(): void
+    {
+        config(['auth.demo_login' => true]);
+
+        $this->get('/login')->assertOk()
+            ->assertSee('Demo masuk cepat')
+            ->assertSee('Super Admin')->assertSee('Koordinator')->assertSee('Sales')
+            ->assertSee('action="'.route('login.demo', 'sales').'"', false);
+
+        $this->post('/login/demo/koordinator')->assertRedirect('/home');
+        $user = auth()->user();
+        $this->assertSame('demo.koordinator', $user->username);
+        $this->assertSame('koordinator', $user->kategori);
+        $this->assertFalse($user->wajib_ganti_password);
+        $this->get('/home')->assertOk();
+
+        // Peran yang tidak dikenal ditolak; akun demo dipakai ulang, tidak dibuat ganda.
+        $this->post('/logout');
+        $this->post('/login/demo/bukan-peran')->assertNotFound();
+        $this->post('/login/demo/koordinator')->assertRedirect('/home');
+        $this->assertSame(1, User::where('username', 'demo.koordinator')->count());
+    }
+
+    public function test_form_login_punya_tampil_password_dan_ingat_saya(): void
+    {
+        $this->get('/login')->assertOk()
+            ->assertSee('data-password-toggle="password"', false)
+            ->assertSee('name="ingat"', false)
+            ->assertSee('Lupa password? Hubungi admin.');
+    }
+
     public function test_seeder_admin_lokal_bisa_dipakai_login(): void
     {
         $this->seed(UserSeeder::class);

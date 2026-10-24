@@ -60,6 +60,16 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
 /* Halaman tamu (login, ganti password): tanpa sidebar/topbar, kartu di tengah. */
 .auth-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem; background-image: linear-gradient(-45deg, var(--color-brand-light), var(--color-brand-dark)); }
 .auth-box { width: 100%; max-width: 24rem; }
+.password-field { position: relative; }
+.password-field .form-control { padding-right: 2.25rem; }
+.password-toggle { position: absolute; top: 50%; right: .5rem; transform: translateY(-50%); background: transparent; border: 0; color: var(--color-ink-muted); cursor: pointer; padding: .25rem; line-height: 1; }
+.password-toggle:hover { color: var(--color-brand); }
+.form-check { display: inline-flex; align-items: center; gap: .5rem; font-size: .8rem; color: var(--color-ink-muted); cursor: pointer; }
+.form-check-input { width: 1rem; height: 1rem; accent-color: var(--color-brand); }
+/* Kotak "Demo masuk cepat" (hanya tampil bila DEMO_LOGIN aktif). */
+.demo-login { margin-top: 1rem; padding: .75rem; border: 1px dashed #d4a537; border-radius: .375rem; background: #fdf6e9; }
+.demo-login-title { font-size: .75rem; color: #8a6d2b; margin-bottom: .5rem; }
+.demo-login-buttons { display: flex; flex-wrap: wrap; gap: .5rem; }
 .auth-brand { color: #fff; font-weight: 700; font-size: 1.25rem; text-align: center; margin-bottom: 1rem; text-shadow: 0 1px 2px rgba(0, 0, 0, .35); }
 /* Breadcrumb di topbar: menunjukkan posisi menu aktif (grup > menu), derived dari config('marketama.menu'). */
 .breadcrumb { display: flex; align-items: center; gap: .4rem; font-size: .75rem; color: var(--color-ink-muted); }
