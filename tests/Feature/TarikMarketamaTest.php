@@ -406,6 +406,7 @@ class TarikMarketamaTest extends TestCase
         $this->assertSame(1152.0, HalamanParser::angka('1.152'));
         $this->assertSame(12500.0, HalamanParser::angka('12500'));
         $this->assertFalse(HalamanParser::aktif('Tidak Aktif'));
+        $this->assertSame('muhammad tamrin daulay', HalamanParser::kunciNama(' Muhammad  Tamrin Daulay '));
         $this->assertNull(HalamanParser::aktif('-'));
     }
 }

@@ -22,7 +22,7 @@ class SambungTransaksiTest extends TestCase
             ['id' => 1, 'kategori' => 'sales', 'nama' => 'Andi', 'depo_id' => 46],
             ['id' => 2, 'kategori' => 'sales', 'nama' => 'Andi', 'depo_id' => 22], // nama kembar beda depo
             ['id' => 3, 'kategori' => 'sales', 'nama' => 'Budi', 'depo_id' => 46],
-            ['id' => 137, 'kategori' => 'koordinator', 'nama' => 'Koor Satu', 'depo_id' => 46],
+            ['id' => 137, 'kategori' => 'koordinator', 'nama' => 'Koor  Satu', 'depo_id' => 46], // spasi ganda di master
             ['id' => 138, 'kategori' => 'koordinator', 'nama' => 'Koor Kembar', 'depo_id' => 46],
             ['id' => 139, 'kategori' => 'koordinator', 'nama' => 'Koor Kembar', 'depo_id' => 22],
             ['id' => 140, 'kategori' => 'koordinator', 'nama' => 'Dulu Sales', 'depo_id' => 46], // kini koordinator

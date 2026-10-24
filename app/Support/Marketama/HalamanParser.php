@@ -242,6 +242,12 @@ class HalamanParser
         ];
     }
 
+    /** Kunci pencocokan nama: huruf kecil, spasi di tepi dibuang, spasi ganda di tengah jadi satu. */
+    public static function kunciNama(?string $nama): string
+    {
+        return mb_strtolower(trim((string) preg_replace('/\s+/u', ' ', (string) $nama)));
+    }
+
     public static function aktif(?string $status): ?bool
     {
         if ($status === null) {

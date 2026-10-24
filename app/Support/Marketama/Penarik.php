@@ -668,14 +668,14 @@ class Penarik
             $kembar = [];
 
             foreach ($q->cursor() as $r) {
-                $k = mb_strtolower(trim((string) $r->nama));
+                $k = HalamanParser::kunciNama($r->nama);
                 isset($peta[$k]) ? $kembar[$k] = true : $peta[$k] = (int) $r->id;
             }
 
             $this->petaNama[$kunciPeta] = array_diff_key($peta, $kembar);
         }
 
-        return $this->petaNama[$kunciPeta][mb_strtolower(trim($nama))] ?? null;
+        return $this->petaNama[$kunciPeta][HalamanParser::kunciNama($nama)] ?? null;
     }
 
     private function lupaPeta(string $table): void

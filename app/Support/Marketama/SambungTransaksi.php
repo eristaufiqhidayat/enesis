@@ -158,7 +158,7 @@ class SambungTransaksi
             'depo' => $this->unik(DB::table('mk_depo')->get(['id', 'nama'])),
             'area' => $this->unik(DB::table('mk_area')->get(['id', 'nama'])),
             'distributor' => $this->unik(DB::table('mk_distributor')->get(['id', 'nama'])),
-            'produk' => DB::table('mk_produk')->whereNotNull('kode')->pluck('id', 'kode')->mapWithKeys(fn ($id, $k) => [mb_strtolower(trim($k)) => $id])->all(),
+            'produk' => DB::table('mk_produk')->whereNotNull('kode')->pluck('id', 'kode')->mapWithKeys(fn ($id, $k) => [HalamanParser::kunciNama($k) => $id])->all(),
         ];
 
         // Orang (sales/koordinator): nama => daftar [id, depo]. Nama kembar diselesaikan dengan depo.
@@ -166,7 +166,7 @@ class SambungTransaksi
         $orang = ['sales' => [], 'koordinator' => [], 'semua' => []];
 
         foreach (DB::table('mk_karyawan')->get(['id', 'nama', 'kategori', 'depo_id', 'aktif']) as $k) {
-            $kunci = mb_strtolower(trim((string) $k->nama));
+            $kunci = HalamanParser::kunciNama($k->nama);
             $calon = ['id' => (int) $k->id, 'depo' => $depoNama[$k->depo_id] ?? null, 'aktif' => (bool) $k->aktif];
             $orang['semua'][$kunci][] = $calon;
 
@@ -186,7 +186,7 @@ class SambungTransaksi
                 $nilaiUnik = DB::table($t)->select(DB::raw($this->teks($sumber).' AS v'))->whereNotNull($sumber)->distinct()->pluck('v');
 
                 foreach ($nilaiUnik as $v) {
-                    $kunci = mb_strtolower(trim((string) $v));
+                    $kunci = HalamanParser::kunciNama((string) $v);
 
                     if ($kunci === '' || $kunci === '-') {
                         continue;
@@ -262,7 +262,7 @@ class SambungTransaksi
         $kembar = [];
 
         foreach ($rows as $r) {
-            $k = mb_strtolower(trim((string) $r->nama));
+            $k = HalamanParser::kunciNama($r->nama);
             isset($peta[$k]) ? $kembar[$k] = true : $peta[$k] = (int) $r->id;
         }
 
