@@ -33,6 +33,33 @@ class AkunTest extends AdminTestCase
         $this->get('/user_koordinator')->assertOk()->assertSee('koor')->assertDontSee('rudi.h');
     }
 
+    public function test_lihat_sales_di_bawah_koordinator(): void
+    {
+        $koor = $this->akun('koor.satu', 'koordinator', 137);
+        $this->akun('rudi', 'sales', 1);
+        $this->akun('tegar', 'sales', 3);
+        $this->akun('sinta', 'sales', 2);
+        $this->akun('joko', 'sales', 4, ['aktif' => false]);
+
+        // Daftar koordinator: jumlah sales aktif bertaut ke User Sales tersaring.
+        $this->get('/user_koordinator')->assertOk()
+            ->assertSee('Sales aktif')
+            ->assertSee(route('akun.user_sales.index', ['koordinator' => 137]), false);
+
+        // User Sales tersaring per koordinator.
+        $this->get('/user_sales?koordinator=137')->assertOk()
+            ->assertSee('Semua koordinator')->assertSee('rudi')->assertSee('tegar')->assertSee('joko')
+            ->assertDontSee('sinta');
+
+        // Cari juga lewat nama koordinator.
+        $this->get('/user_sales?q=koor+satu')->assertOk()->assertSee('rudi')->assertDontSee('sinta');
+
+        // Detail koordinator menampilkan daftar sales bawahannya.
+        $this->get('/user_koordinator/'.$koor->id)->assertOk()
+            ->assertSee('Sales di bawah koordinator ini')->assertSee('2 aktif dari 3 akun')
+            ->assertSee('rudi')->assertDontSee('sinta');
+    }
+
     public function test_klik_menu_dari_halaman_inertia_membuka_halaman_blade_penuh(): void
     {
         // Tanpa ini Inertia menampilkan halaman Blade di dalam popup.

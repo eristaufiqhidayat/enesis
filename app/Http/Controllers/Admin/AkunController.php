@@ -45,16 +45,25 @@ class AkunController extends Controller
         $status = array_key_exists($request->query('status'), self::STATUS) ? $request->query('status') : 'semua';
         $q = trim((string) $request->query('q'));
         $depo = $request->integer('depo') ?: null;
+        $koordinator = $request->integer('koordinator') ?: null;
 
         $dasar = $this->query($request->user(), $menu);
+
+        // Pilihan koordinator diambil dari akun yang memang terlihat (ikut cakupan data).
+        $daftarKoordinator = (clone $dasar)->whereNotNull('ko.id')->distinct()
+            ->orderBy('ko.nama')->select(['ko.id', 'ko.nama'])->pluck('ko.nama', 'ko.id');
 
         if ($depo) {
             $dasar->where('k.depo_id', $depo);
         }
 
+        if ($koordinator) {
+            $dasar->where('k.koordinator_id', $koordinator);
+        }
+
         if ($q !== '') {
             $dasar->where(function (Builder $w) use ($q) {
-                foreach (['u.username', 'u.name', 'mu.nickname', 'k.nama', 'd.nama'] as $kolom) {
+                foreach (['u.username', 'u.name', 'mu.nickname', 'k.nama', 'd.nama', 'ko.nama'] as $kolom) {
                     $w->orWhereRaw("LOWER({$kolom}) LIKE ?", ['%'.mb_strtolower($q).'%']);
                 }
             });
@@ -76,7 +85,9 @@ class AkunController extends Controller
             'status' => $status,
             'q' => $q,
             'depo' => $depo,
+            'koordinator' => $koordinator,
             'daftarDepo' => DB::table('mk_depo')->orderBy('nama')->pluck('nama', 'id'),
+            'daftarKoordinator' => $daftarKoordinator,
         ]);
     }
 
@@ -97,6 +108,10 @@ class AkunController extends Controller
             'riwayat' => DB::table('riwayat_admin')->where('objek', 'user')->where('objek_id', $id)->orderByDesc('id')->limit(10)->get(),
             'alasanHapus' => $this->alasanTidakBisaHapus($request, $akun),
             'alasanNonaktif' => self::ALASAN_NONAKTIF,
+            'salesBawahan' => $akun->kategori === 'koordinator' && $akun->karyawan_id
+                ? $this->query($request->user(), 'user_sales')->where('k.koordinator_id', $akun->karyawan_id)
+                    ->orderByDesc('u.aktif')->orderByRaw('LOWER(u.username)')->limit(100)->get()
+                : null,
         ]);
     }
 
@@ -344,6 +359,13 @@ class AkunController extends Controller
             // Sesi HP aktif (satu akun satu HP).
             ->selectSub($this->tokenAktif('device_model'), 'hp_model')
             ->selectSub($this->tokenAktif('app_version'), 'hp_versi');
+
+        if ($menu === 'user_koordinator') {
+            // Jumlah akun sales aktif yang karyawannya berada di bawah koordinator ini.
+            $q->selectSub(DB::table('users as us')->join('mk_karyawan as ks', 'ks.id', '=', 'us.karyawan_id')
+                ->where('us.kategori', 'sales')->where('us.aktif', true)
+                ->whereColumn('ks.koordinator_id', 'u.karyawan_id')->selectRaw('COUNT(*)'), 'jumlah_sales');
+        }
 
         return match (Akses::cakupan($saya)) {
             'depo' => $q->where('k.depo_id', DB::table('mk_karyawan')->where('id', $saya->karyawan_id ?? 0)->value('depo_id') ?? -1),

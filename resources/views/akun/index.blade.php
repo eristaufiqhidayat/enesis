@@ -2,6 +2,7 @@
     $bisaTambah = \App\Support\Akses\Akses::bisa(auth()->user(), $menu, 'tambah');
     $bisaUbah = \App\Support\Akses\Akses::bisa(auth()->user(), $menu, 'ubah');
     $bisaHapus = \App\Support\Akses\Akses::bisa(auth()->user(), $menu, 'hapus');
+    $bisaLihatSales = \App\Support\Akses\Akses::bisa(auth()->user(), 'user_sales');
 @endphp
 @extends('layouts.app')
 
@@ -23,7 +24,7 @@
     <div class="flex flex-wrap gap-2 mb-3" role="group" aria-label="Saring status">
         @foreach (\App\Http\Controllers\Admin\AkunController::STATUS as $kode => $label)
             <x-ui.atoms.button tag="a" :variant="$status === $kode ? 'primary' : 'outline-secondary'"
-                href="{{ route('akun.'.$menu.'.index', array_filter(['status' => $kode === 'semua' ? null : $kode, 'q' => $q ?: null, 'depo' => $depo])) }}"
+                href="{{ route('akun.'.$menu.'.index', array_filter(['status' => $kode === 'semua' ? null : $kode, 'q' => $q ?: null, 'depo' => $depo, 'koordinator' => $koordinator])) }}"
                 :aria-current="$status === $kode ? 'true' : null">
                 {{ $label }} <span class="ms-1 opacity-75">{{ number_format($jumlah[$kode], 0, ',', '.') }}</span>
             </x-ui.atoms.button>
@@ -36,7 +37,7 @@
                 @if ($status !== 'semua') <input type="hidden" name="status" value="{{ $status }}"> @endif
                 <div class="grow min-w-[14rem]">
                     <x-ui.atoms.label for="q" class="sr-only">Cari akun</x-ui.atoms.label>
-                    <x-ui.atoms.input type="search" id="q" name="q" value="{{ $q }}" placeholder="Cari username, nama karyawan, depo…" />
+                    <x-ui.atoms.input type="search" id="q" name="q" value="{{ $q }}" placeholder="Cari username, nama karyawan, depo, koordinator…" />
                 </div>
                 <div>
                     <x-ui.atoms.label for="depo" class="sr-only">Depo</x-ui.atoms.label>
@@ -47,6 +48,17 @@
                         @endforeach
                     </x-ui.atoms.select>
                 </div>
+                @if ($menu === 'user_sales' && $daftarKoordinator->isNotEmpty())
+                    <div>
+                        <x-ui.atoms.label for="koordinator" class="sr-only">Koordinator</x-ui.atoms.label>
+                        <x-ui.atoms.select id="koordinator" name="koordinator">
+                            <option value="">Semua koordinator</option>
+                            @foreach ($daftarKoordinator as $id => $nama)
+                                <option value="{{ $id }}" @selected($koordinator === (int) $id)>{{ $nama }}</option>
+                            @endforeach
+                        </x-ui.atoms.select>
+                    </div>
+                @endif
                 <x-ui.atoms.button type="submit">Cari</x-ui.atoms.button>
             </form>
         </x-slot:header>
@@ -57,6 +69,7 @@
                     <th scope="col">Username</th>
                     <th scope="col">Karyawan</th>
                     <th scope="col">Depo · Koordinator</th>
+                    @if ($menu === 'user_koordinator') <th scope="col" class="text-end">Sales aktif</th> @endif
                     <th scope="col">Role</th>
                     <th scope="col">Status</th>
                     <th scope="col">HP aktif</th>
@@ -74,6 +87,15 @@
                         </td>
                         <td>{{ $a->karyawan ?? $a->name }}</td>
                         <td>{{ $a->depo ?? '-' }} @if ($a->koordinator) <div class="text-gray-500">Koor: {{ $a->koordinator }}</div> @endif</td>
+                        @if ($menu === 'user_koordinator')
+                            <td class="text-end">
+                                @if ($a->karyawan_id && $bisaLihatSales)
+                                    <a href="{{ route('akun.user_sales.index', ['koordinator' => $a->karyawan_id]) }}" title="Lihat sales di bawah {{ $a->karyawan ?? $a->username }}">{{ number_format($a->jumlah_sales, 0, ',', '.') }}</a>
+                                @else
+                                    {{ $a->karyawan_id ? number_format($a->jumlah_sales, 0, ',', '.') : '—' }}
+                                @endif
+                            </td>
+                        @endif
                         <td>{{ $a->role ?? '-' }}</td>
                         <td>
                             <x-ui.atoms.badge :variant="$a->aktif ? 'success' : 'secondary'">{{ $a->aktif ? 'Aktif' : 'Tidak aktif' }}</x-ui.atoms.badge>
@@ -104,7 +126,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="8" class="text-center text-gray-500 py-4">Tidak ada akun.</td></tr>
+                    <tr><td colspan="{{ $menu === 'user_koordinator' ? 9 : 8 }}" class="text-center text-gray-500 py-4">Tidak ada akun.</td></tr>
                 @endforelse
             </tbody>
         </table>
