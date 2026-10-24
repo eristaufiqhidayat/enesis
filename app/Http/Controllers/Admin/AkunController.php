@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Support\Akses\Akses;
 use App\Support\Akses\HierarkiSales;
+use App\Support\Mobile\HariKerja;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -111,6 +113,7 @@ class AkunController extends Controller
             'alasanHapus' => $this->alasanTidakBisaHapus($request, $akun),
             'alasanNonaktif' => self::ALASAN_NONAKTIF,
             'salesBawahan' => $this->salesBawahan($request, $akun),
+            'outletSales' => $this->outletSales($request, $akun),
         ]);
     }
 
@@ -509,7 +512,41 @@ class AkunController extends Controller
             'pilihanKategori' => $kategori,
             'roles' => DB::table('roles')->orderByDesc('bawaan')->orderBy('nama')->get(['id', 'kode', 'nama']),
             'salesBawahan' => $akun ? $this->salesBawahan($request, $akun) : null,
+            'outletSales' => $akun ? $this->outletSales($request, $akun) : null,
         ]);
+    }
+
+    /**
+     * Area rute dan outlet sales (aturan sama dengan rute di aplikasi HP); null bila bukan sales.
+     *
+     * @return array{area: Collection, outlet: LengthAwarePaginator, q: string}|null
+     */
+    private function outletSales(Request $request, object $akun): ?array
+    {
+        if ($akun->kategori !== 'sales' || ! $akun->karyawan_id) {
+            return null;
+        }
+
+        $rute = HariKerja::areaKaryawan((int) $akun->karyawan_id);
+        $area = DB::table('mk_karyawan_area as ka')->leftJoin('mk_area as a', 'a.id', '=', 'ka.area_id')
+            ->where('ka.karyawan_id', $akun->karyawan_id)
+            ->selectRaw('ka.area_id, ka.aktif, a.nama, a.kode, (SELECT COUNT(*) FROM mk_outlet o WHERE o.area_id = ka.area_id) as jumlah_outlet')
+            ->orderByDesc('ka.aktif')->orderBy('a.nama')->get()
+            ->each(fn ($a) => $a->rute = in_array((int) $a->area_id, $rute, true));
+
+        $q = trim((string) $request->query('cari_outlet'));
+        $outlet = DB::table('mk_outlet as o')->leftJoin('mk_area as a', 'a.id', '=', 'o.area_id')
+            ->whereIn('o.area_id', $rute ?: [0])
+            ->when($q !== '', fn ($w) => $w->where(function ($w) use ($q) {
+                foreach (['o.nama', 'o.kode', 'o.alamat', 'o.kelurahan', 'o.kecamatan'] as $kolom) {
+                    $w->orWhereRaw("LOWER({$kolom}) LIKE ?", ['%'.mb_strtolower($q).'%']);
+                }
+            }))
+            ->orderBy('a.nama')->orderBy('o.nama')
+            ->select(['o.id', 'o.kode', 'o.nama', 'o.alamat', 'o.kelurahan', 'o.kecamatan', 'o.latitude', 'o.longitude', 'o.verifikasi', 'a.nama as area'])
+            ->paginate(25, ['*'], 'hal_outlet')->withQueryString()->fragment('outlet-sales');
+
+        return ['area' => $area, 'outlet' => $outlet, 'q' => $q];
     }
 
     /** Akun sales yang karyawannya berada di bawah koordinator ini (null bila bukan koordinator). */

@@ -135,6 +135,7 @@
 
     <div class="mt-3">
         @include('akun._sales-bawahan')
+        @include('akun._outlet-sales')
     </div>
 @endsection
 
