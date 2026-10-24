@@ -97,6 +97,12 @@ class SambungTransaksiTest extends TestCase
         // Teks asli tidak berubah.
         $this->assertSame('budi ', $hasil['S3']->salesperson_name);
 
+        // Hanya kolom tertentu: kolom lain tidak disentuh.
+        DB::table('lap_penjualan_barang')->update(['karyawan_id' => null, 'outlet_id' => null]);
+        $this->artisan('enesis:sambung-transaksi', ['--kolom' => ['karyawan_id']])->assertSuccessful();
+        $this->assertSame(2, (int) DB::table('lap_penjualan_barang')->where('trans_code', 'S2')->value('karyawan_id'));
+        $this->assertNull(DB::table('lap_penjualan_barang')->where('trans_code', 'S1')->value('outlet_id'));
+
         // Jalan ulang hasilnya sama.
         $this->artisan('enesis:sambung-transaksi', ['--tabel' => ['lap_penjualan_barang']])->assertSuccessful();
         $this->assertSame(2, (int) DB::table('lap_penjualan_barang')->where('trans_code', 'S2')->value('karyawan_id'));

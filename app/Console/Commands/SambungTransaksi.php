@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\DB;
 class SambungTransaksi extends Command
 {
     protected $signature = 'enesis:sambung-transaksi
-                            {--tabel=* : Hanya tabel tertentu, mis. --tabel=lap_penjualan_barang}';
+                            {--tabel=* : Hanya tabel tertentu, mis. --tabel=lap_penjualan_barang}
+                            {--kolom=* : Hanya kolom ID tertentu, mis. --kolom=karyawan_id --kolom=koordinator_id}';
 
     protected $description = 'Isi kolom *_id (karyawan, koordinator, depo, area, outlet, produk) di tabel transaksi lap_* dari master mk_*';
 
@@ -22,7 +23,7 @@ class SambungTransaksi extends Command
         }
 
         $mulai = microtime(true);
-        $laporan = (new Sambung(fn (string $pesan) => $this->line($pesan)))->jalankan($this->option('tabel'));
+        $laporan = (new Sambung(fn (string $pesan) => $this->line($pesan)))->jalankan($this->option('tabel'), $this->option('kolom'));
 
         $this->table(['Tabel', 'Kolom', 'Tersambung', 'Baris bersumber', '%'], array_map(fn ($r) => [
             $r['tabel'],

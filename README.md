@@ -192,6 +192,7 @@ tidak diubah. Nama sales yang kembar diselesaikan dengan depo transaksi. Jalanka
 ```bash
 php artisan enesis:sambung-transaksi                         # semua tabel (±5–10 menit)
 php artisan enesis:sambung-transaksi --tabel=lap_penjualan_barang
+php artisan enesis:sambung-transaksi --kolom=karyawan_id --kolom=koordinator_id   # hanya kolom tertentu
 ```
 
 ## Peta Tracking History Koordinator Location

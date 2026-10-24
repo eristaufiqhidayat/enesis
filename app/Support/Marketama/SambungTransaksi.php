@@ -83,15 +83,23 @@ class SambungTransaksi
 
     /**
      * @param  list<string>  $hanya  batasi ke tabel tertentu
+     * @param  list<string>  $kolomSaja  batasi ke kolom ID tertentu (mis. karyawan_id)
      * @return list<array{tabel:string, kolom:string, terisi:int, sumber:int}>
      */
-    public function jalankan(array $hanya = []): array
+    public function jalankan(array $hanya = [], array $kolomSaja = []): array
     {
         $tabel = array_filter(
             self::PETA,
             fn ($t) => (! $hanya || in_array($t, $hanya, true)) && Schema::hasTable($t) && Schema::hasColumn($t, 'id'),
             ARRAY_FILTER_USE_KEY,
         );
+
+        if ($kolomSaja) {
+            $tabel = array_filter(array_map(
+                fn ($kolom) => array_intersect_key($kolom, array_flip($kolomSaja)),
+                $tabel,
+            ));
+        }
 
         $this->bangunPeta($tabel);
         $laporan = [];
