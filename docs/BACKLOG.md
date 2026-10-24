@@ -11,3 +11,4 @@
 | 007 | [ ] | Seragamkan tampilan nilai rupiah (mis. "Rp 15.000") | [docs/backlog_items/007-format-tampilan-rupiah/spec.md](backlog_items/007-format-tampilan-rupiah/spec.md) |
 | 008 | [x] | Breadcrumb di topnav (grup > menu aktif) | [docs/backlog_items/008-breadcrumb-topnav/spec.md](backlog_items/008-breadcrumb-topnav/spec.md) |
 | 009 | [x] | Sidebar collapsible (per grup menu & seluruh sidebar) | [docs/backlog_items/009-sidebar-grup-collapsible/spec.md](backlog_items/009-sidebar-grup-collapsible/spec.md) |
+| 010 | [ ] | Tombol toggle collapse/expand semua grup sidebar sekaligus | [docs/backlog_items/010-sidebar-collapse-expand-all/spec.md](backlog_items/010-sidebar-collapse-expand-all/spec.md) |

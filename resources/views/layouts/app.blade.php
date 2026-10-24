@@ -23,7 +23,7 @@
         // sidebar disimpan di sessionStorage supaya tidak kembali ke atas tiap pindah menu.
         (() => {
             const SCROLL_KEY = 'sidebar-scroll-top';
-            const sidebar = document.querySelector('.sidebar');
+            const sidebar = document.querySelector('.sidebar-scroll');
             if (!sidebar) return;
 
             const saved = sessionStorage.getItem(SCROLL_KEY);
