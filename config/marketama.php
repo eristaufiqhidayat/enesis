@@ -1,5 +1,7 @@
 <?php
 
+use App\Support\Menu\SumberUser;
+
 // Struktur menu sidebar disamakan dengan Marketama Canvassing System.
 // Dihasilkan dari hasil penarikan data 22 Okt 2026.
 
@@ -2229,8 +2231,10 @@ return [
                 'diupdate_pada' => 'Diupdate Pada',
             ],
         ],
+        // Akun login Enesis kategori sales (tabel users), bukan salinan layar aplikasi lama.
         'user_sales' => [
             'title' => 'User Sales',
+            'sumber' => [SumberUser::class, 'sales'],
             'columns' => [
                 'username' => 'Username',
                 'nickname' => 'Nickname',
@@ -2238,8 +2242,8 @@ return [
                 'depo' => 'Depo',
                 'koordinator' => 'Koordinator',
                 'status' => 'Status',
-                'diupdate_oleh' => 'Diupdate Oleh',
-                'diupdate_pada' => 'Diupdate Pada',
+                'keterangan' => 'Keterangan',
+                'login_terakhir_pada' => 'Login Terakhir',
             ],
         ],
         'karyawan_sales' => [
