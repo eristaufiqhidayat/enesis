@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\Schema;
 class SambungTransaksi
 {
     /**
-     * Tabel => kolom ID => [jenis, kolom sumber]. Jenis "sales" memakai warehouse_name sebagai pembeda.
+     * Tabel => kolom ID => [jenis, kolom sumber]. Jenis "sales"/"koordinator" memakai warehouse_name
+     * sebagai pembeda nama kembar.
      *
      * @var array<string, array<string, array{0:string, 1:string}>>
      */
@@ -127,7 +128,7 @@ class SambungTransaksi
             return "(SELECT MIN(o.id) FROM mk_outlet o WHERE o.kode = {$nilai})";
         }
 
-        $syaratDepo = $jenis === 'sales'
+        $syaratDepo = in_array($jenis, ['sales', 'koordinator'], true)
             ? " AND (p.depo = '' OR p.depo = LOWER(TRIM({$tabel}.warehouse_name)))"
             : '';
 
@@ -141,7 +142,7 @@ class SambungTransaksi
 
     /**
      * Isi mk_peta_nama: setiap nilai teks (apa adanya) di tabel transaksi => ID master.
-     * Nama sales kembar: satu baris per depo yang membuatnya unik.
+     * Nama sales/koordinator kembar: satu baris per depo yang membuatnya unik.
      */
     private function bangunPeta(array $tabel): void
     {
@@ -149,15 +150,21 @@ class SambungTransaksi
             'depo' => $this->unik(DB::table('mk_depo')->get(['id', 'nama'])),
             'area' => $this->unik(DB::table('mk_area')->get(['id', 'nama'])),
             'distributor' => $this->unik(DB::table('mk_distributor')->get(['id', 'nama'])),
-            'koordinator' => $this->unik(DB::table('mk_karyawan')->where('kategori', 'koordinator')->get(['id', 'nama'])),
             'produk' => DB::table('mk_produk')->whereNotNull('kode')->pluck('id', 'kode')->mapWithKeys(fn ($id, $k) => [mb_strtolower(trim($k)) => $id])->all(),
         ];
 
+        // Orang (sales/koordinator): nama => daftar [id, depo]. Nama kembar diselesaikan dengan depo.
         $depoNama = DB::table('mk_depo')->pluck('nama', 'id')->map(fn ($n) => mb_strtolower(trim($n)));
-        $sales = [];
+        $orang = ['sales' => [], 'koordinator' => [], 'semua' => []];
 
-        foreach (DB::table('mk_karyawan')->where('kategori', 'sales')->get(['id', 'nama', 'depo_id']) as $k) {
-            $sales[mb_strtolower(trim($k->nama))][] = ['id' => (int) $k->id, 'depo' => $depoNama[$k->depo_id] ?? null];
+        foreach (DB::table('mk_karyawan')->get(['id', 'nama', 'kategori', 'depo_id']) as $k) {
+            $kunci = mb_strtolower(trim((string) $k->nama));
+            $calon = ['id' => (int) $k->id, 'depo' => $depoNama[$k->depo_id] ?? null];
+            $orang['semua'][$kunci][] = $calon;
+
+            if (isset($orang[$k->kategori])) {
+                $orang[$k->kategori][$kunci][] = $calon;
+            }
         }
 
         $baris = [];
@@ -177,7 +184,7 @@ class SambungTransaksi
                         continue;
                     }
 
-                    if ($jenis !== 'sales') {
+                    if (! isset($orang[$jenis])) {
                         if (isset($master[$jenis][$kunci])) {
                             $baris["{$jenis}|{$v}|"] = ['jenis' => $jenis, 'nilai' => (string) $v, 'depo' => '', 'ref_id' => $master[$jenis][$kunci]];
                         }
@@ -185,27 +192,11 @@ class SambungTransaksi
                         continue;
                     }
 
-                    $calon = $sales[$kunci] ?? [];
+                    // Cari di kategorinya; bila tidak ada (mis. sales yang kini koordinator), di semua karyawan.
+                    $calon = $orang[$jenis][$kunci] ?? $orang['semua'][$kunci] ?? [];
 
-                    if (count($calon) === 1) {
-                        $baris["sales|{$v}|"] = ['jenis' => 'sales', 'nilai' => (string) $v, 'depo' => '', 'ref_id' => $calon[0]['id']];
-
-                        continue;
-                    }
-
-                    // Nama kembar: petakan per depo bila di depo itu hanya ada satu orang bernama sama.
-                    $perDepo = [];
-
-                    foreach ($calon as $c) {
-                        if ($c['depo'] !== null) {
-                            $perDepo[$c['depo']][] = $c['id'];
-                        }
-                    }
-
-                    foreach ($perDepo as $depo => $ids) {
-                        if (count($ids) === 1) {
-                            $baris["sales|{$v}|{$depo}"] = ['jenis' => 'sales', 'nilai' => (string) $v, 'depo' => $depo, 'ref_id' => $ids[0]];
-                        }
+                    foreach ($this->petaOrang($calon) as $depo => $id) {
+                        $baris["{$jenis}|{$v}|{$depo}"] = ['jenis' => $jenis, 'nilai' => (string) $v, 'depo' => $depo, 'ref_id' => $id];
                     }
                 }
             }
@@ -218,6 +209,30 @@ class SambungTransaksi
         }
 
         ($this->log)(sprintf('peta nama: %d nilai', count($baris)));
+    }
+
+    /**
+     * Calon orang bernama sama => [depo => id]. Satu calon: depo '' (berlaku di semua depo).
+     * Beberapa calon: hanya depo yang berisi tepat satu orang bernama itu.
+     *
+     * @param  list<array{id:int, depo:?string}>  $calon
+     * @return array<string, int>
+     */
+    private function petaOrang(array $calon): array
+    {
+        if (count($calon) === 1) {
+            return ['' => $calon[0]['id']];
+        }
+
+        $perDepo = [];
+
+        foreach ($calon as $c) {
+            if ($c['depo'] !== null) {
+                $perDepo[$c['depo']][] = $c['id'];
+            }
+        }
+
+        return array_map(fn ($ids) => $ids[0], array_filter($perDepo, fn ($ids) => count($ids) === 1));
     }
 
     /** nama (huruf kecil) => id, hanya untuk nama yang tidak kembar. */

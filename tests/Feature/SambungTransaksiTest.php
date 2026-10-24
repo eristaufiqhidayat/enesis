@@ -23,6 +23,9 @@ class SambungTransaksiTest extends TestCase
             ['id' => 2, 'kategori' => 'sales', 'nama' => 'Andi', 'depo_id' => 22], // nama kembar beda depo
             ['id' => 3, 'kategori' => 'sales', 'nama' => 'Budi', 'depo_id' => 46],
             ['id' => 137, 'kategori' => 'koordinator', 'nama' => 'Koor Satu', 'depo_id' => 46],
+            ['id' => 138, 'kategori' => 'koordinator', 'nama' => 'Koor Kembar', 'depo_id' => 46],
+            ['id' => 139, 'kategori' => 'koordinator', 'nama' => 'Koor Kembar', 'depo_id' => 22],
+            ['id' => 140, 'kategori' => 'koordinator', 'nama' => 'Dulu Sales', 'depo_id' => 46], // kini koordinator
         ]);
     }
 
@@ -41,6 +44,7 @@ class SambungTransaksiTest extends TestCase
             $jual('S3', 'budi ', ' SIDOARJO'),        // beda huruf/spasi tetap cocok
             $jual('S4', 'Orang Lain', 'Sidoarjo', 'OUT-TIDAK-ADA'),
             $jual('S5', '-', 'Sidoarjo'),
+            ['koordinator_name' => 'Koor Kembar'] + $jual('S6', 'Dulu Sales', 'Balaraja'),
         ]);
 
         DB::table('lap_penjualan_barang_detail')->insert([
@@ -65,6 +69,10 @@ class SambungTransaksiTest extends TestCase
         $this->assertSame(18685, (int) $hasil['S1']->area_id);
         $this->assertSame(11, (int) $hasil['S1']->outlet_id);
         $this->assertNull($hasil['S4']->outlet_id);
+
+        // Koordinator kembar diselesaikan dengan depo; sales yang kini koordinator tetap ketemu.
+        $this->assertSame(139, (int) $hasil['S6']->koordinator_id);
+        $this->assertSame(140, (int) $hasil['S6']->karyawan_id);
 
         $detail = DB::table('lap_penjualan_barang_detail')->first();
         $this->assertSame(3, (int) $detail->produk_id, 'product_sku angka cocok ke produk.kode teks');
