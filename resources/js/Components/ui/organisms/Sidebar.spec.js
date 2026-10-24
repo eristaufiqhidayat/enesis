@@ -75,7 +75,7 @@ describe('Sidebar group collapse', () => {
         expect(groupList.classes()).toContain('hidden');
     });
 
-    it('keeps a group open when it contains the current slug, even if collapsed in localStorage', async () => {
+    it('keeps a group collapsed when the user collapsed it, even if it contains the current slug', async () => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(['Master Data']));
         currentSlug = 'outlet';
 
@@ -83,7 +83,8 @@ describe('Sidebar group collapse', () => {
         await wrapper.vm.$nextTick();
         const groupList = wrapper.findAll('ul:not(.nav)').find((ul) => ul.text().includes('Outlet'));
 
-        expect(groupList.classes()).not.toContain('hidden');
+        expect(groupList.classes()).toContain('hidden');
+        expect(JSON.parse(localStorage.getItem(STORAGE_KEY))).toEqual(['Master Data']);
     });
 
     it('toggles the persisted state based on the stored flag, not the forced-open active-slug view', async () => {
@@ -165,5 +166,84 @@ describe('Sidebar full collapse', () => {
 
         const outlet = wrapper.findAll('a.nav-link').find((a) => a.text().includes('Outlet'));
         expect(outlet.attributes('title')).toBe('Outlet');
+    });
+});
+
+describe('Sidebar toggle all groups', () => {
+    const groupList = (wrapper) => wrapper.findAll('ul:not(.nav)').find((ul) => ul.text().includes('Outlet'));
+
+    beforeEach(() => {
+        localStorage.clear();
+        document.body.classList.remove('sidebar-collapsed');
+        currentSlug = 'dashboard';
+        Element.prototype.scrollIntoView = vi.fn();
+    });
+
+    it('renders the toggle-all button in .brand next to the full-collapse toggle', () => {
+        const wrapper = mount(Sidebar);
+        const brand = wrapper.find('.brand');
+
+        expect(brand.find('[data-toggle-all-groups]').exists()).toBe(true);
+        expect(brand.find('[data-sidebar-toggle]').exists()).toBe(true);
+    });
+
+    it('collapses every labelled group when all are open', async () => {
+        const wrapper = mount(Sidebar);
+
+        await wrapper.find('[data-toggle-all-groups]').trigger('click');
+
+        expect(JSON.parse(localStorage.getItem(STORAGE_KEY))).toEqual(['Master Data']);
+        expect(groupList(wrapper).classes()).toContain('hidden');
+    });
+
+    it('expands every group when at least one is collapsed', async () => {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(['Master Data']));
+        const wrapper = mount(Sidebar);
+        await nextTick();
+
+        await wrapper.find('[data-toggle-all-groups]').trigger('click');
+
+        expect(JSON.parse(localStorage.getItem(STORAGE_KEY))).toEqual([]);
+        expect(groupList(wrapper).classes()).not.toContain('hidden');
+    });
+
+    it('leaves the group that contains the current slug out of the collapsed set', async () => {
+        currentSlug = 'outlet';
+        const wrapper = mount(Sidebar);
+
+        await wrapper.find('[data-toggle-all-groups]').trigger('click');
+
+        expect(JSON.parse(localStorage.getItem(STORAGE_KEY))).toEqual([]);
+        expect(groupList(wrapper).classes()).not.toContain('hidden');
+    });
+
+    it('lets the user collapse the group that contains the current slug by hand', async () => {
+        currentSlug = 'outlet';
+        const wrapper = mount(Sidebar);
+
+        await wrapper.find('.section-label').trigger('click');
+
+        expect(JSON.parse(localStorage.getItem(STORAGE_KEY))).toEqual(['Master Data']);
+        expect(groupList(wrapper).classes()).toContain('hidden');
+    });
+
+    it('keeps the group that contains the current slug collapsed after a full page load', async () => {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(['Master Data']));
+        currentSlug = 'outlet';
+
+        const wrapper = mount(Sidebar);
+        await nextTick();
+
+        expect(JSON.parse(localStorage.getItem(STORAGE_KEY))).toEqual(['Master Data']);
+        expect(groupList(wrapper).classes()).toContain('hidden');
+    });
+
+    it('flips the button direction after a single group is toggled by hand', async () => {
+        const wrapper = mount(Sidebar);
+        const button = wrapper.find('[data-toggle-all-groups]');
+
+        await wrapper.find('.section-label').trigger('click');
+
+        expect(button.attributes('aria-label')).toBe('Buka semua grup');
     });
 });

@@ -41,6 +41,17 @@ class SidebarCollapseGrupTest extends TestCase
         $this->assertStringNotContainsString('data-collapse-toggle="group-0"', $html);
     }
 
+    public function test_tombol_toggle_semua_grup_ada_di_brand_bersebelahan_dengan_sidebar_toggle(): void
+    {
+        $html = $this->renderSidebar();
+
+        $this->assertMatchesRegularExpression(
+            '/<div class="brand">.*?<button[^>]*data-toggle-all-groups[^>]*>.*?<\/button>\s*<button[^>]*data-sidebar-toggle[^>]*>.*?<ul class="nav/s',
+            $html,
+            'Tombol toggle semua grup seharusnya di .brand, tepat di sebelum tombol sidebar-toggle.'
+        );
+    }
+
     public function test_setiap_grup_berlabel_punya_chevron_dan_wrapper_ul(): void
     {
         $html = $this->renderSidebar();

@@ -82,9 +82,9 @@ function groupContainsCurrentSlug(section) {
 
 function isGroupOpen(section) {
     if (!section.label) return true;
-    if (groupContainsCurrentSlug(section)) return true;
     return !collapsedGroups.value.includes(section.label);
 }
+
 
 function toggleGroup(section, event) {
     const isCollapsed = collapsedGroups.value.includes(section.label);
@@ -95,6 +95,21 @@ function toggleGroup(section, event) {
     writeCollapsedGroups(labels);
 
     event?.currentTarget?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Tombol "semua grup": ada grup tertutup → buka semua, semua terbuka → tutup semua.
+// Dihitung dari grup yang tampil di menu saat ini (bukan seluruh config), sama seperti versi Blade.
+const labeledSections = computed(() => menu.value.filter((section) => section.label));
+const anyGroupCollapsed = computed(() => labeledSections.value.some((section) => !isGroupOpen(section)));
+const toggleAllLabel = computed(() => (anyGroupCollapsed.value ? 'Buka semua grup' : 'Tutup semua grup'));
+
+function toggleAllGroups() {
+    // Grup yang memuat menu aktif tidak ikut ditutup, supaya tetap terlihat.
+    const labels = anyGroupCollapsed.value
+        ? []
+        : labeledSections.value.filter((section) => !groupContainsCurrentSlug(section)).map((section) => section.label);
+    collapsedGroups.value = labels;
+    writeCollapsedGroups(labels);
 }
 
 function isChildOpen(item) {
@@ -110,11 +125,22 @@ function toggleSubmenu(item) {
 </script>
 
 <template>
-    <nav class="sidebar" ref="navRef">
+    <nav class="sidebar">
         <div class="brand">
-            <span><i class="fas fa-leaf me-1"></i> {{ page.props.appName ?? 'Enesis Canvassing' }}</span>
-            <button type="button" data-sidebar-toggle aria-label="Persempit/lebarkan sidebar" @click="setCollapsedFull(!collapsedFull)"><i class="fas fa-bars"></i></button>
+            <div class="brand-actions">
+                <button
+                    type="button"
+                    data-toggle-all-groups
+                    :aria-label="toggleAllLabel"
+                    :title="toggleAllLabel"
+                    @click="toggleAllGroups"
+                >
+                    <i :class="anyGroupCollapsed ? 'fas fa-angle-double-down' : 'fas fa-angle-double-up'"></i>
+                </button>
+                <button type="button" data-sidebar-toggle aria-label="Persempit/lebarkan sidebar" @click="setCollapsedFull(!collapsedFull)"><i class="fas fa-bars"></i></button>
+            </div>
         </div>
+        <div class="sidebar-scroll" ref="navRef">
         <ul class="nav flex flex-col list-none m-0 p-0">
             <template v-for="section in menu" :key="section.label ?? 'root'">
                 <li
@@ -165,5 +191,6 @@ function toggleSubmenu(item) {
                 </ul>
             </template>
         </ul>
+        </div>
     </nav>
 </template>
