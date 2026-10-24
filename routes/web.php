@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AkunController;
+use App\Http\Controllers\Admin\KehadiranController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Auth\DemoLoginController;
 use App\Http\Controllers\Auth\GantiPasswordController;
@@ -88,6 +89,14 @@ Route::middleware(['auth', 'wajib-ganti-password'])->group(function () {
             }
         });
     }
+
+    // Absensi sales & checkin depo dari tabel motoris (trx_*), termasuk riwayat aplikasi lama hasil migrasi.
+    foreach (['absensi_sales' => 'absensi', 'absensi_sales_terlambat' => 'absensi', 'lap_absensi_sales' => 'absensi',
+        'checkin_depo' => 'checkinDepo', 'lap_checkin_checkout' => 'checkinDepo'] as $slug => $aksi) {
+        Route::get('/'.$slug, [KehadiranController::class, $aksi])->middleware("hak:{$slug}")
+            ->defaults('menu', $slug)->name("kehadiran.{$slug}");
+    }
+    Route::get('/foto/{id}', [KehadiranController::class, 'foto'])->whereUuid('id')->name('kehadiran.foto');
 
     Route::prefix('role')->name('role.')->controller(RoleController::class)->group(function () {
         Route::get('/', 'index')->middleware('hak:role')->name('index');

@@ -231,6 +231,12 @@ per tanggal; bila tanggal itu sudah ada (mis. sales sudah absen lewat motoris), 
 data motoris tidak ditimpa. Waktu di data lama dibaca sebagai jam lokal (`MOBILE_ZONA_WAKTU`) lalu
 disimpan dalam UTC, sama seperti data dari HP.
 
+Menu **Absensi Sales**, **Absensi Sales Terlambat**, **Lap. Absensi Sales**, **Checkin Checkout Depo**, dan
+**Lap. Checkin Checkout** membaca `trx_absensi` / `trx_checkin_depo` (`KehadiranController`): filter rentang
+tanggal (bawaan 7 hari terakhir, maks. 92 hari), depo, koordinator, nama sales, dan sumber data; jam
+ditampilkan dalam WIB; selfie absen dibuka lewat `/foto/{id}` (hanya untuk yang boleh melihat menu absensi
+dan sales itu ada dalam cakupan datanya).
+
 ## Kelola akun & role (`/user_sales`, `/user_koordinator`, `/user_lainnya`, `/super_admin`, `/role`)
 
 Empat menu Users mengelola akun login Enesis (tabel `users`): daftar dengan filter status (aktif, tidak
