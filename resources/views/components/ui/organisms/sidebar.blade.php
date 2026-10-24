@@ -20,10 +20,10 @@
             @php($groupId = 'group-' . $loop->index)
             @if ($section['label'])
                 @php($groupSlugs = collect($section['items'])->flatMap(fn ($item) => isset($item['children']) ? array_column($item['children'], 'slug') : [$item['slug']])->implode(','))
-                <li class="section-label is-open" data-collapse-toggle="{{ $groupId }}" data-group-label="{{ $section['label'] }}" role="button" tabindex="0" aria-expanded="true">
+                <li class="section-label is-open" data-collapse-toggle="{{ $groupId }}" data-group-label="{{ $section['label'] }}" title="{{ $section['label'] }}" role="button" tabindex="0" aria-expanded="true">
                     <span class="section-label-text">
                         <x-ui.atoms.icon :name="$section['icon']" class="section-label-icon" />
-                        {{ $section['label'] }}
+                        <span class="section-label-name">{{ $section['label'] }}</span>
                     </span>
                     <x-ui.atoms.icon name="chevron-down" class="nav-chevron" />
                 </li>

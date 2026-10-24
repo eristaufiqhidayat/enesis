@@ -40,7 +40,7 @@ body { background: var(--color-surface); font-size: .875rem; }
 .sidebar .brand [data-sidebar-toggle] svg, .sidebar .brand [data-toggle-all-groups] svg { width: 1rem; height: 1rem; }
 .sidebar .brand .brand-actions { flex: 0 0 auto; display: flex; align-items: center; gap: .25rem; }
 .sidebar .brand [data-sidebar-toggle]:hover, .sidebar .brand [data-toggle-all-groups]:hover { color: #fff; }
-.sidebar .nav-link { display: flex; align-items: flex-start; gap: .25rem; color: rgba(255, 255, 255, .9); padding: .35rem .5rem; border-radius: .25rem; text-shadow: 0 1px 2px rgba(0, 0, 0, .35); }
+.sidebar .nav-link { display: flex; align-items: flex-start; gap: .25rem; color: rgba(255, 255, 255, .75); padding: .35rem .5rem; border-radius: .25rem; text-shadow: 0 1px 2px rgba(0, 0, 0, .35); }
 .sidebar .nav-link:hover, .sidebar .nav-link:focus { color: #fff; background: rgba(255, 255, 255, .08); }
 .sidebar .nav-link.active { color: #fff; font-weight: 600; background: rgba(255, 255, 255, .12); }
 .sidebar .nav-link-icon { flex: 0 0 1.5rem; width: 1.5rem; display: inline-flex; justify-content: center; padding-top: .125rem; }
@@ -48,11 +48,12 @@ body { background: var(--color-surface); font-size: .875rem; }
 .sidebar .nav-link-text { flex: 1 1 auto; min-width: 0; }
 .sidebar .nav-link .nav-chevron { flex: 0 0 auto; align-self: center; }
 .sidebar .nav .nav .nav-link { padding-left: 2.25rem; }
-.sidebar .section-label { display: flex; align-items: center; justify-content: space-between; gap: .5rem; cursor: pointer; font-size: .7rem; text-transform: uppercase; color: rgba(255, 255, 255, .4); font-weight: 600; margin: 1rem 0 0; border-top: 1px solid rgba(255, 255, 255, .2); padding: .75rem .5rem .25rem; border-radius: .25rem; transition: color .15s ease, background-color .15s ease; }
-.sidebar .section-label-text { display: inline-flex; align-items: center; gap: .4rem; min-width: 0; }
+.sidebar .section-label { display: flex; align-items: center; justify-content: space-between; gap: .5rem; cursor: pointer; font-size: .7rem; text-transform: uppercase; color: #fff; font-weight: 600; margin: 1rem 0 0; padding: .75rem .5rem .4rem; border-radius: .25rem; transition: color .15s ease, background-color .15s ease; }
+.sidebar .section-label-text { display: inline-flex; align-items: center; gap: .6rem; min-width: 0; }
 .sidebar .section-label-icon { width: .9rem; height: .9rem; flex: 0 0 auto; }
-.sidebar .section-label:first-child { border-top: 0; padding-top: .25rem; margin-top: 0; }
-.sidebar .section-label:hover, .sidebar .section-label:focus { color: rgba(255, 255, 255, .8); background: rgba(255, 255, 255, .08); }
+.sidebar .section-label:first-child { padding-top: .25rem; margin-top: 0; }
+.sidebar .section-label:hover, .sidebar .section-label:focus { background: rgba(255, 255, 255, .08); }
+.sidebar .section-label-name { min-width: 0; }
 main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
 /* Mode collapse seluruh sidebar jadi strip ikon-saja (lihat sidebar.blade.php/layouts/app.blade.php). Desktop saja: di mobile sidebar tetap full-width. */
 @media (min-width: 992px) {
@@ -63,8 +64,11 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     body.sidebar-collapsed .brand-actions { flex-direction: column; }
     body.sidebar-collapsed .sidebar:not(:hover) .sidebar-search,
     body.sidebar-collapsed .sidebar:not(:hover) .nav-link-text,
-    body.sidebar-collapsed .sidebar:not(:hover) .section-label,
+    body.sidebar-collapsed .sidebar:not(:hover) .section-label-name,
     body.sidebar-collapsed .sidebar:not(:hover) .nav-chevron { display: none; }
+    /* Judul grup tetap tampil sebagai ikon pemisah di strip ikon; nama grup lewat tooltip title. */
+    body.sidebar-collapsed .sidebar:not(:hover) .section-label { justify-content: center; padding-left: 0; padding-right: 0; }
+    body.sidebar-collapsed .sidebar:not(:hover) .section-label-text { gap: 0; }
     /* Hover sementara melebarkan sidebar jadi overlay di atas topbar/main (tanpa mengubah margin-left
        main/topbar, jadi konten tidak ikut terdorong), lalu menyempit lagi saat mouse keluar. */
     body.sidebar-collapsed .sidebar:hover { width: 260px; z-index: 30; box-shadow: 2px 0 12px rgba(0, 0, 0, .2); }

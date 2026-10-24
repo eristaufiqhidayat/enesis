@@ -217,13 +217,14 @@ function openActiveResult() {
                     role="button"
                     tabindex="0"
                     :aria-expanded="isGroupOpen(section) ? 'true' : 'false'"
+                    :title="section.label"
                     @click.prevent="toggleGroup(section, $event)"
                     @keydown.enter.prevent="toggleGroup(section, $event)"
                     @keydown.space.prevent="toggleGroup(section, $event)"
                 >
                     <span class="section-label-text">
                         <Icon :name="section.icon" class="section-label-icon" />
-                        {{ section.label }}
+                        <span class="section-label-name">{{ section.label }}</span>
                     </span>
                     <Icon name="chevron-down" class="nav-chevron" />
                 </li>

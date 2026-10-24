@@ -8,11 +8,11 @@ Judul grup (`section-label`) di sidebar harus terbaca jelas di mode lebar penuh 
 
 ## Acceptance criteria
 
-- [ ] Warna teks judul grup (dan ikonnya) di mode lebar penuh dinaikkan kontrasnya secara jelas dibanding kondisi sekarang, tanpa membuatnya terlihat sama persis dengan item menu biasa (hierarki "judul grup" vs "menu" tetap terasa beda).
-- [ ] Saat sidebar dalam mode collapsed (icon-only) dan tidak di-hover, ikon grup tetap tampil di antara ikon-ikon menu sebagai pemisah; judul teks grup dan chevron-nya tetap tersembunyi seperti sekarang.
-- [ ] Hover ikon grup di mode collapsed menampilkan nama grup lewat tooltip native (`title`).
+- [x] Warna teks judul grup (dan ikonnya) di mode lebar penuh dinaikkan kontrasnya secara jelas dibanding kondisi sekarang, tanpa membuatnya terlihat sama persis dengan item menu biasa (hierarki "judul grup" vs "menu" tetap terasa beda).
+- [x] Saat sidebar dalam mode collapsed (icon-only) dan tidak di-hover, ikon grup tetap tampil di antara ikon-ikon menu sebagai pemisah; judul teks grup dan chevron-nya tetap tersembunyi seperti sekarang.
+- [x] Hover ikon grup di mode collapsed menampilkan nama grup lewat tooltip native (`title`).
 - [ ] Perubahan berlaku identik di kedua stack rendering (halaman Blade dan halaman Inertia/Vue), karena sumber perubahan ada di file CSS yang dipakai bersama.
-- [ ] Mekanisme collapse per grup dan collapse-all yang sudah ada (klik judul grup untuk expand/collapse daftar menunya) tidak berubah perilakunya.
+- [x] Mekanisme collapse per grup dan collapse-all yang sudah ada (klik judul grup untuk expand/collapse daftar menunya) tidak berubah perilakunya.
 
 ## Blocked by
 
