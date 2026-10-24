@@ -17,7 +17,7 @@ Di breakpoint mobile (≤991px) submenu tetap tampil sebagai accordion inline se
 - [ ] Item parent yang salah satu descendant-nya adalah menu aktif (`currentSlug`) diberi indikator visual aktif pada link parent-nya sendiri, walau flyout-nya sedang tertutup, supaya lokasi saat ini tetap terlihat tanpa harus membuka flyout.
 - [ ] Jika sebuah item di dalam flyout punya `children` lagi, flyout level berikutnya muncul di sebelah kanan flyout saat ini (bukan dirender dalam config `marketama.php` 3 level yang sesungguhnya — cukup mekanisme render yang siap menanganinya kalau datanya ada).
 - [ ] Di viewport ≤991px, submenu tetap berupa accordion inline seperti perilaku sekarang (flyout tidak aktif di breakpoint ini).
-- [ ] Test Feature Laravel yang mengecek markup sidebar Blade memuat atribut flyout (toggle dan panel) pada item ber-`children`.
+- [x] Test Feature Laravel yang mengecek markup sidebar Blade memuat atribut flyout (toggle dan panel) pada item ber-`children`.
 
 ## Blocked by
 

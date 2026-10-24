@@ -29,13 +29,13 @@ class SidebarCollapseFullTest extends TestCase
         $this->assertLessThan($navPos, $toggleAttrPos, 'Tombol toggle seharusnya ditaruh di dalam .brand, sebelum daftar nav.');
     }
 
-    public function test_nav_link_punya_title_untuk_tooltip_native(): void
+    public function test_nav_link_tidak_lagi_punya_tooltip_native(): void
     {
         $html = $this->renderSidebar();
 
         $firstSection = config('marketama.menu')[0];
         $firstItem = $firstSection['items'][0];
 
-        $this->assertStringContainsString('title="'.$firstItem['title'].'"', $html);
+        $this->assertStringNotContainsString('title="'.$firstItem['title'].'"', $html);
     }
 }

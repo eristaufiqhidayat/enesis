@@ -11,12 +11,12 @@ Di breakpoint mobile (≤991px), perilaku tetap accordion inline seperti sekaran
 ## Acceptance criteria
 
 - [ ] Mouseover item ber-`children` di viewport desktop (>991px) menampilkan flyout di sebelah kanan item tersebut tanpa mendorong/menggeser item lain di sidebar.
-- [ ] Klik item ber-`children` juga membuka flyout yang sama (tidak tergantung hover saja).
-- [ ] Hanya satu flyout per level yang terbuka dalam satu waktu — membuka flyout sibling lain menutup flyout yang sedang terbuka di level yang sama.
-- [ ] Flyout tertutup saat: klik di luar area item+panel flyout, menekan Escape, atau mouse meninggalkan area item dan panel (dengan delay singkat).
-- [ ] Item parent yang salah satu descendant-nya adalah menu aktif (`currentSlug`) diberi indikator visual aktif pada link parent-nya sendiri, walau flyout-nya sedang tertutup.
-- [ ] Jika sebuah item di dalam flyout punya `children` lagi, flyout level berikutnya muncul di sebelah kanan flyout saat ini, lewat komponen yang memanggil dirinya sendiri secara rekursif.
-- [ ] Di viewport ≤991px, submenu tetap berupa accordion inline seperti perilaku sekarang.
+- [x] Klik item ber-`children` juga membuka flyout yang sama (tidak tergantung hover saja).
+- [x] Hanya satu flyout per level yang terbuka dalam satu waktu — membuka flyout sibling lain menutup flyout yang sedang terbuka di level yang sama.
+- [x] Flyout tertutup saat: klik di luar area item+panel flyout, menekan Escape, atau mouse meninggalkan area item dan panel (dengan delay singkat).
+- [x] Item parent yang salah satu descendant-nya adalah menu aktif (`currentSlug`) diberi indikator visual aktif pada link parent-nya sendiri, walau flyout-nya sedang tertutup.
+- [x] Jika sebuah item di dalam flyout punya `children` lagi, flyout level berikutnya muncul di sebelah kanan flyout saat ini, lewat komponen yang memanggil dirinya sendiri secara rekursif.
+- [x] Di viewport ≤991px, submenu tetap berupa accordion inline seperti perilaku sekarang.
 - [ ] Perilaku flyout di Vue/Inertia didokumentasikan sebagai verifikasi manual di PR (konsisten dengan ticket sebelumnya seperti 009/012 yang fallback ke verifikasi manual untuk interaksi Vue tanpa test runner JS komponen).
 
 ## Blocked by
