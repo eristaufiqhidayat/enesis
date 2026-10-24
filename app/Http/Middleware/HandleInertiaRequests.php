@@ -40,6 +40,8 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             // Sidebar hanya berisi menu yang boleh dilihat role akun.
             'menu' => fn () => Akses::menu($request->user()),
+            // Data pencarian sidebar: menu() yang diratakan + entri per tab untuk halaman bertab.
+            'searchMenu' => fn () => Akses::menuPencarian($request->user()),
             'currentSlug' => $request->route('slug') ?? $request->path(),
             'appName' => config('app.name'),
             // Hanya data yang perlu ditampilkan di topbar (bukan seluruh kolom users).

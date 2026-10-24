@@ -185,6 +185,35 @@ class Akses
     }
 
     /**
+     * Menu untuk pencarian sidebar: sama dengan menu() yang diratakan (termasuk children), ditambah
+     * satu entri per tab untuk halaman bertab (config('marketama.pages.*.tabs')) — supaya menu lama
+     * yang sudah digabung jadi tab (mis. "Sales Tidak Penjualan") tetap bisa dicari lewat judul
+     * lamanya dan langsung membuka tab yang sesuai.
+     *
+     * @return array<int, array{title: string, slug: string}>
+     */
+    public static function menuPencarian(?User $user): array
+    {
+        $hasil = [];
+
+        foreach (self::menu($user) as $grup) {
+            foreach ($grup['items'] as $item) {
+                foreach ($item['children'] ?? [$item] as $m) {
+                    $hasil[] = ['title' => $m['title'], 'slug' => $m['slug']];
+
+                    if (config("marketama.pages.{$m['slug']}.tabs") === true) {
+                        foreach (config("marketama.pages.{$m['slug']}.tables") as $tabel) {
+                            $hasil[] = ['title' => $tabel['tab_label'], 'slug' => "{$m['slug']}?tab={$tabel['table']}"];
+                        }
+                    }
+                }
+            }
+        }
+
+        return $hasil;
+    }
+
+    /**
      * Semua menu dalam urutan sidebar, dikelompokkan per grup (untuk matriks hak role).
      *
      * @return array<int, array{label: string, menu: array<int, array{slug: string, nama: string, title: string}>}>

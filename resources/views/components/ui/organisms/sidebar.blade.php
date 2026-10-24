@@ -1,5 +1,5 @@
 @php($current = request()->route('slug') ?? request()->path())
-@php($searchMenus = collect(\App\Support\Akses\Akses::menu(auth()->user()))->flatMap(fn ($section) => collect($section['items'])->flatMap(fn ($item) => isset($item['children']) ? $item['children'] : [$item]))->map(fn ($item) => ['title' => $item['title'], 'slug' => $item['slug']])->values())
+@php($searchMenus = \App\Support\Akses\Akses::menuPencarian(auth()->user()))
 <nav class="sidebar">
     <div class="brand">
         <div class="brand-actions">

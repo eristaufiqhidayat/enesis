@@ -8,12 +8,12 @@ Gabungkan tiga entri `pages` (`checkin_pagi`, `sales_tidak_penjualan`, `sales_ti
 
 ## Acceptance criteria
 
-- [ ] `config/marketama.php`: entri `pages.checkin_pagi`, `pages.sales_tidak_penjualan`, `pages.sales_tidak_absen` yang lama diganti satu entri gabungan dengan elemen `tables` berupa array asosiatif per tabel (`table`, `tab_label`, `date_filter_column`, `kpi`).
-- [ ] `MenuController@show` menghitung `dateColumn`/`tanggal`/`kpi` per elemen tabel dalam loop, bukan sekali di level page.
-- [ ] GET ke slug gabungan mengembalikan Inertia response dengan prop `tables` berisi tiga entri (nama tabel sesuai tiga tabel lama).
-- [ ] KPI hanya terisi untuk tabel yang punya `kpi` dikonfigurasi (tabel checkin); tabel lain mengembalikan `kpi: null` untuk dirinya.
-- [ ] Query `tanggal` hanya memengaruhi tabel yang punya `date_filter_column`; tabel lain di response tidak ikut terfilter oleh `tanggal`.
-- [ ] Feature test baru di `tests/Feature/MenuTest.php` meng-assert keempat poin di atas lewat response Inertia, bukan query ulang ke database.
+- [x] `config/marketama.php`: entri `pages.checkin_pagi`, `pages.sales_tidak_penjualan`, `pages.sales_tidak_absen` yang lama diganti satu entri gabungan dengan elemen `tables` berupa array asosiatif per tabel (`table`, `tab_label`, `date_filter_column`, `kpi`).
+- [x] `MenuController@show` menghitung `dateColumn`/`tanggal`/`kpi` per elemen tabel dalam loop, bukan sekali di level page.
+- [x] GET ke slug gabungan mengembalikan Inertia response dengan prop `tables` berisi tiga entri (nama tabel sesuai tiga tabel lama).
+- [x] KPI hanya terisi untuk tabel yang punya `kpi` dikonfigurasi (tabel checkin); tabel lain mengembalikan `kpi: null` untuk dirinya.
+- [x] Query `tanggal` hanya memengaruhi tabel yang punya `date_filter_column`; tabel lain di response tidak ikut terfilter oleh `tanggal`.
+- [x] Feature test baru di `tests/Feature/MenuTest.php` meng-assert keempat poin di atas lewat response Inertia, bukan query ulang ke database.
 
 ## Blocked by
 

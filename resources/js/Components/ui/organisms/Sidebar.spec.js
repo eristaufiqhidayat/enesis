@@ -26,10 +26,20 @@ const menu = [
 ];
 
 let currentSlug;
+let searchMenu;
+const routerVisit = vi.fn();
 
 vi.mock('@inertiajs/vue3', () => ({
-    usePage: () => ({ props: { menu, get currentSlug() { return currentSlug; }, appName: 'Enesis Canvassing' } }),
+    usePage: () => ({
+        props: {
+            menu,
+            get currentSlug() { return currentSlug; },
+            get searchMenu() { return searchMenu; },
+            appName: 'Enesis Canvassing',
+        },
+    }),
     Link: { template: '<a><slot /></a>' },
+    router: { visit: (...args) => routerVisit(...args) },
 }));
 
 describe('Sidebar group collapse', () => {
@@ -245,5 +255,42 @@ describe('Sidebar toggle all groups', () => {
         await wrapper.find('.section-label').trigger('click');
 
         expect(button.attributes('aria-label')).toBe('Buka semua grup');
+    });
+});
+
+describe('Sidebar search', () => {
+    beforeEach(() => {
+        localStorage.clear();
+        currentSlug = 'dashboard';
+        routerVisit.mockClear();
+        // Entri tambahan untuk tab halaman gabungan (lihat Akses::menuPencarian), bukan menu nav biasa.
+        searchMenu = [
+            { title: 'Dashboard', slug: 'dashboard' },
+            { title: 'Monitoring Harian Sales', slug: 'monitoring_harian_sales' },
+            { title: 'Sales Tidak Penjualan', slug: 'monitoring_harian_sales?tab=sales_tidak_penjualan' },
+        ];
+    });
+
+    it('finds a menu that only exists as a tab inside a merged page', async () => {
+        const wrapper = mount(Sidebar);
+
+        const input = wrapper.find('[data-sidebar-search]');
+        await input.setValue('Sales Tidak Penjualan');
+        await input.trigger('focus');
+
+        const result = wrapper.findAll('.sidebar-search-results li').find((li) => li.text() === 'Sales Tidak Penjualan');
+        expect(result).toBeTruthy();
+        expect(result.find('a').attributes('href')).toBe('/monitoring_harian_sales?tab=sales_tidak_penjualan');
+    });
+
+    it('navigates to the merged page with the right tab when the result is opened via Enter', async () => {
+        const wrapper = mount(Sidebar);
+
+        const input = wrapper.find('[data-sidebar-search]');
+        await input.setValue('Sales Tidak Penjualan');
+        await input.trigger('focus');
+        await input.trigger('keydown', { key: 'Enter' });
+
+        expect(routerVisit).toHaveBeenCalledWith('/monitoring_harian_sales?tab=sales_tidak_penjualan');
     });
 });

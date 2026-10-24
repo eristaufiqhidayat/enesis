@@ -16,19 +16,27 @@ class MenuController extends Controller
         abort_unless($page, 404);
 
         $search = trim((string) $request->query('q'));
-        $dateColumn = $page['date_filter_column'] ?? null;
-        $tanggal = $dateColumn !== null ? $this->resolveTanggal($request) : null;
-        $kpi = $tanggal !== null ? match ($page['kpi'] ?? null) {
-            'checkin_pagi' => $this->kpiCheckinPagi($tanggal),
-            default => null,
-        } : null;
+        // Filter tanggal dan KPI diatur per tabel; tanggal query string dipakai bersama oleh tabel yang punya filter.
+        $konfigDefault = ['tab_label' => null, 'date_filter_column' => null, 'kpi' => null];
+        $konfigTabel = array_map(fn ($item) => is_array($item)
+            ? $item + $konfigDefault
+            : ['table' => $item] + $konfigDefault, $page['tables']);
+        $hasDateFilter = collect($konfigTabel)->contains(fn ($konfig) => $konfig['date_filter_column'] !== null);
+        $tanggal = $hasDateFilter ? $this->resolveTanggal($request) : null;
         $tables = [];
 
-        foreach ($page['tables'] as $table) {
+        foreach ($konfigTabel as $konfig) {
+            $table = $konfig['table'];
+
             if (! Schema::hasTable($table)) {
                 continue;
             }
 
+            $dateColumn = $konfig['date_filter_column'];
+            $kpi = $dateColumn !== null ? match ($konfig['kpi']) {
+                'checkin_pagi' => $this->kpiCheckinPagi($tanggal),
+                default => null,
+            } : null;
             $columns = config("marketama.tables.{$table}.columns", []);
             $query = DB::table($table);
 
@@ -53,14 +61,22 @@ class MenuController extends Controller
             $tables[] = [
                 'name' => $table,
                 'title' => config("marketama.tables.{$table}.title"),
+                'tab_label' => $konfig['tab_label'] ?? config("marketama.tables.{$table}.title"),
+                'date_filter' => $dateColumn !== null,
                 'columns' => $columns,
                 'rows' => [
                     'data' => $rows->items(),
                     'total' => $rows->total(),
                     'links' => $rows->onEachSide(1)->linkCollection()->toArray(),
                 ],
+                'kpi' => $kpi,
             ];
         }
+
+        // Tab aktif dari query ?tab=, harus salah satu tabel yang tampil. Jika kosong/tidak valid, pakai tab pertama.
+        $namaTabel = array_column($tables, 'name');
+        $tab = $request->query('tab');
+        $activeTab = in_array($tab, $namaTabel, true) ? $tab : ($namaTabel[0] ?? null);
 
         return Inertia::render('Menu/Show', [
             'slug' => $slug,
@@ -69,10 +85,10 @@ class MenuController extends Controller
                 'same_as_title' => $page['same_as'] ? config("marketama.pages.{$page['same_as']}.title") : null,
             ],
             'tables' => $tables,
+            'activeTab' => $activeTab,
             'search' => $search,
             'tanggal' => $tanggal,
-            'hasDateFilter' => $dateColumn !== null,
-            'kpi' => $kpi,
+            'hasDateFilter' => $hasDateFilter,
         ]);
     }
 

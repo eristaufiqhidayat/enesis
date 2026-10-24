@@ -10,6 +10,7 @@ use App\Http\Controllers\DesignAreaController;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\TrackingKoordinatorController;
 use App\Http\Controllers\TrackingSalesController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 // Login (hanya untuk tamu) dan logout.
@@ -108,6 +109,14 @@ Route::middleware(['auth', 'wajib-ganti-password'])->group(function () {
         Route::post('/{id}/pindah', 'pindahkan')->middleware('hak:role,ubah')->whereNumber('id')->name('pindah');
         Route::delete('/{id}', 'destroy')->middleware('hak:role,hapus')->whereNumber('id')->name('destroy');
     });
+
+    // Slug lama menu monitoring harian yang sudah digabung jadi satu halaman bertab; query string ikut diteruskan.
+    // Hak dicek di sini juga (sama dengan menu tujuan) supaya pengecekan bolehWeb tidak terlewat di hop redirect ini.
+    foreach (['checkin_pagi', 'sales_tidak_penjualan', 'sales_tidak_absen'] as $tab) {
+        Route::get("/{$tab}", fn (Request $request) => redirect('/monitoring_harian_sales?'.http_build_query(
+            [...$request->query(), 'tab' => $tab]
+        )))->middleware('hak:monitoring_harian_sales');
+    }
 
     Route::get('/{slug}', [MenuController::class, 'show'])
         ->middleware('hak:@slug')

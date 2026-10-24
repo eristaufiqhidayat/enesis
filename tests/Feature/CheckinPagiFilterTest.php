@@ -35,7 +35,7 @@ class CheckinPagiFilterTest extends TestCase
 
     public function test_default_shows_only_rows_for_today(): void
     {
-        $this->get('/checkin_pagi')
+        $this->get('/monitoring_harian_sales')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->where('tables.0.rows.total', 1)
@@ -47,7 +47,7 @@ class CheckinPagiFilterTest extends TestCase
 
     public function test_explicit_tanggal_shows_only_rows_for_that_date(): void
     {
-        $this->get('/checkin_pagi?tanggal=2026-10-22')
+        $this->get('/monitoring_harian_sales?tanggal=2026-10-22')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->where('tables.0.rows.total', 2)
@@ -59,7 +59,7 @@ class CheckinPagiFilterTest extends TestCase
 
     public function test_tanggal_combines_with_text_search(): void
     {
-        $this->get('/checkin_pagi?tanggal=2026-10-22&q=Citra')
+        $this->get('/monitoring_harian_sales?tanggal=2026-10-22&q=Citra')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->where('tables.0.rows.total', 1)
@@ -69,14 +69,14 @@ class CheckinPagiFilterTest extends TestCase
 
     public function test_invalid_tanggal_falls_back_to_today(): void
     {
-        $this->get('/checkin_pagi?tanggal=bukan-tanggal')
+        $this->get('/monitoring_harian_sales?tanggal=bukan-tanggal')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->where('tables.0.rows.total', 1)
                 ->where('tanggal', '2026-10-23')
             );
 
-        $this->get('/checkin_pagi?tanggal=2026-10-1')
+        $this->get('/monitoring_harian_sales?tanggal=2026-10-1')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->where('tanggal', '2026-10-23')
