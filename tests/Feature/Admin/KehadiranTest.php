@@ -64,6 +64,34 @@ class KehadiranTest extends AdminTestCase
         $this->get('/lap_checkin_checkout?depo=22')->assertOk()->assertSee('Sinta Wulandari')->assertDontSee('Rudi Hartono');
     }
 
+    public function test_checkin_outlet_dari_tabel_motoris(): void
+    {
+        DB::table('mk_outlet')->insert([
+            ['id' => 11, 'kode' => 'OT-11', 'nama' => 'Toko Makmur'],
+            ['id' => 12, 'kode' => 'OT-12', 'nama' => 'Warung Bu Sri'],
+        ]);
+        $beli = DB::table('trx_kunjungan')->insertGetId(['karyawan_id' => 1, 'depo_id' => 46, 'outlet_id' => 11, 'tanggal' => '2026-10-24',
+            'checkin_at' => '2026-10-24 02:00:00', 'checkout_at' => '2026-10-24 02:15:00', 'durasi_detik' => 900, 'lat' => -7.45, 'lng' => 112.71,
+            'jarak_m' => 12, 'di_luar_rute' => true, 'sumber' => 'motoris']);
+        DB::table('trx_penjualan')->insert(['kode' => 'J-1', 'kunjungan_id' => $beli, 'karyawan_id' => 1, 'depo_id' => 46, 'outlet_id' => 11,
+            'tanggal' => '2026-10-24', 'jumlah_sku' => 2, 'total_qty' => 5, 'total' => 125000, 'total_diskon' => 0, 'is_effective_call' => true]);
+        DB::table('trx_kunjungan')->insert([
+            ['karyawan_id' => 1, 'depo_id' => 46, 'outlet_id' => 12, 'tanggal' => '2026-10-24', 'checkin_at' => '2026-10-24 03:00:00',
+                'tidak_beli_kategori' => 'toko_tutup', 'tidak_beli_keterangan' => null, 'sumber' => 'motoris', 'sumber_id' => null, 'foto_url' => null, 'keterangan_lama' => null],
+            ['karyawan_id' => 2, 'depo_id' => 22, 'outlet_id' => 12, 'tanggal' => '2026-10-22', 'checkin_at' => '2026-10-22 03:00:00',
+                'tidak_beli_kategori' => null, 'tidak_beli_keterangan' => null, 'sumber' => 'lama', 'sumber_id' => 7001, 'foto_url' => 'https://app.lama/f.jpg', 'keterangan_lama' => 'Pemilik pergi'],
+        ]);
+
+        $this->get('/checkin_outlet')->assertOk()
+            ->assertSee('Toko Makmur')->assertSee('Rp 125.000')->assertSee('15 m')->assertSee('Di luar rute')
+            ->assertSee('Toko tutup')->assertSee('Pemilik pergi')->assertSee('Foto (aplikasi lama)');
+
+        $this->get('/checkin_outlet?status=beli')->assertOk()->assertSee('Toko Makmur')->assertDontSee('Pemilik pergi');
+        $this->get('/checkin_outlet?status=tidak_beli')->assertOk()->assertSee('Toko tutup')->assertDontSee('Rp 125.000');
+        $this->get('/lap_checkin_outlet?outlet=makmur')->assertOk()->assertSee('Toko Makmur')->assertDontSee('Warung Bu Sri');
+        $this->get('/checkin_outlet?sumber=lama')->assertOk()->assertSee('Sinta Wulandari')->assertDontSee('Rudi Hartono');
+    }
+
     public function test_cakupan_role_dan_foto_selfie(): void
     {
         Storage::fake('local');
