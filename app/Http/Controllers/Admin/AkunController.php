@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -108,10 +109,7 @@ class AkunController extends Controller
             'riwayat' => DB::table('riwayat_admin')->where('objek', 'user')->where('objek_id', $id)->orderByDesc('id')->limit(10)->get(),
             'alasanHapus' => $this->alasanTidakBisaHapus($request, $akun),
             'alasanNonaktif' => self::ALASAN_NONAKTIF,
-            'salesBawahan' => $akun->kategori === 'koordinator' && $akun->karyawan_id
-                ? $this->query($request->user(), 'user_sales')->where('k.koordinator_id', $akun->karyawan_id)
-                    ->orderByDesc('u.aktif')->orderByRaw('LOWER(u.username)')->limit(100)->get()
-                : null,
+            'salesBawahan' => $this->salesBawahan($request, $akun),
         ]);
     }
 
@@ -428,7 +426,19 @@ class AkunController extends Controller
             'kategoriAwal' => $akun->kategori ?? self::MENU[$menu],
             'pilihanKategori' => $kategori,
             'roles' => DB::table('roles')->orderByDesc('bawaan')->orderBy('nama')->get(['id', 'kode', 'nama']),
+            'salesBawahan' => $akun ? $this->salesBawahan($request, $akun) : null,
         ]);
+    }
+
+    /** Akun sales yang karyawannya berada di bawah koordinator ini (null bila bukan koordinator). */
+    private function salesBawahan(Request $request, object $akun): ?Collection
+    {
+        if ($akun->kategori !== 'koordinator' || ! $akun->karyawan_id) {
+            return null;
+        }
+
+        return $this->query($request->user(), 'user_sales')->where('k.koordinator_id', $akun->karyawan_id)
+            ->orderByDesc('u.aktif')->orderByRaw('LOWER(u.username)')->limit(100)->get();
     }
 
     private function validasi(Request $request, ?object $lama): array

@@ -58,6 +58,14 @@ class AkunTest extends AdminTestCase
         $this->get('/user_koordinator/'.$koor->id)->assertOk()
             ->assertSee('Sales di bawah koordinator ini')->assertSee('2 aktif dari 3 akun')
             ->assertSee('rudi')->assertDontSee('sinta');
+
+        // Juga di halaman edit koordinator.
+        $this->get('/user_koordinator/'.$koor->id.'/edit')->assertOk()
+            ->assertSee('Sales di bawah koordinator ini')->assertSee('tegar');
+
+        // Akun sales tidak menampilkan kartu ini.
+        $this->get('/user_sales/'.User::where('username', 'rudi')->value('id'))->assertOk()
+            ->assertDontSee('Sales di bawah koordinator ini');
     }
 
     public function test_klik_menu_dari_halaman_inertia_membuka_halaman_blade_penuh(): void

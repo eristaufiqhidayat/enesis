@@ -132,6 +132,10 @@
             @endif
         </div>
     </div>
+
+    <div class="mt-3">
+        @include('akun._sales-bawahan')
+    </div>
 @endsection
 
 @push('scripts')
