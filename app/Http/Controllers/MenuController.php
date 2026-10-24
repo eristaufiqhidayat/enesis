@@ -31,6 +31,20 @@ class MenuController extends Controller
                     + ['tab_key' => $grup['tab_key'], 'tab_label' => $grup['tab_label']];
             }
         }
+        // Tab aktif dari query ?tab=, harus salah satu tab_key yang ada di config. Jika kosong/tidak valid, pakai tab pertama.
+        $tabKeys = array_values(array_unique(array_column($konfigTabel, 'tab_key')));
+        $tab = $request->query('tab');
+        $activeTab = in_array($tab, $tabKeys, true) ? $tab : ($tabKeys[0] ?? null);
+
+        // Halaman bertab: hanya tabel grup aktif yang perlu di-query (tabel grup lain tidak ditampilkan,
+        // lihat Show.vue), supaya buka satu tab tidak ikut menjalankan query tabel tab lain.
+        if ($page['tabs'] ?? false) {
+            $konfigTabel = array_values(array_filter(
+                $konfigTabel,
+                fn ($konfig) => $konfig['tab_key'] === $activeTab
+            ));
+        }
+
         $hasDateFilter = collect($konfigTabel)->contains(fn ($konfig) => $konfig['date_filter_column'] !== null);
         $tanggal = $hasDateFilter ? $this->resolveTanggal($request) : null;
         $tables = [];
@@ -83,11 +97,6 @@ class MenuController extends Controller
                 'kpi' => $kpi,
             ];
         }
-
-        // Tab aktif dari query ?tab=, harus salah satu tab_key yang tampil. Jika kosong/tidak valid, pakai tab pertama.
-        $tabKeys = array_values(array_unique(array_column($tables, 'tab_key')));
-        $tab = $request->query('tab');
-        $activeTab = in_array($tab, $tabKeys, true) ? $tab : ($tabKeys[0] ?? null);
 
         return Inertia::render('Menu/Show', [
             'slug' => $slug,

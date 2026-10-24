@@ -39,26 +39,31 @@ class MenuTest extends TestCase
             );
     }
 
-    public function test_monitoring_harian_sales_returns_three_tables_by_name(): void
+    public function test_monitoring_harian_sales_queries_only_the_active_tab_table(): void
     {
+        // Halaman bertab hanya meng-query tabel grup tab aktif; grup lain tidak ikut di-query (hemat COUNT/LIKE).
         $this->get('/monitoring_harian_sales')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Menu/Show')
-                ->has('tables', 3)
+                ->has('tables', 1)
                 ->where('tables.0.name', 'checkin_pagi')
-                ->where('tables.1.name', 'sales_tidak_penjualan')
-                ->where('tables.2.name', 'sales_tidak_absen')
+            );
+
+        $this->get('/monitoring_harian_sales?tab=sales_tidak_penjualan')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('tables', 1)
+                ->where('tables.0.name', 'sales_tidak_penjualan')
             );
     }
 
     public function test_kpi_is_only_filled_for_table_with_kpi_configured(): void
     {
-        $this->get('/monitoring_harian_sales')
+        $this->get('/monitoring_harian_sales?tab=sales_tidak_penjualan')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('tables.1.kpi', null)
-                ->where('tables.2.kpi', null)
+                ->where('tables.0.kpi', null)
             );
     }
 
@@ -71,10 +76,18 @@ class MenuTest extends TestCase
             ['tanggal_data' => '2026-10-22', 'nama_sales' => 'Kemarin'],
         ]);
 
-        $this->get('/monitoring_harian_sales?tanggal=2026-10-22')
+        // Tab sales_tidak_penjualan tidak punya date_filter_column, jadi query tanggal diabaikan total.
+        $this->get('/monitoring_harian_sales?tab=sales_tidak_penjualan&tanggal=2026-10-22')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('tables.1.rows.total', 2)
+                ->where('tables.0.rows.total', 2)
+                ->where('tanggal', null)
+                ->where('hasDateFilter', false)
+            );
+
+        $this->get('/monitoring_harian_sales?tab=checkin_pagi&tanggal=2026-10-22')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
                 ->where('tanggal', '2026-10-22')
                 ->where('hasDateFilter', true)
             );
@@ -119,10 +132,9 @@ class MenuTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->where('activeTab', 'gabungan')
-                ->has('tables', 3)
+                ->has('tables', 2)
                 ->where('tables.0.tab_key', 'gabungan')
                 ->where('tables.1.tab_key', 'gabungan')
-                ->where('tables.2.tab_key', 'lain')
             );
     }
 
@@ -167,20 +179,17 @@ class MenuTest extends TestCase
 
     public function test_rekap_pencapaian_sku_default_tab_is_motoris(): void
     {
+        // Hanya tabel tab aktif (motoris) yang di-query; tabel tab depo tidak ikut di-query.
         $this->get('/rekap_pencapaian_sku')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Menu/Show')
                 ->where('activeTab', 'motoris')
-                ->has('tables', 4)
+                ->has('tables', 2)
                 ->where('tables.0.name', 'rekap_pencapaian_sku_motoris_tableachieved')
                 ->where('tables.1.name', 'rekap_pencapaian_sku_motoris_tablenotachieved')
-                ->where('tables.2.name', 'rekap_pencapaian_depo_sku_tableachieved')
-                ->where('tables.3.name', 'rekap_pencapaian_depo_sku_tablenotachieved')
                 ->where('tables.0.tab_key', 'motoris')
                 ->where('tables.1.tab_key', 'motoris')
-                ->where('tables.2.tab_key', 'depo')
-                ->where('tables.3.tab_key', 'depo')
             );
     }
 
@@ -190,9 +199,11 @@ class MenuTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->where('activeTab', 'depo')
-                ->has('tables', 4)
-                ->where('tables.2.tab_key', 'depo')
-                ->where('tables.3.tab_key', 'depo')
+                ->has('tables', 2)
+                ->where('tables.0.name', 'rekap_pencapaian_depo_sku_tableachieved')
+                ->where('tables.1.name', 'rekap_pencapaian_depo_sku_tablenotachieved')
+                ->where('tables.0.tab_key', 'depo')
+                ->where('tables.1.tab_key', 'depo')
             );
     }
 
