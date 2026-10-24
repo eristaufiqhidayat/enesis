@@ -209,6 +209,34 @@ php artisan enesis:sambung-transaksi --tabel=lap_penjualan_barang
 php artisan enesis:sambung-transaksi --kolom=karyawan_id --kolom=koordinator_id   # hanya kolom tertentu
 ```
 
+## Migrasi data lama ke tabel motoris (`trx_*`)
+
+Riwayat aplikasi lama disalin ke tabel yang dipakai aplikasi motoris, supaya data lama dan data
+motoris ada di satu tabel. Baris hasil migrasi bertanda `sumber = 'lama'` dan `sumber_id` = `source_id`
+aslinya; baris dari HP bertanda `sumber = 'motoris'`. Tabel `lap_*` tidak diubah (tetap arsip).
+
+| Jenis | Dari | Ke | Catatan |
+| --- | --- | --- | --- |
+| `absensi` | `lap_absensi_sales` | `trx_absensi` | jam masuk/pulang; terlambat dihitung dari batas jam masuk; tanpa GPS & selfie |
+| `checkin_depo` | `lap_checkin_checkout` | `trx_checkin_depo` | jam checkin/checkout, GPS; depo kosong memakai depo karyawan |
+
+```bash
+php artisan enesis:migrasi-transaksi                 # semua jenis
+php artisan enesis:migrasi-transaksi absensi         # satu jenis
+php artisan enesis:migrasi-transaksi --tanpa-sambung # lewati pengisian ID karyawan/depo di tabel lama
+```
+
+Aman diulang: hanya baris lama yang belum pernah dimigrasi yang ditambahkan. Satu sales satu baris
+per tanggal; bila tanggal itu sudah ada (mis. sales sudah absen lewat motoris), baris lama dilewati dan
+data motoris tidak ditimpa. Waktu di data lama dibaca sebagai jam lokal (`MOBILE_ZONA_WAKTU`) lalu
+disimpan dalam UTC, sama seperti data dari HP.
+
+Menu **Absensi Sales**, **Absensi Sales Terlambat**, **Lap. Absensi Sales**, **Checkin Checkout Depo**, dan
+**Lap. Checkin Checkout** membaca `trx_absensi` / `trx_checkin_depo` (`KehadiranController`): filter rentang
+tanggal (bawaan 7 hari terakhir, maks. 92 hari), depo, koordinator, nama sales, dan sumber data; jam
+ditampilkan dalam WIB; selfie absen dibuka lewat `/foto/{id}` (hanya untuk yang boleh melihat menu absensi
+dan sales itu ada dalam cakupan datanya).
+
 ## Kelola akun & role (`/user_sales`, `/user_koordinator`, `/user_lainnya`, `/super_admin`, `/role`)
 
 Empat menu Users mengelola akun login Enesis (tabel `users`): daftar dengan filter status (aktif, tidak

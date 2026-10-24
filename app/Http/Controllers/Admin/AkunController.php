@@ -5,11 +5,15 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Support\Akses\Akses;
+use App\Support\Akses\HierarkiSales;
+use App\Support\Mobile\HariKerja;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -45,16 +49,25 @@ class AkunController extends Controller
         $status = array_key_exists($request->query('status'), self::STATUS) ? $request->query('status') : 'semua';
         $q = trim((string) $request->query('q'));
         $depo = $request->integer('depo') ?: null;
+        $koordinator = $request->integer('koordinator') ?: null;
 
         $dasar = $this->query($request->user(), $menu);
+
+        // Pilihan koordinator diambil dari akun yang memang terlihat (ikut cakupan data).
+        $daftarKoordinator = (clone $dasar)->whereNotNull('ko.id')->distinct()
+            ->orderBy('ko.nama')->select(['ko.id', 'ko.nama'])->pluck('ko.nama', 'ko.id');
 
         if ($depo) {
             $dasar->where('k.depo_id', $depo);
         }
 
+        if ($koordinator) {
+            $dasar->where('k.koordinator_id', $koordinator);
+        }
+
         if ($q !== '') {
             $dasar->where(function (Builder $w) use ($q) {
-                foreach (['u.username', 'u.name', 'mu.nickname', 'k.nama', 'd.nama'] as $kolom) {
+                foreach (['u.username', 'u.name', 'mu.nickname', 'k.nama', 'd.nama', 'ko.nama'] as $kolom) {
                     $w->orWhereRaw("LOWER({$kolom}) LIKE ?", ['%'.mb_strtolower($q).'%']);
                 }
             });
@@ -76,7 +89,9 @@ class AkunController extends Controller
             'status' => $status,
             'q' => $q,
             'depo' => $depo,
+            'koordinator' => $koordinator,
             'daftarDepo' => DB::table('mk_depo')->orderBy('nama')->pluck('nama', 'id'),
+            'daftarKoordinator' => $daftarKoordinator,
         ]);
     }
 
@@ -97,6 +112,8 @@ class AkunController extends Controller
             'riwayat' => DB::table('riwayat_admin')->where('objek', 'user')->where('objek_id', $id)->orderByDesc('id')->limit(10)->get(),
             'alasanHapus' => $this->alasanTidakBisaHapus($request, $akun),
             'alasanNonaktif' => self::ALASAN_NONAKTIF,
+            'salesBawahan' => $this->salesBawahan($request, $akun),
+            'outletSales' => $this->outletSales($request, $akun),
         ]);
     }
 
@@ -306,6 +323,87 @@ class AkunController extends Controller
         ]));
     }
 
+    /** Cari akun sales untuk ditambahkan ke koordinator (JSON). */
+    public function cariSales(Request $request, int $id): JsonResponse
+    {
+        $koor = $this->koordinator($request, $id);
+        $q = mb_strtolower(trim((string) $request->query('q')));
+
+        if (mb_strlen($q) < 2) {
+            return response()->json([]);
+        }
+
+        $hasil = $this->query($request->user(), 'user_sales')->whereNotNull('u.karyawan_id')
+            ->where(function (Builder $w) use ($q) {
+                foreach (['u.username', 'u.name', 'k.nama'] as $kolom) {
+                    $w->orWhereRaw("LOWER({$kolom}) LIKE ?", ['%'.$q.'%']);
+                }
+            })
+            ->addSelect('k.koordinator_id')
+            ->orderByDesc('u.aktif')->orderByRaw('LOWER(u.username)')->limit(15)->get();
+
+        return response()->json($hasil->map(fn ($s) => [
+            'id' => (int) $s->id,
+            'username' => $s->username,
+            'karyawan' => $s->karyawan,
+            'depo' => $s->depo,
+            'aktif' => (bool) $s->aktif,
+            'koordinator' => $s->koordinator,
+            'sudah' => (int) $s->koordinator_id === (int) $koor->karyawan_id,
+        ]));
+    }
+
+    /** Jadikan akun sales berada di bawah koordinator ini (pindah dari koordinator lama bila ada). */
+    public function tambahSales(Request $request, int $id): RedirectResponse
+    {
+        $koor = $this->koordinator($request, $id);
+        $data = $request->validate(['sales_id' => ['required', 'integer']], ['sales_id.required' => 'Pilih akun sales dulu.']);
+        $sales = $this->query($request->user(), 'user_sales')->where('u.id', $data['sales_id'])->first();
+
+        if (! $sales || ! $sales->karyawan_id) {
+            throw ValidationException::withMessages(['sales_id' => 'Akun sales tidak ditemukan atau belum terhubung ke karyawan.']);
+        }
+
+        if ((int) DB::table('mk_karyawan')->where('id', $sales->karyawan_id)->value('koordinator_id') === (int) $koor->karyawan_id) {
+            return back()->with('sukses', "{$sales->username} sudah berada di bawah koordinator ini.");
+        }
+
+        HierarkiSales::atur((int) $sales->karyawan_id, (int) $koor->karyawan_id, $request->user()->id);
+
+        $dari = $sales->koordinator ? " (pindah dari {$sales->koordinator})" : '';
+        Akses::catat($request->user(), 'user', (int) $koor->id, 'tambah_sales', "Sales ditambahkan: {$sales->username}{$dari}");
+        Akses::catat($request->user(), 'user', (int) $sales->id, 'ubah_koordinator', 'Koordinator: '.($sales->koordinator ?? '-').' → '.($koor->karyawan ?? $koor->username));
+
+        return back()->with('sukses', "{$sales->username} sekarang berada di bawah {$koor->username}.");
+    }
+
+    /** Lepas akun sales dari koordinator ini (menjadi tanpa koordinator). */
+    public function lepasSales(Request $request, int $id, int $sales): RedirectResponse
+    {
+        $koor = $this->koordinator($request, $id);
+        $akun = $this->query($request->user(), 'user_sales')->where('u.id', $sales)
+            ->where('k.koordinator_id', $koor->karyawan_id)->first() ?? abort(404);
+
+        HierarkiSales::atur((int) $akun->karyawan_id, null, $request->user()->id);
+
+        Akses::catat($request->user(), 'user', (int) $koor->id, 'lepas_sales', "Sales dilepas: {$akun->username}");
+        Akses::catat($request->user(), 'user', (int) $akun->id, 'ubah_koordinator', 'Koordinator: '.($akun->koordinator ?? '-').' → tanpa koordinator');
+
+        return back()->with('sukses', "{$akun->username} dilepas dari {$koor->username}.");
+    }
+
+    /** Akun koordinator (dalam cakupan) yang sudah terhubung ke karyawan. */
+    private function koordinator(Request $request, int $id): object
+    {
+        $koor = $this->cari($request, 'user_koordinator', $id);
+
+        if (! $koor->karyawan_id) {
+            throw ValidationException::withMessages(['sales_id' => 'Akun koordinator ini belum terhubung ke karyawan.']);
+        }
+
+        return $koor;
+    }
+
     /** Keterangan singkat status akun untuk daftar & detail. */
     public static function keterangan(object $a): ?string
     {
@@ -344,6 +442,13 @@ class AkunController extends Controller
             // Sesi HP aktif (satu akun satu HP).
             ->selectSub($this->tokenAktif('device_model'), 'hp_model')
             ->selectSub($this->tokenAktif('app_version'), 'hp_versi');
+
+        if ($menu === 'user_koordinator') {
+            // Jumlah akun sales aktif yang karyawannya berada di bawah koordinator ini.
+            $q->selectSub(DB::table('users as us')->join('mk_karyawan as ks', 'ks.id', '=', 'us.karyawan_id')
+                ->where('us.kategori', 'sales')->where('us.aktif', true)
+                ->whereColumn('ks.koordinator_id', 'u.karyawan_id')->selectRaw('COUNT(*)'), 'jumlah_sales');
+        }
 
         return match (Akses::cakupan($saya)) {
             'depo' => $q->where('k.depo_id', DB::table('mk_karyawan')->where('id', $saya->karyawan_id ?? 0)->value('depo_id') ?? -1),
@@ -406,7 +511,58 @@ class AkunController extends Controller
             'kategoriAwal' => $akun->kategori ?? self::MENU[$menu],
             'pilihanKategori' => $kategori,
             'roles' => DB::table('roles')->orderByDesc('bawaan')->orderBy('nama')->get(['id', 'kode', 'nama']),
+            'salesBawahan' => $akun ? $this->salesBawahan($request, $akun) : null,
+            'outletSales' => $akun ? $this->outletSales($request, $akun) : null,
         ]);
+    }
+
+    /**
+     * Area rute dan outlet sales (aturan sama dengan rute di aplikasi HP); null bila bukan sales.
+     *
+     * @return array{area: Collection, outlet: LengthAwarePaginator, q: string}|null
+     */
+    private function outletSales(Request $request, object $akun): ?array
+    {
+        if ($akun->kategori !== 'sales' || ! $akun->karyawan_id) {
+            return null;
+        }
+
+        $rute = HariKerja::areaKaryawan((int) $akun->karyawan_id);
+        $area = DB::table('mk_karyawan_area as ka')->leftJoin('mk_area as a', 'a.id', '=', 'ka.area_id')
+            ->where('ka.karyawan_id', $akun->karyawan_id)
+            ->selectRaw('ka.area_id, ka.aktif, a.nama, a.kode, (SELECT COUNT(*) FROM mk_outlet o WHERE o.area_id = ka.area_id) as jumlah_outlet')
+            ->orderByDesc('ka.aktif')->orderBy('a.nama')->get()
+            // Jangan pakai each(fn ...): nilai false dari callback menghentikan perulangan.
+            ->map(function ($a) use ($rute) {
+                $a->rute = in_array((int) $a->area_id, $rute, true);
+
+                return $a;
+            });
+
+        $q = trim((string) $request->query('cari_outlet'));
+        $outlet = DB::table('mk_outlet as o')->leftJoin('mk_area as a', 'a.id', '=', 'o.area_id')
+            ->whereIn('o.area_id', $rute ?: [0])
+            ->when($q !== '', fn ($w) => $w->where(function ($w) use ($q) {
+                foreach (['o.nama', 'o.kode', 'o.alamat', 'o.kelurahan', 'o.kecamatan'] as $kolom) {
+                    $w->orWhereRaw("LOWER({$kolom}) LIKE ?", ['%'.mb_strtolower($q).'%']);
+                }
+            }))
+            ->orderBy('a.nama')->orderBy('o.nama')
+            ->select(['o.id', 'o.kode', 'o.nama', 'o.alamat', 'o.kelurahan', 'o.kecamatan', 'o.latitude', 'o.longitude', 'o.verifikasi', 'a.nama as area'])
+            ->paginate(25, ['*'], 'hal_outlet')->withQueryString()->fragment('outlet-sales');
+
+        return ['area' => $area, 'outlet' => $outlet, 'q' => $q];
+    }
+
+    /** Akun sales yang karyawannya berada di bawah koordinator ini (null bila bukan koordinator). */
+    private function salesBawahan(Request $request, object $akun): ?Collection
+    {
+        if ($akun->kategori !== 'koordinator' || ! $akun->karyawan_id) {
+            return null;
+        }
+
+        return $this->query($request->user(), 'user_sales')->where('k.koordinator_id', $akun->karyawan_id)
+            ->orderByDesc('u.aktif')->orderByRaw('LOWER(u.username)')->limit(100)->get();
     }
 
     private function validasi(Request $request, ?object $lama): array

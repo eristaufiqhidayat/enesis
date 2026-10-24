@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -30,6 +31,55 @@ class AkunTest extends AdminTestCase
         $this->get('/user_sales?q=balaraja')->assertOk()->assertSee('sinta')->assertDontSee('rudi.h');
         $this->get('/user_sales?depo=46')->assertOk()->assertSee('rudi.h')->assertDontSee('sinta');
         $this->get('/user_koordinator')->assertOk()->assertSee('koor')->assertDontSee('rudi.h');
+    }
+
+    public function test_lihat_sales_di_bawah_koordinator(): void
+    {
+        $koor = $this->akun('koor.satu', 'koordinator', 137);
+        $this->akun('rudi', 'sales', 1);
+        $this->akun('tegar', 'sales', 3);
+        $this->akun('sinta', 'sales', 2);
+        $this->akun('joko', 'sales', 4, ['aktif' => false]);
+
+        // Daftar koordinator: jumlah sales aktif bertaut ke User Sales tersaring.
+        $this->get('/user_koordinator')->assertOk()
+            ->assertSee('Sales aktif')
+            ->assertSee(route('akun.user_sales.index', ['koordinator' => 137]), false);
+
+        // User Sales tersaring per koordinator.
+        $this->get('/user_sales?koordinator=137')->assertOk()
+            ->assertSee('Semua koordinator')->assertSee('rudi')->assertSee('tegar')->assertSee('joko')
+            ->assertDontSee('sinta');
+
+        // Cari juga lewat nama koordinator.
+        $this->get('/user_sales?q=koor+satu')->assertOk()->assertSee('rudi')->assertDontSee('sinta');
+
+        // Detail koordinator menampilkan daftar sales bawahannya.
+        $this->get('/user_koordinator/'.$koor->id)->assertOk()
+            ->assertSee('Sales di bawah koordinator ini')->assertSee('2 aktif dari 3 akun')
+            ->assertSee('rudi')->assertDontSee('sinta');
+
+        // Juga di halaman edit koordinator.
+        $this->get('/user_koordinator/'.$koor->id.'/edit')->assertOk()
+            ->assertSee('Sales di bawah koordinator ini')->assertSee('tegar');
+
+        // Akun sales tidak menampilkan kartu ini.
+        $this->get('/user_sales/'.User::where('username', 'rudi')->value('id'))->assertOk()
+            ->assertDontSee('Sales di bawah koordinator ini');
+    }
+
+    public function test_klik_menu_dari_halaman_inertia_membuka_halaman_blade_penuh(): void
+    {
+        // Tanpa ini Inertia menampilkan halaman Blade di dalam popup.
+        $this->get('/user_sales', ['X-Inertia' => 'true', 'X-Inertia-Version' => ''])
+            ->assertStatus(409)->assertHeader('X-Inertia-Location', url('/user_sales'));
+        $this->get('/role', ['X-Inertia' => 'true'])->assertStatus(409);
+
+        // Halaman Inertia dan permintaan biasa tidak berubah.
+        $versi = (string) app(HandleInertiaRequests::class)->version(request());
+        $this->get('/provinsi', ['X-Inertia' => 'true', 'X-Inertia-Version' => $versi])->assertOk()->assertHeader('X-Inertia', 'true');
+        $this->get('/user_sales')->assertOk();
+        $this->getJson('/user_sales/karyawan?q=ru')->assertOk();
     }
 
     public function test_tambah_akun_password_otomatis_tampil_sekali(): void

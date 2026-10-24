@@ -49,6 +49,9 @@ class SambungTransaksi
             'karyawan_id' => ['sales', 'sales_name'], 'koordinator_id' => ['koordinator', 'koordinator_name'],
             'depo_id' => ['depo', 'warehouse_name'], 'area_id' => ['area', 'area_name'], 'outlet_id' => ['outlet', 'outlet_code'],
         ],
+        'lap_checkin_checkout' => [
+            'karyawan_id' => ['sales', 'employee_name'], 'depo_id' => ['depo', 'warehouse_name'],
+        ],
         'lap_absensi_sales' => [
             'karyawan_id' => ['sales', 'employee_name'], 'koordinator_id' => ['koordinator', 'koordinator_name'],
             'depo_id' => ['depo', 'warehouse_name'],

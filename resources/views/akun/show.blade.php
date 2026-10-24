@@ -102,6 +102,9 @@
         </x-ui.molecules.card>
     </div>
 
+    @include('akun._sales-bawahan')
+    @include('akun._outlet-sales')
+
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <x-ui.molecules.card body-class="overflow-x-auto">
             <x-slot:header><h6 class="mb-0 font-semibold">Riwayat sesi HP</h6></x-slot:header>

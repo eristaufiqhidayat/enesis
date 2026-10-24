@@ -83,7 +83,13 @@ class HariKerja
      */
     public function areaRute(): array
     {
-        $area = DB::table('mk_karyawan_area')->where('karyawan_id', $this->karyawanId)->get();
+        return self::areaKaryawan($this->karyawanId);
+    }
+
+    /** Area rute sales: area yang ditandai aktif, atau semua areanya bila tidak ada yang aktif. */
+    public static function areaKaryawan(int $karyawanId): array
+    {
+        $area = DB::table('mk_karyawan_area')->where('karyawan_id', $karyawanId)->get();
         $aktif = $area->filter(fn ($a) => (bool) $a->aktif);
 
         return ($aktif->isNotEmpty() ? $aktif : $area)->pluck('area_id')->map(fn ($id) => (int) $id)->all();

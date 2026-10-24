@@ -3,6 +3,7 @@
 namespace App\Support\Akses;
 
 use App\Models\User;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -133,6 +134,21 @@ class Akses
     public static function cakupan(?User $user): string
     {
         return self::penuh($user) ? 'semua' : (self::role($user)->cakupan ?: 'semua');
+    }
+
+    /**
+     * Batasi query data karyawan sesuai cakupan role. $k = alias tabel mk_karyawan pada query.
+     */
+    public static function batasiKaryawan(Builder $q, ?User $user, string $k = 'k'): Builder
+    {
+        $karyawan = $user?->karyawan_id;
+
+        return match (self::cakupan($user)) {
+            'depo' => $q->where("{$k}.depo_id", DB::table('mk_karyawan')->where('id', $karyawan ?? 0)->value('depo_id') ?? -1),
+            'downline' => $q->where(fn ($w) => $w->where("{$k}.koordinator_id", $karyawan ?? -1)->orWhere("{$k}.id", $karyawan ?? -1)),
+            'diri' => $q->where("{$k}.id", $karyawan ?? -1),
+            default => $q,
+        };
     }
 
     /** Menu sidebar yang boleh dilihat akun (grup kosong disembunyikan). */
