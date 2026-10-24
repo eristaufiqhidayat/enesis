@@ -42,6 +42,12 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        // API mobile: token Bearer per HP (tabel mobile_tokens).
+        'mobile' => [
+            'driver' => 'mobile-token',
+            'provider' => 'users',
+        ],
     ],
 
     /*
