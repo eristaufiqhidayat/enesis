@@ -20,7 +20,7 @@ Tambahkan input pencarian menu di `.brand` sidebar (stack Vue/Inertia, `resource
 - [x] Mengetik kata yang tidak cocok dengan judul menu apa pun menampilkan baris "Tidak ditemukan".
 - [x] `Escape` pada input, atau blur (klik di luar area pencarian), menyembunyikan dropdown.
 - [x] Mode sidebar collapsed icon-only (`collapsedFull`/class `sidebar-collapsed` di `<body>`) menyembunyikan input pencarian, konsisten dengan elemen lain yang sudah disembunyikan di mode itu lewat CSS yang sama dengan Blade.
-- [x] Perilaku diverifikasi manual dan didokumentasikan di PR (belum ada test runner JS untuk komponen Vue di proyek ini, konsisten dengan keputusan testing 009/010).
+- [ ] Perilaku diverifikasi manual dan didokumentasikan di PR (belum ada test runner JS untuk komponen Vue di proyek ini, konsisten dengan keputusan testing 009/010).
 
 ## Blocked by
 

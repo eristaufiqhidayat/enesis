@@ -62,6 +62,7 @@ return [
         ],
         [
             'label' => 'Canvassing',
+            'icon' => 'megaphone',
             'items' => [
                 [
                     'slug' => 'checkin_depo',
@@ -134,6 +135,7 @@ return [
         ],
         [
             'label' => 'Warehouse',
+            'icon' => 'warehouse',
             'items' => [
                 [
                     'slug' => 'loading_barang',
@@ -201,6 +203,7 @@ return [
         ],
         [
             'label' => 'Aktivitas Canvas',
+            'icon' => 'route',
             'items' => [
                 [
                     'slug' => 'checkin_outlet',
@@ -283,6 +286,7 @@ return [
         ],
         [
             'label' => 'Absensi dan Penggajian',
+            'icon' => 'calendar-check',
             'items' => [
                 [
                     'slug' => 'absensi_sales',
@@ -382,6 +386,7 @@ return [
         ],
         [
             'label' => 'Outlet dan Visit',
+            'icon' => 'store',
             'items' => [
                 [
                     'title' => 'Outlet',
@@ -481,6 +486,7 @@ return [
         ],
         [
             'label' => 'User dan Karyawan',
+            'icon' => 'users',
             'items' => [
                 [
                     'title' => 'Users',
@@ -577,6 +583,7 @@ return [
         ],
         [
             'label' => 'Master Data & Pengaturan',
+            'icon' => 'settings',
             'items' => [
                 [
                     'slug' => 'panduan',
