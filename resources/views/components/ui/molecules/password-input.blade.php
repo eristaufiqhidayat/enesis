@@ -4,7 +4,8 @@
 <div class="password-field">
     <x-ui.atoms.input type="password" :id="$id" :name="$name" {{ $attributes }} />
     <button type="button" class="password-toggle" data-password-toggle="{{ $id }}" aria-label="Tampilkan password">
-        <i class="fas fa-eye"></i>
+        <x-ui.atoms.icon name="eye" data-password-icon-tampil />
+        <x-ui.atoms.icon name="eye-off" class="hidden" data-password-icon-sembunyi />
     </button>
 </div>
 
@@ -17,7 +18,8 @@
                     const tampil = input.type === 'password';
                     input.type = tampil ? 'text' : 'password';
                     tombol.setAttribute('aria-label', tampil ? 'Sembunyikan password' : 'Tampilkan password');
-                    tombol.querySelector('i').className = tampil ? 'fas fa-eye-slash' : 'fas fa-eye';
+                    tombol.querySelector('[data-password-icon-tampil]').classList.toggle('hidden', tampil);
+                    tombol.querySelector('[data-password-icon-sembunyi]').classList.toggle('hidden', !tampil);
                 });
             });
         </script>

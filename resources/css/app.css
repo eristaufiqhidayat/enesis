@@ -57,11 +57,15 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
 /* Ikon kanan atas sama dengan Marketama: tombol bulat biru (.shortcut-btn) dan lonceng abu-abu dengan titik biru. */
 .shortcut-btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background-color: var(--color-brand); color: #fff !important; font-size: 14px; transition: all .2s ease; text-decoration: none; }
 .shortcut-btn:hover { opacity: .85; color: #fff !important; }
+.shortcut-btn svg { width: .9rem; height: .9rem; }
 .notif-bell { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 2.25rem; height: 2.25rem; color: var(--color-ink-muted); font-size: 1.25rem; text-decoration: none; }
 .notif-bell:hover { color: var(--color-brand); }
 .notif-bell::before { content: ""; position: absolute; right: .3rem; top: .35rem; width: .7rem; height: .7rem; border-radius: 40%; background-color: var(--color-brand); border: 2px solid var(--color-surface); }
+.notif-bell svg { width: 1.25rem; height: 1.25rem; }
+.dropdown-menu svg { width: 1rem; height: 1rem; vertical-align: -.15em; }
 /* Info user login + tombol Keluar di kanan topbar. */
 .topbar-user { display: inline-flex; align-items: center; gap: .5rem; padding-left: .75rem; margin-left: .25rem; border-left: 1px solid #e5e7eb; color: var(--color-ink-muted); font-size: .8rem; }
+.topbar-user svg { width: 1.1rem; height: 1.1rem; }
 .topbar-user-name { font-weight: 600; color: var(--color-ink, #344050); max-width: 12rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Halaman tamu (login, ganti password): tanpa sidebar/topbar, kartu di tengah. */
 .auth-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem; background-image: linear-gradient(-45deg, var(--color-brand-light), var(--color-brand-dark)); }
@@ -70,6 +74,7 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
 .password-field .form-control { padding-right: 2.25rem; }
 .password-toggle { position: absolute; top: 50%; right: .5rem; transform: translateY(-50%); background: transparent; border: 0; color: var(--color-ink-muted); cursor: pointer; padding: .25rem; line-height: 1; }
 .password-toggle:hover { color: var(--color-brand); }
+.password-toggle svg { width: 1rem; height: 1rem; }
 .form-check { display: inline-flex; align-items: center; gap: .5rem; font-size: .8rem; color: var(--color-ink-muted); cursor: pointer; }
 .form-check-input { width: 1rem; height: 1rem; accent-color: var(--color-brand); }
 /* Kotak "Demo masuk cepat" (hanya tampil bila DEMO_LOGIN aktif). */
