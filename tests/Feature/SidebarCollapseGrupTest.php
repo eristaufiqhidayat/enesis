@@ -62,17 +62,19 @@ class SidebarCollapseGrupTest extends TestCase
         $this->assertStringNotContainsString('far fa-', $html);
     }
 
-    public function test_ikon_sidebar_hanya_di_header_grup_header_submenu_dan_item_daun_berikon(): void
+    public function test_ikon_sidebar_hanya_di_header_grup_header_submenu_dan_item_daun_grup_tanpa_label(): void
     {
         $html = $this->renderSidebar();
 
         $labeledGroupCount = collect(config('marketama.menu'))->filter(fn ($section) => $section['label'])->count();
 
-        // Ikon hanya ada di toggle grup, header panel grup, header panel tiap submenu ber-children
-        // yang punya icon di config, dan item daun yang punya icon di config.
+        // Ikon item daun (nav-link-icon-svg) hanya untuk grup pertama yang tanpa label (Beranda dkk.) —
+        // item daun di dalam panel flyout grup berlabel/submenu lain tidak ikut berikon meski config-nya
+        // punya key icon, supaya tidak semua submenu tiba-tiba berikon.
         $allItems = collect(config('marketama.menu'))->flatMap(fn ($section) => $section['items'])->all();
         $submenusWithIcon = $this->countItemsWithChildrenAndIcon($allItems);
-        $this->assertSame($this->countLeafItemsWithIcon($allItems), substr_count($html, 'nav-link-icon-svg'));
+        $firstSectionItems = config('marketama.menu')[0]['items'];
+        $this->assertSame($this->countLeafItemsWithIcon($firstSectionItems), substr_count($html, 'nav-link-icon-svg'));
         $this->assertSame($labeledGroupCount * 2 + $submenusWithIcon, substr_count($html, 'section-label-icon'));
     }
 

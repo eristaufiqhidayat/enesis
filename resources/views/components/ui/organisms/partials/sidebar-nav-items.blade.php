@@ -1,4 +1,4 @@
-@props(['items', 'current'])
+@props(['items', 'current', 'topLevel' => false])
 
 {{-- Item ber-children dirender sebagai flyout: panel submenu muncul di kanan parent (desktop) atau accordion inline (mobile). Rekursif, jadi children di dalam children memakai mekanisme yang sama. --}}
 @php($hasActiveDescendant = function (array $items) use (&$hasActiveDescendant, $current) {
@@ -36,9 +36,11 @@
         </li>
     @else
         <li class="nav-item">
-            <a class="nav-link {{ $current === $item['slug'] ? 'active' : '' }}" href="{{ route('menu', $item['slug']) }}">
-                @if (! empty($item['icon']))
-                    <x-ui.atoms.icon :name="$item['icon']" class="nav-link-icon-svg" />
+            <a class="nav-link {{ $current === $item['slug'] ? 'active' : '' }}" href="{{ route('menu', $item['slug']) }}" @if ($topLevel) data-tooltip-menu="{{ $item['title'] }}" @endif>
+                @if ($topLevel && ! empty($item['icon']))
+                    <span class="nav-link-icon">
+                        <x-ui.atoms.icon :name="$item['icon']" class="nav-link-icon-svg" />
+                    </span>
                 @endif
                 <span class="nav-link-text">{{ $item['title'] }}</span>
             </a>
