@@ -11,10 +11,10 @@ Pindahkan ikon statis di `resources/views/area/design.blade.php` dan `resources/
 
 ## Acceptance criteria
 
-- [ ] `area/design.blade.php` dan `tracking/history.blade.php` tidak lagi mengandung `fas fa-*` di markup Blade statis maupun di string JS inline.
-- [ ] Markup Blade statis di kedua file memanggil Icon atom.
-- [ ] String HTML yang dibangun di JS inline (popup Leaflet, tombol layer peta, tombol hapus area, link Google Maps) menyisipkan SVG Lucide yang valid (bukan Font Awesome).
-- [ ] Verifikasi manual: halaman Design Polygon Area (tombol gambar/undo/cancel/hapus titik, popup hapus area) dan Tracking Koordinator (popup koordinator, tombol ganti layer peta, link Google Maps) tampil dengan ikon Lucide dan tetap berfungsi seperti sebelumnya (klik tombol tetap memicu aksi yang sama).
+- [x] `area/design.blade.php` dan `tracking/history.blade.php` tidak lagi mengandung `fas fa-*` di markup Blade statis maupun di string JS inline.
+- [x] Markup Blade statis di kedua file memanggil Icon atom.
+- [x] String HTML yang dibangun di JS inline (popup Leaflet, tombol layer peta, tombol hapus area, link Google Maps) menyisipkan SVG Lucide yang valid (bukan Font Awesome).
+- [x] Verifikasi manual: halaman Design Polygon Area (tombol gambar/undo/cancel/hapus titik, popup hapus area) dan Tracking Koordinator (popup koordinator, tombol ganti layer peta, link Google Maps) tampil dengan ikon Lucide dan tetap berfungsi seperti sebelumnya (klik tombol tetap memicu aksi yang sama).
 
 ## Blocked by
 

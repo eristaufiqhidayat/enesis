@@ -24,7 +24,7 @@
             <x-ui.molecules.card class="h-full" body-class="card-body card-body-compact">
                 <x-slot:header><h6 class="mb-0 font-semibold">Filter &amp; Zoom Area</h6></x-slot:header>
 
-                <x-ui.atoms.label for="map_search" class="mb-1"><i class="fas fa-search-location me-1"></i>Cari Alamat di Peta</x-ui.atoms.label>
+                <x-ui.atoms.label for="map_search" class="mb-1"><x-ui.atoms.icon name="map-pin" class="me-1" />Cari Alamat di Peta</x-ui.atoms.label>
                 <x-ui.atoms.input id="map_search" class="mb-2" placeholder="Ketik alamat lalu tekan Enter..." autocomplete="off" />
                 <div class="grid grid-cols-2 gap-2">
                     <div>
@@ -49,8 +49,8 @@
                         <x-ui.atoms.select id="filter_village" data-level="village"><option value="">Semua</option></x-ui.atoms.select>
                     </div>
                     <div class="col-span-2 flex gap-2">
-                        <x-ui.atoms.button variant="primary" class="grow" id="btn_filter"><i class="fas fa-search me-1"></i>Tampilkan</x-ui.atoms.button>
-                        <x-ui.atoms.button variant="outline-secondary" id="btn_reset"><i class="fas fa-undo me-1"></i>Reset</x-ui.atoms.button>
+                        <x-ui.atoms.button variant="primary" class="grow" id="btn_filter"><x-ui.atoms.icon name="search" class="me-1" />Tampilkan</x-ui.atoms.button>
+                        <x-ui.atoms.button variant="outline-secondary" id="btn_reset"><x-ui.atoms.icon name="undo" class="me-1" />Reset</x-ui.atoms.button>
                     </div>
                 </div>
             </x-ui.molecules.card>
@@ -71,12 +71,12 @@
     </div>
 
     <x-ui.molecules.card class="mb-2" body-class="card-body card-body-compact flex items-center gap-2 flex-wrap">
-        <x-slot:header><h6 class="mb-0 font-semibold"><i class="fas fa-draw-polygon me-1"></i>Gambar Polygon Baru</h6></x-slot:header>
+        <x-slot:header><h6 class="mb-0 font-semibold"><x-ui.atoms.icon name="shapes" class="me-1" />Gambar Polygon Baru</h6></x-slot:header>
 
-        <x-ui.atoms.button variant="success" id="btn_start_draw"><i class="fas fa-pencil-alt me-1"></i>Mulai Gambar</x-ui.atoms.button>
-        <x-ui.atoms.button variant="primary" class="hidden" id="btn_finish_draw"><i class="fas fa-check me-1"></i>Selesai</x-ui.atoms.button>
-        <x-ui.atoms.button variant="outline-warning" class="hidden" id="btn_undo_point"><i class="fas fa-undo me-1"></i>Hapus Titik Terakhir</x-ui.atoms.button>
-        <x-ui.atoms.button variant="outline-danger" class="hidden" id="btn_cancel_draw"><i class="fas fa-times me-1"></i>Batal</x-ui.atoms.button>
+        <x-ui.atoms.button variant="success" id="btn_start_draw"><x-ui.atoms.icon name="pen" class="me-1" />Mulai Gambar</x-ui.atoms.button>
+        <x-ui.atoms.button variant="primary" class="hidden" id="btn_finish_draw"><x-ui.atoms.icon name="check" class="me-1" />Selesai</x-ui.atoms.button>
+        <x-ui.atoms.button variant="outline-warning" class="hidden" id="btn_undo_point"><x-ui.atoms.icon name="undo" class="me-1" />Hapus Titik Terakhir</x-ui.atoms.button>
+        <x-ui.atoms.button variant="outline-danger" class="hidden" id="btn_cancel_draw"><x-ui.atoms.icon name="x" class="me-1" />Batal</x-ui.atoms.button>
         <x-ui.atoms.badge variant="secondary" id="map_mode_badge">Mode: Lihat</x-ui.atoms.badge>
         <small class="text-gray-500" id="draw_status">Pilih provinsi lalu klik "Mulai Gambar" untuk membuat area baru.</small>
     </x-ui.molecules.card>
@@ -128,6 +128,8 @@
         const $ = (id) => document.getElementById(id);
         const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         const COLORS = ['#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4', '#42d4f4', '#f032e6', '#469990', '#9A6324', '#800000', '#808000', '#000075'];
+        // SVG Lucide ditulis manual karena titik ini bukan konteks render Blade (popup Leaflet dibangun lewat template literal JS).
+        const icoTrash = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
 
         function showModal(id) { $(id).classList.remove('hidden'); }
         function hideModal(id) { $(id).classList.add('hidden'); }
@@ -162,7 +164,7 @@
                 + '<div><b>Jumlah Toko:</b> ' + (a.outlet_count ?? 0) + '</div>'
                 + '<div><b>Sales:</b> ' + esc(a.salesperson || '-') + '</div>'
                 + (a.info ? '<div><b>Info:</b> ' + esc(a.info) + '</div>' : '')
-                + '<button type="button" class="btn btn-sm btn-outline-danger mt-2 btn-delete-area" data-id="' + a.id + '"><i class="fas fa-trash me-1"></i>Hapus</button></div>';
+                + '<button type="button" class="btn btn-sm btn-outline-danger mt-2 btn-delete-area" data-id="' + a.id + '">' + icoTrash + 'Hapus</button></div>';
         }
 
         function drawAreas() {

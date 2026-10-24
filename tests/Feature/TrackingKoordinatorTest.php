@@ -15,10 +15,13 @@ class TrackingKoordinatorTest extends TestCase
     {
         DB::table('tracking_koordinator')->insert(['koordinator_id' => 7, 'nama' => 'Dian', 'depo' => 'JAKSEL']);
 
-        $this->get('/tracking_koordinator_history_location')
+        $response = $this->get('/tracking_koordinator_history_location')
             ->assertOk()
             ->assertSee('id="tracking_map"', false)
             ->assertSee('Dian');
+
+        $response->assertDontSee('fas fa-', false);
+        $response->assertSee('<svg', false);
     }
 
     public function test_locations_endpoint_returns_route_in_time_order(): void
