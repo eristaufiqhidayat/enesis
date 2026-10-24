@@ -18,3 +18,4 @@
 | 014 | [ ] | Header grup sidebar lebih kontras, ikon grup tetap tampil saat collapsed, submenu jadi flyout bertingkat ke kanan | [docs/backlog_items/014-sidebar-header-kontras-flyout-submenu/spec.md](backlog_items/014-sidebar-header-kontras-flyout-submenu/spec.md) |
 | 015 | [ ] | Gabung menu Rekap Pencapaian SKU per Motoris & per Depo jadi satu halaman bertab | [docs/backlog_items/015-gabung-rekap-pencapaian-sku-tab/spec.md](backlog_items/015-gabung-rekap-pencapaian-sku-tab/spec.md) |
 | 016 | [ ] | Gabung menu Motoris Coverage, Motoris Performance, Monitor Absensi Motoris jadi satu halaman bertab | [docs/backlog_items/016-gabung-menu-motoris-tab/spec.md](backlog_items/016-gabung-menu-motoris-tab/spec.md) |
+| 017 | [ ] | Tampilkan ikon menu Beranda, Monitoring Harian Sales, Rekap Pencapaian SKU, Summary All Depo, Motoris Report di sidebar | [docs/backlog_items/017-ikon-menu-grup-tanpa-label/spec.md](backlog_items/017-ikon-menu-grup-tanpa-label/spec.md) |
