@@ -1,7 +1,5 @@
 <?php
 
-use App\Support\Menu\SumberUser;
-
 // Struktur menu sidebar disamakan dengan Marketama Canvassing System.
 // Dihasilkan dari hasil penarikan data 22 Okt 2026.
 
@@ -510,6 +508,11 @@ return [
                             'icon' => 'fas fa-users',
                         ],
                     ],
+                ],
+                [
+                    'slug' => 'role',
+                    'title' => 'Role & Hak Akses',
+                    'icon' => 'fas fa-user-shield',
                 ],
                 [
                     'title' => 'Karyawan',
@@ -1820,10 +1823,8 @@ return [
                 'tipe_outlet' => 'Tipe Outlet',
             ],
         ],
-        // Akun login Enesis kategori super_admin (tabel users), bukan salinan layar aplikasi lama.
         'super_admin' => [
             'title' => 'Super Admin',
-            'sumber' => [SumberUser::class, 'superAdmin'],
             'columns' => [
                 'username' => 'Username',
                 'nickname' => 'Nickname',
@@ -1854,10 +1855,8 @@ return [
                 'diupdate_pada' => 'Diupdate Pada',
             ],
         ],
-        // Akun login Enesis kategori lainnya (tabel users), bukan salinan layar aplikasi lama.
         'user_lainnya' => [
             'title' => 'User Lainnya',
-            'sumber' => [SumberUser::class, 'lainnya'],
             'columns' => [
                 'username' => 'Username',
                 'nickname' => 'Nickname',
@@ -2098,10 +2097,8 @@ return [
                 'diupdate_pada' => 'Diupdate Pada',
             ],
         ],
-        // Akun login Enesis kategori koordinator (tabel users), bukan salinan layar aplikasi lama.
         'user_koordinator' => [
             'title' => 'User Koordinator',
-            'sumber' => [SumberUser::class, 'koordinator'],
             'columns' => [
                 'username' => 'Username',
                 'nickname' => 'Nickname',
@@ -2238,10 +2235,8 @@ return [
                 'diupdate_pada' => 'Diupdate Pada',
             ],
         ],
-        // Akun login Enesis kategori sales (tabel users), bukan salinan layar aplikasi lama.
         'user_sales' => [
             'title' => 'User Sales',
-            'sumber' => [SumberUser::class, 'sales'],
             'columns' => [
                 'username' => 'Username',
                 'nickname' => 'Nickname',
