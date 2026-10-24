@@ -139,7 +139,7 @@ function openActiveResult() {
         </div>
         <div class="sidebar-scroll" ref="navRef">
         <ul class="nav flex flex-col list-none m-0 p-0">
-            <SidebarNavList :items="navItems" />
+            <SidebarNavList :items="navItems" top-level />
         </ul>
         </div>
     </nav>

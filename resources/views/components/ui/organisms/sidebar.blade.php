@@ -44,7 +44,7 @@
                 </li>
             @else
                 <ul class="flex flex-col list-none m-0 p-0">
-                    <x-ui.organisms.partials.sidebar-nav-items :items="$section['items']" :current="$current" />
+                    <x-ui.organisms.partials.sidebar-nav-items :items="$section['items']" :current="$current" :top-level="true" />
                 </ul>
             @endif
         @endforeach
@@ -140,6 +140,23 @@
         // Klik di luar area pencarian menutup dropdown tanpa mengosongkan input.
         document.addEventListener('click', (e) => {
             if (! e.target.closest('.sidebar-search')) hideSearchResults();
+        });
+
+        // Tooltip nama menu grup tanpa label saat sidebar dipersempit. Dirender fixed di body karena .sidebar memotong overflow.
+        const menuTooltip = document.createElement('div');
+        menuTooltip.className = 'tooltip-wrapper tooltip-right tooltip-floating';
+
+        document.querySelectorAll('.sidebar a[data-tooltip-menu]').forEach((link) => {
+            link.addEventListener('mouseenter', () => {
+                if (! desktopQuery.matches || ! document.body.classList.contains('sidebar-collapsed')) return;
+                const rect = link.getBoundingClientRect();
+                menuTooltip.setAttribute('data-tooltip', link.dataset.tooltipMenu);
+                menuTooltip.style.left = `${rect.right + 6}px`;
+                menuTooltip.style.top = `${rect.top + rect.height / 2}px`;
+                document.body.append(menuTooltip);
+            });
+
+            link.addEventListener('mouseleave', () => menuTooltip.remove());
         });
 
         // Submenu (item ber-children): desktop memakai flyout ke kanan parent, mobile (≤991px) tetap accordion inline.
