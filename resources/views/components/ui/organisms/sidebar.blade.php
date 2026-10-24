@@ -5,7 +5,7 @@
         <button type="button" data-sidebar-toggle aria-label="Persempit/lebarkan sidebar"><i class="fas fa-bars"></i></button>
     </div>
     <ul class="nav flex flex-col list-none m-0 p-0">
-        @foreach (config('marketama.menu') as $section)
+        @foreach (\App\Support\Akses\Akses::menu(auth()->user()) as $section)
             @php($groupId = 'group-' . $loop->index)
             @if ($section['label'])
                 @php($groupSlugs = collect($section['items'])->flatMap(fn ($item) => isset($item['children']) ? array_column($item['children'], 'slug') : [$item['slug']])->implode(','))

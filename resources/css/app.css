@@ -144,6 +144,8 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     .badge-secondary { @apply bg-gray-200 text-gray-700; }
     .badge-light { @apply bg-gray-100 text-gray-500; }
     .badge-danger { @apply bg-red-600 text-white; }
+    .badge-success { @apply bg-green-100 text-green-800; }
+    .badge-warning { @apply bg-amber-100 text-amber-800; }
 
     .list-group { @apply divide-y divide-gray-200 border border-gray-200 rounded-md overflow-hidden; }
     .list-group-flush { @apply border-0 rounded-none; }

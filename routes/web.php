@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Admin\AkunController;
+use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Auth\DemoLoginController;
 use App\Http\Controllers\Auth\GantiPasswordController;
 use App\Http\Controllers\Auth\LoginController;
@@ -26,31 +28,73 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'wajib-ganti-password'])->group(function () {
     Route::redirect('/', '/home');
 
-    Route::get('/tracking_koordinator_history_location', [TrackingKoordinatorController::class, 'index']);
+    Route::get('/tracking_koordinator_history_location', [TrackingKoordinatorController::class, 'index'])
+        ->middleware('hak:tracking_koordinator_history_location');
     Route::get('/tracking_koordinator_history_location/locations', [TrackingKoordinatorController::class, 'locations'])
-        ->name('tracking-koordinator.locations');
+        ->middleware('hak:tracking_koordinator_history_location')->name('tracking-koordinator.locations');
     Route::get('/tracking_koordinator_history_location/counts', [TrackingKoordinatorController::class, 'counts'])
-        ->name('tracking-koordinator.counts');
+        ->middleware('hak:tracking_koordinator_history_location')->name('tracking-koordinator.counts');
 
-    Route::get('/tracking_sales_history_location', [TrackingSalesController::class, 'index']);
+    Route::get('/tracking_sales_history_location', [TrackingSalesController::class, 'index'])
+        ->middleware('hak:tracking_sales_history_location');
     Route::get('/tracking_sales_history_location/locations', [TrackingSalesController::class, 'locations'])
-        ->name('tracking-sales.locations');
+        ->middleware('hak:tracking_sales_history_location')->name('tracking-sales.locations');
     Route::get('/tracking_sales_history_location/counts', [TrackingSalesController::class, 'counts'])
-        ->name('tracking-sales.counts');
+        ->middleware('hak:tracking_sales_history_location')->name('tracking-sales.counts');
 
     Route::prefix('master_area/design_area')->name('design-area.')->controller(DesignAreaController::class)->group(function () {
-        Route::get('/', 'index')->name('index');
-        Route::get('/options', 'options')->name('options');
-        Route::get('/areas', 'areas')->name('areas');
-        Route::post('/areas', 'store')->name('store');
-        Route::delete('/areas/{id}', 'destroy')->whereNumber('id')->name('destroy');
+        Route::get('/', 'index')->middleware('hak:master_area')->name('index');
+        Route::get('/options', 'options')->middleware('hak:master_area')->name('options');
+        Route::get('/areas', 'areas')->middleware('hak:master_area')->name('areas');
+        Route::post('/areas', 'store')->middleware('hak:master_area,ubah')->name('store');
+        Route::delete('/areas/{id}', 'destroy')->middleware('hak:master_area,hapus')->whereNumber('id')->name('destroy');
     });
 
     // Ikon "Tambah" di kanan atas: formnya belum dibuat di versi Laravel.
-    Route::view('/loading_barang/add', 'menu.coming_soon', ['title' => 'Tambah Loading Barang', 'back' => 'loading_barang']);
-    Route::view('/barang_canvassing/add', 'menu.coming_soon', ['title' => 'Tambah Barang Canvassing', 'back' => 'barang_canvassing']);
+    Route::view('/loading_barang/add', 'menu.coming_soon', ['title' => 'Tambah Loading Barang', 'back' => 'loading_barang'])
+        ->middleware('hak:loading_barang,tambah');
+    Route::view('/barang_canvassing/add', 'menu.coming_soon', ['title' => 'Tambah Barang Canvassing', 'back' => 'barang_canvassing'])
+        ->middleware('hak:barang_canvassing,tambah');
+
+    // Kelola akun login (4 menu Users) dan role & hak akses; parameter "menu" = slug menu.
+    foreach (array_keys(AkunController::MENU) as $slug) {
+        Route::prefix($slug)->name("akun.{$slug}.")->controller(AkunController::class)->group(function () use ($slug) {
+            $rute = [
+                // [method, uri, aksi controller, hak, nama]
+                ['get', '/', 'index', 'lihat', 'index'],
+                ['get', '/karyawan', 'cariKaryawan', 'lihat', 'karyawan'],
+                ['get', '/tambah', 'create', 'tambah', 'create'],
+                ['post', '/', 'store', 'tambah', 'store'],
+                ['get', '/{id}', 'show', 'lihat', 'show'],
+                ['get', '/{id}/edit', 'edit', 'ubah', 'edit'],
+                ['put', '/{id}', 'update', 'ubah', 'update'],
+                ['post', '/{id}/password', 'aturPassword', 'ubah', 'password'],
+                ['post', '/{id}/status', 'ubahStatus', 'ubah', 'status'],
+                ['post', '/{id}/cabut-sesi', 'cabutSesi', 'ubah', 'cabut-sesi'],
+                ['post', '/{id}/pakai', 'pakaiAkun', 'ubah', 'pakai'],
+                ['delete', '/{id}', 'destroy', 'hapus', 'destroy'],
+            ];
+
+            foreach ($rute as [$method, $uri, $aksi, $hak, $nama]) {
+                Route::{$method}($uri, $aksi)->middleware("hak:{$slug},{$hak}")
+                    ->defaults('menu', $slug)->where('id', '[0-9]+')->name($nama);
+            }
+        });
+    }
+
+    Route::prefix('role')->name('role.')->controller(RoleController::class)->group(function () {
+        Route::get('/', 'index')->middleware('hak:role')->name('index');
+        Route::get('/tambah', 'create')->middleware('hak:role,tambah')->name('create');
+        Route::post('/', 'store')->middleware('hak:role,tambah')->name('store');
+        Route::get('/{id}/edit', 'edit')->middleware('hak:role')->whereNumber('id')->name('edit');
+        Route::put('/{id}', 'update')->middleware('hak:role,ubah')->whereNumber('id')->name('update');
+        Route::get('/{id}/anggota', 'anggota')->middleware('hak:role')->whereNumber('id')->name('anggota');
+        Route::post('/{id}/pindah', 'pindahkan')->middleware('hak:role,ubah')->whereNumber('id')->name('pindah');
+        Route::delete('/{id}', 'destroy')->middleware('hak:role,hapus')->whereNumber('id')->name('destroy');
+    });
 
     Route::get('/{slug}', [MenuController::class, 'show'])
+        ->middleware('hak:@slug')
         ->whereIn('slug', array_keys(config('marketama.pages')))
         ->name('menu');
 });

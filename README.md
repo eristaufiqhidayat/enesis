@@ -209,6 +209,30 @@ php artisan enesis:sambung-transaksi --tabel=lap_penjualan_barang
 php artisan enesis:sambung-transaksi --kolom=karyawan_id --kolom=koordinator_id   # hanya kolom tertentu
 ```
 
+## Kelola akun & role (`/user_sales`, `/user_koordinator`, `/user_lainnya`, `/super_admin`, `/role`)
+
+Empat menu Users mengelola akun login Enesis (tabel `users`): daftar dengan filter status (aktif, tidak
+aktif, perlu keputusan, belum ganti password), cari, filter depo, HP yang sedang login; tambah/edit akun
+(kategori, karyawan, role, aktif); detail akun dengan sesi HP dan riwayat; password awal acak yang tampil
+sekali; aktif/nonaktif (nonaktif mencabut sesi HP); cabut sesi HP; keputusan akun ganda; hapus hanya untuk
+akun buatan Enesis yang belum pernah login.
+
+Menu **Role & Hak Akses** (`/role`): setiap akun punya satu role yang menentukan menu yang terlihat, aksi per
+menu (lihat/tambah/ubah/hapus/ekspor), cakupan data (semua / depo sendiri / per downline / diri sendiri), dan
+boleh login di web dan/atau aplikasi HP. Migrasi membuat 4 role bawaan sesuai kategori lama dan mengisi
+`users.role_id`:
+
+| Role bawaan | Cakupan | Web | HP | Hak awal |
+|---|---|---|---|---|
+| Super Admin | Semua | ✓ | – | semua menu |
+| Koordinator | Per downline | ✓ | ✓ | lihat + ekspor semua menu kecuali kelola akun/role |
+| Sales Motoris | Diri sendiri | – | ✓ | Beranda |
+| Lainnya | Depo sendiri | ✓ | – | lihat + ekspor semua menu kecuali kelola akun/role |
+
+Hak dicek di setiap rute (middleware `hak:<menu>,<aksi>`) dan sidebar hanya menampilkan menu yang boleh
+dilihat. Cakupan data saat ini diterapkan di menu kelola akun; menu laporan lain menyusul. Perubahan akun &
+role dicatat di `riwayat_admin`. Akun tanpa kategori dan tanpa role (akun teknis) tidak dibatasi.
+
 ## API aplikasi mobile (`/api/mobile/v1`)
 
 Tahap 1 untuk **sales motoris**, mengikuti mockup aplikasi (Beranda, Absen, Terima barang, Rute,

@@ -88,6 +88,25 @@
                 if (!target.contains(e.target) && e.target !== toggle) target.classList.add('hidden');
             });
         });
+
+        // Modal sederhana (.modal-container[data-modal]): [data-modal-open="id"] membuka, [data-modal-dismiss] / klik latar menutup,
+        // ?buka=id di URL membuka modal saat halaman dimuat.
+        (() => {
+            const buka = (id) => document.getElementById(id)?.classList.remove('hidden');
+            document.querySelectorAll('[data-modal-open]').forEach((el) => el.addEventListener('click', (e) => {
+                e.preventDefault();
+                buka(el.dataset.modalOpen);
+            }));
+            document.querySelectorAll('[data-modal] [data-modal-dismiss]').forEach((el) => el.addEventListener('click', (e) => {
+                e.preventDefault();
+                el.closest('.modal-container')?.classList.add('hidden');
+            }));
+            document.querySelectorAll('.modal-container[data-modal]').forEach((m) => m.addEventListener('click', (e) => {
+                if (e.target === m) m.classList.add('hidden');
+            }));
+            const awal = new URLSearchParams(location.search).get('buka');
+            if (awal && /^[a-z0-9-]+$/.test(awal)) buka(awal);
+        })();
     </script>
     @stack('scripts')
 </body>

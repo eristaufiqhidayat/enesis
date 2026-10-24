@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\Akses\Akses;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -48,6 +49,11 @@ class LoginController extends Controller
         }
 
         RateLimiter::clear($kunci);
+
+        if (! Akses::bolehWeb($user)) {
+            throw ValidationException::withMessages(['username' => 'Akun ini hanya untuk aplikasi HP, tidak bisa membuka web Enesis.']);
+        }
+
         Auth::login($user, $request->boolean('ingat'));
         $request->session()->regenerate();
         $user->forceFill(['login_terakhir_pada' => now()])->save();

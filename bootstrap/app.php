@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\CekHak;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\Mobile\Idempotensi;
 use App\Http\Middleware\Mobile\PeranMobile;
@@ -28,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->alias([
             'wajib-ganti-password' => WajibGantiPassword::class,
+            'hak' => CekHak::class,
             'mobile.peran' => PeranMobile::class,
             'mobile.idempoten' => Idempotensi::class,
         ]);
