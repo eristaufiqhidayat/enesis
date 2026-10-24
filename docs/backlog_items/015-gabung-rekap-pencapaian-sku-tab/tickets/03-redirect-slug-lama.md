@@ -8,10 +8,10 @@ Tambahkan redirect dari dua slug lama (`/rekap_pencapaian_sku_motoris`, `/rekap_
 
 ## Acceptance criteria
 
-- [ ] GET `/rekap_pencapaian_sku_motoris` me-redirect (302) ke `/rekap_pencapaian_sku?tab=motoris`.
-- [ ] GET `/rekap_pencapaian_depo_sku` me-redirect (302) ke `/rekap_pencapaian_sku?tab=depo`.
-- [ ] Query string lain yang dikirim ke slug lama (misal `q`) tetap diteruskan ke redirect target, tidak hilang.
-- [ ] Feature test di `tests/Feature/MenuTest.php` meng-assert kedua redirect di atas (status code + target URL/query).
+- [x] GET `/rekap_pencapaian_sku_motoris` me-redirect (302) ke `/rekap_pencapaian_sku?tab=motoris`.
+- [x] GET `/rekap_pencapaian_depo_sku` me-redirect (302) ke `/rekap_pencapaian_sku?tab=depo`.
+- [x] Query string lain yang dikirim ke slug lama (misal `q`) tetap diteruskan ke redirect target, tidak hilang.
+- [x] Feature test di `tests/Feature/MenuTest.php` meng-assert kedua redirect di atas (status code + target URL/query).
 
 ## Blocked by
 

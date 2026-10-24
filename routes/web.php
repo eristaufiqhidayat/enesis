@@ -118,6 +118,13 @@ Route::middleware(['auth', 'wajib-ganti-password'])->group(function () {
         )))->middleware('hak:monitoring_harian_sales');
     }
 
+    // Slug lama rekap pencapaian SKU yang sudah digabung jadi satu halaman bertab; query string ikut diteruskan.
+    foreach (['rekap_pencapaian_sku_motoris' => 'motoris', 'rekap_pencapaian_depo_sku' => 'depo'] as $slugLama => $tab) {
+        Route::get("/{$slugLama}", fn (Request $request) => redirect('/rekap_pencapaian_sku?'.http_build_query(
+            [...$request->query(), 'tab' => $tab]
+        )))->middleware('hak:rekap_pencapaian_sku');
+    }
+
     Route::get('/{slug}', [MenuController::class, 'show'])
         ->middleware('hak:@slug')
         ->whereIn('slug', array_keys(config('marketama.pages')))

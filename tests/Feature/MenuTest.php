@@ -196,6 +196,24 @@ class MenuTest extends TestCase
             );
     }
 
+    public function test_slug_lama_rekap_pencapaian_sku_motoris_redirects_to_tab_motoris(): void
+    {
+        $this->get('/rekap_pencapaian_sku_motoris')
+            ->assertRedirect('/rekap_pencapaian_sku?tab=motoris');
+    }
+
+    public function test_slug_lama_rekap_pencapaian_depo_sku_redirects_to_tab_depo(): void
+    {
+        $this->get('/rekap_pencapaian_depo_sku')
+            ->assertRedirect('/rekap_pencapaian_sku?tab=depo');
+    }
+
+    public function test_redirect_slug_lama_rekap_pencapaian_sku_meneruskan_query_string_lain(): void
+    {
+        $this->get('/rekap_pencapaian_depo_sku?q=budi')
+            ->assertRedirect('/rekap_pencapaian_sku?q=budi&tab=depo');
+    }
+
     public function test_rekap_pencapaian_sku_is_a_single_sidebar_menu(): void
     {
         $slugs = collect(config('marketama.menu'))->pluck('items')->flatten(1)->pluck('slug');
