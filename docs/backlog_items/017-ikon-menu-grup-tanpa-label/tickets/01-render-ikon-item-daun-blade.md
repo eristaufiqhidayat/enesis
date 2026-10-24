@@ -8,10 +8,10 @@ Render ikon per-item pada cabang item daun (tanpa children) di `resources/views/
 
 ## Acceptance criteria
 
-- [ ] Cabang `@else` (item daun, baris ~37-42) di `sidebar-nav-items.blade.php` merender `<x-ui.atoms.icon :name="$item['icon']" />` sebelum `<span class="nav-link-text">`, hanya jika `$item['icon']` tidak kosong.
-- [ ] Sidebar halaman non-Inertia (Blade biasa, mis. `menu.coming_soon`, `tracking/`, `area/`) menampilkan ikon di depan "Beranda", "Monitoring Harian Sales", "Rekap Pencapaian SKU", "Summary All Depo", "Motoris Report".
-- [ ] Item daun lain yang tidak punya `icon` di config tetap tampil tanpa elemen ikon kosong/rusak.
-- [ ] Sidebar dalam keadaan disempitkan (strip ikon-saja) tetap menampilkan ikon kelima menu ini dengan benar.
+- [x] Cabang `@else` (item daun, baris ~37-42) di `sidebar-nav-items.blade.php` merender `<x-ui.atoms.icon :name="$item['icon']" />` sebelum `<span class="nav-link-text">`, hanya jika `$item['icon']` tidak kosong.
+- [x] Sidebar halaman non-Inertia (Blade biasa, mis. `menu.coming_soon`, `tracking/`, `area/`) menampilkan ikon di depan "Beranda", "Monitoring Harian Sales", "Rekap Pencapaian SKU", "Summary All Depo", "Motoris Report".
+- [x] Item daun lain yang tidak punya `icon` di config tetap tampil tanpa elemen ikon kosong/rusak.
+- [x] Sidebar dalam keadaan disempitkan (strip ikon-saja) tetap menampilkan ikon kelima menu ini dengan benar.
 
 ## Blocked by
 

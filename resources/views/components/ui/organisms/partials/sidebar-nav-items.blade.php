@@ -37,6 +37,9 @@
     @else
         <li class="nav-item">
             <a class="nav-link {{ $current === $item['slug'] ? 'active' : '' }}" href="{{ route('menu', $item['slug']) }}">
+                @if (! empty($item['icon']))
+                    <x-ui.atoms.icon :name="$item['icon']" class="nav-link-icon-svg" />
+                @endif
                 <span class="nav-link-text">{{ $item['title'] }}</span>
             </a>
         </li>

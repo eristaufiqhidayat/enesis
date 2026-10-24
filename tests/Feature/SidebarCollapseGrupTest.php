@@ -62,18 +62,17 @@ class SidebarCollapseGrupTest extends TestCase
         $this->assertStringNotContainsString('far fa-', $html);
     }
 
-    public function test_ikon_sidebar_hanya_di_header_grup_dan_header_panel_submenu(): void
+    public function test_ikon_sidebar_hanya_di_header_grup_header_submenu_dan_item_daun_berikon(): void
     {
         $html = $this->renderSidebar();
 
         $labeledGroupCount = collect(config('marketama.menu'))->filter(fn ($section) => $section['label'])->count();
 
-        // Item menu biasa tidak berikon. Ikon hanya ada di toggle grup, header panel grup,
-        // dan header panel tiap submenu ber-children yang punya icon di config.
-        $submenusWithIcon = $this->countItemsWithChildrenAndIcon(
-            collect(config('marketama.menu'))->flatMap(fn ($section) => $section['items'])->all()
-        );
-        $this->assertSame(0, substr_count($html, 'nav-link-icon-svg'));
+        // Ikon hanya ada di toggle grup, header panel grup, header panel tiap submenu ber-children
+        // yang punya icon di config, dan item daun yang punya icon di config.
+        $allItems = collect(config('marketama.menu'))->flatMap(fn ($section) => $section['items'])->all();
+        $submenusWithIcon = $this->countItemsWithChildrenAndIcon($allItems);
+        $this->assertSame($this->countLeafItemsWithIcon($allItems), substr_count($html, 'nav-link-icon-svg'));
         $this->assertSame($labeledGroupCount * 2 + $submenusWithIcon, substr_count($html, 'section-label-icon'));
     }
 
@@ -95,6 +94,21 @@ class SidebarCollapseGrupTest extends TestCase
                     $count++;
                 }
                 $count += $this->countItemsWithChildrenAndIcon($item['children']);
+            }
+        }
+
+        return $count;
+    }
+
+    private function countLeafItemsWithIcon(array $items): int
+    {
+        $count = 0;
+
+        foreach ($items as $item) {
+            if (isset($item['children'])) {
+                $count += $this->countLeafItemsWithIcon($item['children']);
+            } elseif (! empty($item['icon'])) {
+                $count++;
             }
         }
 
