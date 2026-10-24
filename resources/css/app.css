@@ -40,7 +40,8 @@ body { background: var(--color-surface); font-size: .875rem; }
 .sidebar .brand [data-sidebar-toggle] svg, .sidebar .brand [data-toggle-all-groups] svg { width: 1rem; height: 1rem; }
 .sidebar .brand .brand-actions { flex: 0 0 auto; display: flex; align-items: center; gap: .25rem; }
 .sidebar .brand [data-sidebar-toggle]:hover, .sidebar .brand [data-toggle-all-groups]:hover { color: #fff; }
-.sidebar .nav-link { display: flex; align-items: flex-start; gap: .25rem; color: rgba(255, 255, 255, .9); padding: .35rem .5rem; border-radius: .25rem; text-shadow: 0 1px 2px rgba(0, 0, 0, .35); }
+/* font-size/line-height disamakan dengan .data-table (Tailwind text-xs), supaya ukuran teks menu sidebar dan tabel konsisten. */
+.sidebar .nav-link { display: flex; align-items: flex-start; gap: .25rem; color: rgba(255, 255, 255, .75); padding: .35rem .5rem; border-radius: .25rem; text-shadow: 0 1px 2px rgba(0, 0, 0, .35); font-size: .75rem; line-height: 1rem; }
 .sidebar .nav-link:hover, .sidebar .nav-link:focus { color: #fff; background: rgba(255, 255, 255, .08); }
 .sidebar .nav-link.active { color: #fff; font-weight: 600; background: rgba(255, 255, 255, .12); }
 .sidebar .nav-link-icon { flex: 0 0 1.5rem; width: 1.5rem; display: inline-flex; justify-content: center; padding-top: .125rem; }
@@ -48,11 +49,12 @@ body { background: var(--color-surface); font-size: .875rem; }
 .sidebar .nav-link-text { flex: 1 1 auto; min-width: 0; }
 .sidebar .nav-link .nav-chevron { flex: 0 0 auto; align-self: center; }
 .sidebar .nav .nav .nav-link { padding-left: 2.25rem; }
-.sidebar .section-label { display: flex; align-items: center; justify-content: space-between; gap: .5rem; cursor: pointer; font-size: .7rem; text-transform: uppercase; color: rgba(255, 255, 255, .4); font-weight: 600; margin: 1rem 0 0; border-top: 1px solid rgba(255, 255, 255, .2); padding: .75rem .5rem .25rem; border-radius: .25rem; transition: color .15s ease, background-color .15s ease; }
-.sidebar .section-label-text { display: inline-flex; align-items: center; gap: .4rem; min-width: 0; }
+.sidebar .section-label { display: flex; align-items: center; justify-content: space-between; gap: .5rem; cursor: pointer; font-size: .7rem; text-transform: uppercase; color: #fff; font-weight: 600; margin: 1rem 0 0; padding: 1.35rem .75rem; border-radius: .25rem; transition: color .15s ease, background-color .15s ease; }
+.sidebar .section-label-text { display: inline-flex; align-items: center; gap: .6rem; min-width: 0; }
 .sidebar .section-label-icon { width: .9rem; height: .9rem; flex: 0 0 auto; }
-.sidebar .section-label:first-child { border-top: 0; padding-top: .25rem; margin-top: 0; }
-.sidebar .section-label:hover, .sidebar .section-label:focus { color: rgba(255, 255, 255, .8); background: rgba(255, 255, 255, .08); }
+.sidebar .section-label:first-child { padding-top: .75rem; padding-bottom: .75rem; margin-top: 0; }
+.sidebar .section-label:hover, .sidebar .section-label:focus { background: rgba(255, 255, 255, .08); }
+.sidebar .section-label-name { min-width: 0; }
 main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
 /* Mode collapse seluruh sidebar jadi strip ikon-saja (lihat sidebar.blade.php/layouts/app.blade.php). Desktop saja: di mobile sidebar tetap full-width. */
 @media (min-width: 992px) {
@@ -61,13 +63,17 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     body.sidebar-collapsed .topbar { left: 4.5rem; }
     /* Strip ikon 4.5rem: dua tombol di .brand disusun vertikal supaya muat. */
     body.sidebar-collapsed .brand-actions { flex-direction: column; }
-    body.sidebar-collapsed .sidebar:not(:hover) .sidebar-search,
-    body.sidebar-collapsed .sidebar:not(:hover) .nav-link-text,
-    body.sidebar-collapsed .sidebar:not(:hover) .section-label,
-    body.sidebar-collapsed .sidebar:not(:hover) .nav-chevron { display: none; }
-    /* Hover sementara melebarkan sidebar jadi overlay di atas topbar/main (tanpa mengubah margin-left
-       main/topbar, jadi konten tidak ikut terdorong), lalu menyempit lagi saat mouse keluar. */
-    body.sidebar-collapsed .sidebar:hover { width: 260px; z-index: 30; box-shadow: 2px 0 12px rgba(0, 0, 0, .2); }
+    body.sidebar-collapsed .sidebar-search,
+    body.sidebar-collapsed .nav-link-text,
+    body.sidebar-collapsed .section-label-name,
+    body.sidebar-collapsed .nav-chevron { display: none; }
+    /* Judul grup tetap tampil sebagai ikon pemisah di strip ikon; nama grup lewat tooltip title. */
+    body.sidebar-collapsed .section-label { justify-content: center; padding-left: 0; padding-right: 0; }
+    body.sidebar-collapsed .section-label-text { gap: 0; }
+    /* Panel flyout melayang di luar strip ikon, jadi nama submenu dan chevron item ber-children
+       di dalamnya harus tetap tampil (chevron dibutuhkan untuk submenu bersarang di dalam flyout). */
+    body.sidebar-collapsed .sidebar .nav-flyout .nav-link-text { display: inline; }
+    body.sidebar-collapsed .sidebar .nav-flyout .nav-chevron { display: inline-block; }
 }
 /* Topbar fixed di atas, mulai dari tepi sidebar sampai kanan, sejajar dengan konten (bukan menutupi sidebar). */
 .topbar { position: fixed; top: 0; left: 260px; right: 0; height: 3.5rem; z-index: 20; background: #fff; padding: 0 1.5rem; margin-bottom: 0; border-bottom: 1px solid #e5e7eb; }
@@ -141,8 +147,38 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
 .tooltip-right::before { left: calc(100% + 1px); top: 50%; --tooltip-shift: translateY(-50%); transform-origin: center left; border-right-color: #1f2937; }
 @media (max-width: 991px) { .sidebar { position: static; width: 100%; height: auto; } .sidebar .brand { display: none; } main { margin-left: 0; padding-top: 1rem; } .topbar { position: static; left: 0; height: auto; padding: 0; margin-bottom: .75rem; } [data-sidebar-toggle], [data-toggle-all-groups] { display: none; } }
 .nav-chevron { width: .7rem; height: .7rem; transition: transform .15s ease; }
-.sidebar .nav-link.is-open .nav-chevron { transform: rotate(180deg); }
-.sidebar .section-label.is-open .nav-chevron { transform: rotate(180deg); }
+.sidebar .nav-link.is-open .nav-chevron { transform: rotate(90deg); }
+.sidebar .section-label.is-open .nav-chevron { transform: rotate(90deg); }
+
+/* Submenu: di desktop berupa flyout yang melayang di kanan parent (posisi diset JS saat dibuka);
+   di mobile (≤991px) tetap accordion inline lewat class is-open pada panel. */
+.sidebar .nav-link.has-active-child, .sidebar .section-label.has-active-child { color: #fff; font-weight: 600; background: rgba(255, 255, 255, .12); }
+/* Garis pemisah hanya di antara kelompok menu berlabel (section-group, header-nya selalu berikon) dengan
+   menu biasa tanpa ikon tepat di atasnya (section tanpa label, misal Dashboard). :not(.has-flyout) di kiri
+   mencegah garis muncul di ANTARA dua header grup yang berurutan (section-group sendiri juga punya class has-flyout). */
+.sidebar .nav-item:not(.has-flyout) + .section-group { margin-top: .35rem; padding-top: .35rem; border-top: 1px solid rgba(255, 255, 255, .12); }
+.sidebar .nav-flyout { display: none; }
+@media (min-width: 992px) {
+    .sidebar .nav-flyout { position: fixed; z-index: 50; min-width: 14rem; max-height: calc(100vh - 1rem); overflow-y: auto; margin: 0; padding: .25rem 0; list-style: none; background: #fff; border-radius: .375rem; box-shadow: 0 4px 12px rgba(0, 0, 0, .25); }
+    .sidebar .has-flyout.is-flyout-open > .nav-flyout { display: block; }
+    .sidebar .nav .nav-flyout .nav-link { padding-left: .75rem; white-space: nowrap; }
+    /* Panah menunjuk balik ke item yang membukanya, supaya terlihat menu apa yang sedang ditampilkan.
+       Elemen terpisah (BUKAN pseudo-element di .nav-flyout) karena .nav-flyout overflow-y:auto akan
+       memotong apa pun yang digambar di luar kotaknya, termasuk ::before di tepi kirinya. Posisi diset
+       JS (placeFlyout) bersamaan dengan posisi panel, memakai acuan fixed yang sama. */
+    .sidebar .nav-flyout-arrow { display: none; position: fixed; z-index: 51; width: 0; height: 0; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-right: 6px solid #fff; filter: drop-shadow(-2px 0 1px rgba(0, 0, 0, .15)); }
+    .sidebar .has-flyout.is-flyout-open > .nav-flyout-arrow { display: block; }
+}
+@media (max-width: 991px) {
+    .sidebar .nav-flyout.is-open { display: block; }
+}
+/* Isi panel submenu berwarna terang: teks gelap, dan state hover/aktif memakai biru brand yang lebih gelap.
+   Selector dibuat lebih spesifik dari .sidebar .nav-link supaya menang atas warna teks putih bawaannya. */
+/* Header di paling atas panel: ikon + nama menu induk. Teks header tidak memakai .nav-link-text, jadi tidak ikut disembunyikan mode collapse. */
+.sidebar .nav-flyout-header { display: flex; align-items: center; gap: .5rem; padding: .5rem .75rem; margin-bottom: .25rem; border-bottom: 1px solid rgba(0, 42, 92, .12); font-size: .75rem; font-weight: 600; text-transform: uppercase; color: #002a5c; }
+.sidebar .nav .nav-flyout .nav-link { color: #1f2937; text-shadow: none; }
+.sidebar .nav .nav-flyout .nav-link:hover, .sidebar .nav .nav-flyout .nav-link:focus { color: #002a5c; background: rgba(0, 42, 92, .08); }
+.sidebar .nav .nav-flyout .nav-link.active, .sidebar .nav .nav-flyout .nav-link.has-active-child { color: #002a5c; font-weight: 600; background: rgba(0, 42, 92, .12); }
 
 /* Komponen kecil ala Bootstrap, dibangun dari utility Tailwind supaya markup lama (card, btn, badge, dst.)
    tetap mudah dibaca tanpa menuliskan daftar utility class yang panjang di setiap halaman. */

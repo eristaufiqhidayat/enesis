@@ -15,3 +15,4 @@
 | 011 | [x] | Gabung menu Checkin Outlet Pagi, Sales Tidak Penjualan, Sales Tidak Absen Pagi jadi satu halaman bertab | [docs/backlog_items/011-gabung-menu-monitoring-harian-tab/spec.md](backlog_items/011-gabung-menu-monitoring-harian-tab/spec.md) |
 | 012 | [x] | Input pencarian menu di top sidebar (border bawah pemisah + dropdown hasil) | [docs/backlog_items/012-pencarian-menu-sidebar/spec.md](backlog_items/012-pencarian-menu-sidebar/spec.md) |
 | 013 | [x] | Ganti sistem ikon dari Font Awesome solid ke Lucide (outline) | [docs/backlog_items/013-ganti-ikon-lucide/spec.md](backlog_items/013-ganti-ikon-lucide/spec.md) |
+| 014 | [ ] | Header grup sidebar lebih kontras, ikon grup tetap tampil saat collapsed, submenu jadi flyout bertingkat ke kanan | [docs/backlog_items/014-sidebar-header-kontras-flyout-submenu/spec.md](backlog_items/014-sidebar-header-kontras-flyout-submenu/spec.md) |

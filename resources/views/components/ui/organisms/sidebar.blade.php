@@ -1,12 +1,17 @@
 @php($current = request()->route('slug') ?? request()->path())
 @php($searchMenus = \App\Support\Akses\Akses::menuPencarian(auth()->user()))
+@php($hasActiveDescendant = function (array $items) use (&$hasActiveDescendant, $current) {
+    foreach ($items as $item) {
+        if (isset($item['children']) ? $hasActiveDescendant($item['children']) : $item['slug'] === $current) {
+            return true;
+        }
+    }
+
+    return false;
+})
 <nav class="sidebar">
     <div class="brand">
         <div class="brand-actions">
-            <button type="button" data-toggle-all-groups aria-label="Buka/tutup semua grup" title="Buka/tutup semua grup">
-                <x-ui.atoms.icon name="chevrons-up" data-toggle-all-icon="up" />
-                <x-ui.atoms.icon name="chevrons-down" data-toggle-all-icon="down" class="hidden" />
-            </button>
             <button type="button" data-sidebar-toggle aria-label="Persempit/lebarkan sidebar"><x-ui.atoms.icon name="menu" /></button>
         </div>
         <div class="sidebar-search">
@@ -17,119 +22,38 @@
     <div class="sidebar-scroll">
     <ul class="nav flex flex-col list-none m-0 p-0">
         @foreach (\App\Support\Akses\Akses::menu(auth()->user()) as $section)
-            @php($groupId = 'group-' . $loop->index)
             @if ($section['label'])
-                @php($groupSlugs = collect($section['items'])->flatMap(fn ($item) => isset($item['children']) ? array_column($item['children'], 'slug') : [$item['slug']])->implode(','))
-                <li class="section-label is-open" data-collapse-toggle="{{ $groupId }}" data-group-label="{{ $section['label'] }}" role="button" tabindex="0" aria-expanded="true">
-                    <span class="section-label-text">
-                        <x-ui.atoms.icon :name="$section['icon']" class="section-label-icon" />
-                        {{ $section['label'] }}
-                    </span>
-                    <x-ui.atoms.icon name="chevron-down" class="nav-chevron" />
+                {{-- Judul grup adalah flyout seperti submenu: isi grup muncul di kanan judul (desktop) atau accordion inline (mobile). --}}
+                @php($open = $hasActiveDescendant($section['items']))
+                <li class="nav-item has-flyout section-group">
+                    <div class="section-label {{ $open ? 'is-open has-active-child' : '' }}" data-flyout-toggle role="button" tabindex="0" aria-haspopup="true" aria-expanded="{{ $open ? 'true' : 'false' }}">
+                        <span class="section-label-text">
+                            <x-ui.atoms.icon :name="$section['icon']" class="section-label-icon" />
+                            <span class="section-label-name">{{ $section['label'] }}</span>
+                        </span>
+                        <x-ui.atoms.icon name="chevron-right" class="nav-chevron" />
+                    </div>
+                    <span class="nav-flyout-arrow" data-flyout-arrow aria-hidden="true"></span>
+                    <ul class="nav flex flex-col list-none m-0 p-0 nav-flyout {{ $open ? 'is-open' : '' }}" data-flyout-panel>
+                        <li class="nav-flyout-header">
+                            <x-ui.atoms.icon :name="$section['icon']" class="section-label-icon" />
+                            <span>{{ $section['label'] }}</span>
+                        </li>
+                        <x-ui.organisms.partials.sidebar-nav-items :items="$section['items']" :current="$current" />
+                    </ul>
                 </li>
+            @else
+                <ul class="flex flex-col list-none m-0 p-0">
+                    <x-ui.organisms.partials.sidebar-nav-items :items="$section['items']" :current="$current" />
+                </ul>
             @endif
-            <ul @if ($section['label']) id="{{ $groupId }}" data-group-slugs="{{ $groupSlugs }}" @endif class="flex flex-col list-none m-0 p-0">
-                <x-ui.organisms.partials.sidebar-nav-items :items="$section['items']" :current="$current" />
-            </ul>
         @endforeach
     </ul>
     </div>
 </nav>
 <script>
-    // Collapse per grup sidebar: state disimpan di localStorage supaya tetap
-    // terbaca setelah reload maupun saat pindah halaman (full reload Blade).
     (() => {
-        const STORAGE_KEY = 'sidebar-collapsed-groups';
-        const currentSlug = @json($current);
         const searchMenus = @json($searchMenus);
-
-        const readCollapsed = () => {
-            try {
-                const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-                return Array.isArray(saved) ? saved : [];
-            } catch {
-                return [];
-            }
-        };
-
-        const writeCollapsed = (labels) => {
-            try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(labels));
-            } catch {
-                // localStorage tidak tersedia (mode privat dll.), state collapse tidak persist.
-            }
-        };
-
-        const isCollapsed = (group, saved) => saved.includes(group.label);
-
-
-        const applyGroup = (group, collapsed) => {
-            group.target.classList.toggle('hidden', collapsed);
-            group.toggle.classList.toggle('is-open', !collapsed);
-            group.toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
-        };
-
-        const groups = [];
-
-        document.querySelectorAll('.sidebar .section-label[data-collapse-toggle]').forEach((toggle) => {
-            const label = toggle.dataset.groupLabel;
-            const target = document.getElementById(toggle.dataset.collapseToggle);
-            if (!target) return;
-
-            const groupSlugs = (target.dataset.groupSlugs || '').split(',');
-            const group = { label, toggle, target, hasActiveMenu: groupSlugs.includes(currentSlug) };
-            groups.push(group);
-
-            applyGroup(group, isCollapsed(group, readCollapsed()));
-
-            // Klik ditangani juga oleh script generic [data-collapse-toggle] di layouts/app.blade.php,
-            // yang membalik class hidden pada target SETELAH handler ini (script sidebar dirender lebih dulu).
-            // Karena itu arah klik dibaca dari target sebelum dibalik, bukan dari variabel lokal.
-            toggle.addEventListener('click', () => {
-                const collapsed = !target.classList.contains('hidden');
-                toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
-
-                const labels = readCollapsed().filter((item) => item !== label);
-                if (collapsed) labels.push(label);
-                writeCollapsed(labels);
-                // Status DOM baru belum final di sini (handler generic belum jalan), jadi tombol "semua grup" diperbarui setelah klik selesai.
-                setTimeout(updateToggleAll);
-
-                toggle.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            });
-
-            toggle.addEventListener('keydown', (e) => {
-                if (e.key !== 'Enter' && e.key !== ' ') return;
-                e.preventDefault();
-                toggle.click();
-            });
-        });
-
-        const toggleAll = document.querySelector('[data-toggle-all-groups]');
-
-        // Ikon & label mengikuti aksi berikutnya, dihitung dari grup yang tertutup di DOM
-        // (bukan dari state tersimpan, supaya grup aktif yang ditutup user juga terhitung).
-        const updateToggleAll = () => {
-            const anyCollapsed = groups.some((group) => group.target.classList.contains('hidden'));
-            const label = anyCollapsed ? 'Buka semua grup' : 'Tutup semua grup';
-            toggleAll.querySelector('[data-toggle-all-icon="up"]').classList.toggle('hidden', anyCollapsed);
-            toggleAll.querySelector('[data-toggle-all-icon="down"]').classList.toggle('hidden', !anyCollapsed);
-            toggleAll.setAttribute('aria-label', label);
-            toggleAll.setAttribute('title', label);
-        };
-
-        // Ada grup tertutup → buka semua (hapus semua label). Semua terbuka → tutup semua
-        // (isi dengan label grup yang tampil, kecuali grup berisi menu aktif yang tetap terbuka).
-        toggleAll.addEventListener('click', () => {
-            const expandAll = groups.some((group) => group.target.classList.contains('hidden'));
-            writeCollapsed(expandAll ? [] : groups.filter((group) => !group.hasActiveMenu).map((group) => group.label));
-
-            const saved = readCollapsed();
-            groups.forEach((group) => applyGroup(group, isCollapsed(group, saved)));
-            updateToggleAll();
-        });
-
-        updateToggleAll();
 
         // Pencarian menu: filter judul (substring, case-insensitive), maksimal 8 hasil di dropdown.
         const SEARCH_LIMIT = 8;
@@ -216,6 +140,126 @@
         // Klik di luar area pencarian menutup dropdown tanpa mengosongkan input.
         document.addEventListener('click', (e) => {
             if (! e.target.closest('.sidebar-search')) hideSearchResults();
+        });
+
+        // Submenu (item ber-children): desktop memakai flyout ke kanan parent, mobile (≤991px) tetap accordion inline.
+        const desktopQuery = window.matchMedia('(min-width: 992px)');
+        const FLYOUT_CLOSE_DELAY = 150;
+        const closeTimers = new WeakMap();
+
+        const flyoutItems = (container) => [...container.children].filter((child) => child.matches('.has-flyout'));
+        const flyoutPanel = (item) => item.querySelector(':scope > [data-flyout-panel]');
+        const flyoutArrow = (item) => item.querySelector(':scope > [data-flyout-arrow]');
+
+        // Panel di-fixed-kan (bukan absolute) karena .sidebar-scroll memakai overflow:hidden/auto dan akan memotongnya.
+        // Panah (elemen terpisah, lihat app.css) diposisikan bersamaan: nempel di tepi kiri panel, sejajar baris pertama panel.
+        const placeFlyout = (item) => {
+            const toggle = item.querySelector(':scope > [data-flyout-toggle]');
+            const panel = flyoutPanel(item);
+            const arrow = flyoutArrow(item);
+            const rect = toggle.getBoundingClientRect();
+            const top = Math.max(8, Math.min(rect.top, window.innerHeight - panel.offsetHeight - 8));
+            panel.style.left = `${rect.right + 4}px`;
+            panel.style.top = `${top}px`;
+            arrow.style.left = `${rect.right - 2}px`;
+            arrow.style.top = `${top + 14}px`;
+        };
+
+        const setFlyoutState = (item, open) => {
+            item.classList.toggle('is-flyout-open', open);
+            item.querySelector(':scope > [data-flyout-toggle]').setAttribute('aria-expanded', open ? 'true' : 'false');
+        };
+
+        const closeFlyout = (item) => {
+            clearTimeout(closeTimers.get(item));
+            item.querySelectorAll('.is-flyout-open').forEach((open) => setFlyoutState(open, false));
+            setFlyoutState(item, false);
+        };
+
+        const openFlyout = (item) => {
+            // Flyout sibling di level yang sama ditutup dulu: hanya satu terbuka per level.
+            flyoutItems(item.parentElement)
+                .filter((sibling) => sibling !== item)
+                .forEach(closeFlyout);
+
+            clearTimeout(closeTimers.get(item));
+            setFlyoutState(item, true);
+            placeFlyout(item);
+        };
+
+        const repositionOpenFlyouts = () => {
+            document.querySelectorAll('.sidebar .has-flyout.is-flyout-open').forEach(placeFlyout);
+        };
+
+        const scheduleCloseFlyout = (item) => {
+            closeTimers.set(item, setTimeout(() => closeFlyout(item), FLYOUT_CLOSE_DELAY));
+        };
+
+        const toggleAccordion = (item) => {
+            const panel = flyoutPanel(item);
+            const toggle = item.querySelector(':scope > [data-flyout-toggle]');
+            const expanded = panel.classList.toggle('is-open');
+            toggle.classList.toggle('is-open', expanded);
+            toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        };
+
+        document.querySelectorAll('.sidebar .has-flyout').forEach((item) => {
+            const toggle = item.querySelector(':scope > [data-flyout-toggle]');
+
+            item.addEventListener('mouseenter', () => {
+                if (desktopQuery.matches) openFlyout(item);
+            });
+
+            item.addEventListener('mouseleave', () => {
+                if (desktopQuery.matches) scheduleCloseFlyout(item);
+            });
+
+            toggle.addEventListener('click', (e) => {
+                e.preventDefault();
+
+                if (! desktopQuery.matches) {
+                    toggleAccordion(item);
+                    return;
+                }
+
+                // Sidebar yang dipersempit tetap dipersempit saat submenu diklik; flyout tetap terbuka di strip ikon.
+                // Klik membuka (tidak membalik), supaya klik setelah hover tidak menutup flyout yang sudah terbuka.
+                openFlyout(item);
+            });
+
+            // Enter pada <a> sudah memicu click bawaan; keydown yang di-preventDefault mencegahnya, jadi tidak ada dobel.
+            toggle.addEventListener('keydown', (e) => {
+                if (e.key !== ' ' && e.key !== 'Enter') return;
+                e.preventDefault();
+                toggle.click();
+            });
+        });
+
+        // Klik di luar parent dan panel-nya menutup flyout yang terbuka.
+        document.addEventListener('click', (e) => {
+            document.querySelectorAll('.sidebar .has-flyout.is-flyout-open').forEach((item) => {
+                if (! item.contains(e.target)) closeFlyout(item);
+            });
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape') return;
+            document.querySelectorAll('.sidebar .has-flyout.is-flyout-open').forEach(closeFlyout);
+        });
+
+        // Flyout memakai posisi fixed dari saat dibuka, jadi ditutup saat sidebar di-scroll agar tidak lepas dari parent-nya.
+        document.querySelector('.sidebar-scroll')?.addEventListener('scroll', () => {
+            document.querySelectorAll('.sidebar .has-flyout.is-flyout-open').forEach(closeFlyout);
+        });
+
+        // Lebar sidebar beranimasi (lihat .sidebar transition), jadi posisi flyout dihitung ulang setelah transisi selesai.
+        document.querySelector('.sidebar').addEventListener('transitionend', (e) => {
+            if (e.propertyName === 'width') repositionOpenFlyouts();
+        });
+
+        // Lewat breakpoint mobile saat flyout terbuka: tutup, supaya tidak muncul lagi di posisi lama saat lebar kembali.
+        desktopQuery.addEventListener('change', (e) => {
+            if (! e.matches) document.querySelectorAll('.sidebar .has-flyout.is-flyout-open').forEach(closeFlyout);
         });
     })();
 </script>
