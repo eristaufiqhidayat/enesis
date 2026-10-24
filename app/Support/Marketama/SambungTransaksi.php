@@ -136,7 +136,7 @@ class SambungTransaksi
             return "(SELECT MIN(o.id) FROM mk_outlet o WHERE o.kode = {$nilai})";
         }
 
-        $syaratDepo = in_array($jenis, ['sales', 'koordinator'], true)
+        $syaratDepo = in_array($jenis, ['sales', 'koordinator', 'distributor'], true)
             ? " AND (p.depo = '' OR p.depo = LOWER(TRIM({$tabel}.warehouse_name)))"
             : '';
 
@@ -157,13 +157,17 @@ class SambungTransaksi
         $master = [
             'depo' => $this->unik(DB::table('mk_depo')->get(['id', 'nama'])),
             'area' => $this->unik(DB::table('mk_area')->get(['id', 'nama'])),
-            'distributor' => $this->unik(DB::table('mk_distributor')->get(['id', 'nama'])),
             'produk' => DB::table('mk_produk')->whereNotNull('kode')->pluck('id', 'kode')->mapWithKeys(fn ($id, $k) => [HalamanParser::kunciNama($k) => $id])->all(),
         ];
 
         // Orang (sales/koordinator): nama => daftar [id, depo]. Nama kembar diselesaikan dengan depo.
         $depoNama = DB::table('mk_depo')->pluck('nama', 'id')->map(fn ($n) => mb_strtolower(trim($n)));
-        $orang = ['sales' => [], 'koordinator' => [], 'semua' => []];
+        $orang = ['sales' => [], 'koordinator' => [], 'semua' => [], 'distributor' => []];
+
+        // Distributor bernama sama di depo berbeda juga dibedakan dengan depo.
+        foreach (DB::table('mk_distributor')->get(['id', 'nama', 'depo_id']) as $d) {
+            $orang['distributor'][HalamanParser::kunciNama($d->nama)][] = ['id' => (int) $d->id, 'depo' => $depoNama[$d->depo_id] ?? null, 'aktif' => true];
+        }
 
         foreach (DB::table('mk_karyawan')->get(['id', 'nama', 'kategori', 'depo_id', 'aktif']) as $k) {
             $kunci = HalamanParser::kunciNama($k->nama);
@@ -201,7 +205,7 @@ class SambungTransaksi
                     }
 
                     // Cari di kategorinya; bila tidak ada (mis. sales yang kini koordinator), di semua karyawan.
-                    $calon = $orang[$jenis][$kunci] ?? $orang['semua'][$kunci] ?? [];
+                    $calon = $orang[$jenis][$kunci] ?? ($jenis === 'distributor' ? [] : $orang['semua'][$kunci] ?? []);
 
                     foreach ($this->petaOrang($calon) as $depo => $id) {
                         $baris["{$jenis}|{$v}|{$depo}"] = ['jenis' => $jenis, 'nilai' => (string) $v, 'depo' => $depo, 'ref_id' => $id];

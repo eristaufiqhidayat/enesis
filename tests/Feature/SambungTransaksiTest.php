@@ -15,7 +15,11 @@ class SambungTransaksiTest extends TestCase
     {
         DB::table('mk_depo')->insert([['id' => 46, 'nama' => 'Sidoarjo'], ['id' => 22, 'nama' => 'Balaraja']]);
         DB::table('mk_area')->insert([['id' => 18685, 'nama' => 'Area Gresik-200']]);
-        DB::table('mk_distributor')->insert([['id' => 7, 'nama' => 'PT Distributor Contoh']]);
+        DB::table('mk_distributor')->insert([
+            ['id' => 7, 'nama' => 'PT Distributor Contoh', 'depo_id' => 22],
+            ['id' => 8, 'nama' => 'PT Kembar', 'depo_id' => 46],
+            ['id' => 9, 'nama' => 'PT Kembar', 'depo_id' => 22],
+        ]);
         DB::table('mk_produk')->insert([['id' => 3, 'kode' => '8991001', 'nama' => 'Minuman 320 ml']]);
         DB::table('mk_outlet')->insert([['id' => 11, 'kode' => 'OUT-1', 'nama' => 'Toko Satu']]);
         DB::table('mk_karyawan')->insert([
@@ -61,6 +65,7 @@ class SambungTransaksiTest extends TestCase
         ]);
         DB::table('lap_loading_barang')->insert([
             ['trans_code' => 'L1', 'warehouse_name' => 'Balaraja', 'koordinator_name' => 'Koor Satu', 'distributor_name' => 'pt distributor contoh'],
+            ['trans_code' => 'L2', 'warehouse_name' => 'Sidoarjo', 'koordinator_name' => 'Koor Satu', 'distributor_name' => 'PT Kembar'],
         ]);
 
         $this->artisan('enesis:sambung-transaksi')->assertSuccessful();
@@ -90,7 +95,8 @@ class SambungTransaksiTest extends TestCase
         $detail = DB::table('lap_penjualan_barang_detail')->first();
         $this->assertSame(3, (int) $detail->produk_id, 'product_sku angka cocok ke produk.kode teks');
 
-        $loading = DB::table('lap_loading_barang')->first();
+        $this->assertSame(8, (int) DB::table('lap_loading_barang')->where('trans_code', 'L2')->value('distributor_id'), 'distributor kembar dibedakan depo');
+        $loading = DB::table('lap_loading_barang')->where('trans_code', 'L1')->first();
         $this->assertSame(7, (int) $loading->distributor_id);
         $this->assertSame(22, (int) $loading->depo_id);
 
