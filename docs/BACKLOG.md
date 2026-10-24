@@ -12,3 +12,4 @@
 | 008 | [x] | Breadcrumb di topnav (grup > menu aktif) | [docs/backlog_items/008-breadcrumb-topnav/spec.md](backlog_items/008-breadcrumb-topnav/spec.md) |
 | 009 | [x] | Sidebar collapsible (per grup menu & seluruh sidebar) | [docs/backlog_items/009-sidebar-grup-collapsible/spec.md](backlog_items/009-sidebar-grup-collapsible/spec.md) |
 | 010 | [ ] | Tombol toggle collapse/expand semua grup sidebar sekaligus | [docs/backlog_items/010-sidebar-collapse-expand-all/spec.md](backlog_items/010-sidebar-collapse-expand-all/spec.md) |
+| 011 | [ ] | Gabung menu Checkin Outlet Pagi, Sales Tidak Penjualan, Sales Tidak Absen Pagi jadi satu halaman bertab | [docs/backlog_items/011-gabung-menu-monitoring-harian-tab/spec.md](backlog_items/011-gabung-menu-monitoring-harian-tab/spec.md) |
