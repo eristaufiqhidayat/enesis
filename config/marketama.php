@@ -29,19 +29,9 @@ return [
                     'icon' => 'chart-pie',
                 ],
                 [
-                    'slug' => 'motoris_coverage',
-                    'title' => 'Motoris Coverage',
-                    'icon' => 'users',
-                ],
-                [
-                    'slug' => 'motoris_performance',
-                    'title' => 'Motoris Performance',
-                    'icon' => 'chart-bar',
-                ],
-                [
-                    'slug' => 'monitor_absensi_motoris',
-                    'title' => 'Monitor Absensi Motoris',
-                    'icon' => 'user-check',
+                    'slug' => 'motoris_report',
+                    'title' => 'Motoris Report',
+                    'icon' => 'bike',
                 ],
             ],
         ],
@@ -795,24 +785,32 @@ return [
             'tables' => [],
             'same_as' => null,
         ],
-        'motoris_coverage' => [
-            'title' => 'Motoris Coverage',
+        // Gabungan Motoris Coverage, Motoris Performance, Monitor Absensi Motoris. 'tabs' => true: hanya grup tab aktif (query ?tab=) yang ditampilkan.
+        'motoris_report' => [
+            'title' => 'Motoris Report',
+            'tabs' => true,
             'tables' => [
-                'motoris_coverage',
-            ],
-            'same_as' => null,
-        ],
-        'motoris_performance' => [
-            'title' => 'Motoris Performance',
-            'tables' => [
-                'motoris_performance',
-            ],
-            'same_as' => null,
-        ],
-        'monitor_absensi_motoris' => [
-            'title' => 'Monitor Absensi Motoris',
-            'tables' => [
-                'monitor_absensi_motoris',
+                [
+                    'tab_key' => 'coverage',
+                    'tab_label' => 'Coverage',
+                    'tables' => [
+                        'motoris_coverage',
+                    ],
+                ],
+                [
+                    'tab_key' => 'performance',
+                    'tab_label' => 'Performance',
+                    'tables' => [
+                        'motoris_performance',
+                    ],
+                ],
+                [
+                    'tab_key' => 'absensi',
+                    'tab_label' => 'Absensi',
+                    'tables' => [
+                        'monitor_absensi_motoris',
+                    ],
+                ],
             ],
             'same_as' => null,
         ],

@@ -8,13 +8,13 @@ Gabungkan tiga entri `pages` (`motoris_coverage`, `motoris_performance`, `monito
 
 ## Acceptance criteria
 
-- [ ] `config/marketama.php`: satu entri `menu` baru (`motoris_report`) menggantikan tiga entri lama (`motoris_coverage`, `motoris_performance`, `monitor_absensi_motoris`).
-- [ ] `config/marketama.php`: entri `pages.motoris_report` dengan `'tabs' => true` dan tiga tab (`tab_label`: Coverage, Performance, Absensi), masing-masing satu tabel sesuai tabel lama.
-- [ ] Entri `pages.motoris_coverage`, `pages.motoris_performance`, `pages.monitor_absensi_motoris` lama dihapus.
-- [ ] GET `/motoris_report` menampilkan tab pertama (Coverage) secara default, dan tab lain menampilkan tabelnya masing-masing saat `?tab=` sesuai.
-- [ ] Hanya tabel milik tab aktif yang tampil (bukan ketiganya sekaligus); pencarian (`q`) hanya diterapkan ke tabel tab aktif.
-- [ ] Sidebar (`resources/views/components/ui/organisms/sidebar.blade.php` dan `resources/js/Components/ui/organisms/Sidebar.vue`) hanya punya satu item menu untuk halaman gabungan ini.
-- [ ] Feature test di `tests/Feature/MenuTest.php` meng-assert: default tab, isi tabel per tab, dan bahwa tab lain tidak ikut tampil sekaligus.
+- [x] `config/marketama.php`: satu entri `menu` baru (`motoris_report`) menggantikan tiga entri lama (`motoris_coverage`, `motoris_performance`, `monitor_absensi_motoris`).
+- [x] `config/marketama.php`: entri `pages.motoris_report` dengan `'tabs' => true` dan tiga tab (`tab_label`: Coverage, Performance, Absensi), masing-masing satu tabel sesuai tabel lama.
+- [x] Entri `pages.motoris_coverage`, `pages.motoris_performance`, `pages.monitor_absensi_motoris` lama dihapus.
+- [x] GET `/motoris_report` menampilkan tab pertama (Coverage) secara default, dan tab lain menampilkan tabelnya masing-masing saat `?tab=` sesuai.
+- [x] Hanya tabel milik tab aktif yang tampil (bukan ketiganya sekaligus); pencarian (`q`) hanya diterapkan ke tabel tab aktif.
+- [x] Sidebar (`resources/views/components/ui/organisms/sidebar.blade.php` dan `resources/js/Components/ui/organisms/Sidebar.vue`) hanya punya satu item menu untuk halaman gabungan ini.
+- [x] Feature test di `tests/Feature/MenuTest.php` meng-assert: default tab, isi tabel per tab, dan bahwa tab lain tidak ikut tampil sekaligus.
 
 ## Blocked by
 
