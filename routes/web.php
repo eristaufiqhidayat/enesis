@@ -75,9 +75,16 @@ Route::middleware(['auth', 'wajib-ganti-password'])->group(function () {
                 ['delete', '/{id}', 'destroy', 'hapus', 'destroy'],
             ];
 
+            if ($slug === 'user_koordinator') {
+                // Atur sales di bawah koordinator.
+                $rute[] = ['get', '/{id}/sales/cari', 'cariSales', 'ubah', 'sales.cari'];
+                $rute[] = ['post', '/{id}/sales', 'tambahSales', 'ubah', 'sales.tambah'];
+                $rute[] = ['delete', '/{id}/sales/{sales}', 'lepasSales', 'ubah', 'sales.lepas'];
+            }
+
             foreach ($rute as [$method, $uri, $aksi, $hak, $nama]) {
                 Route::{$method}($uri, $aksi)->middleware("hak:{$slug},{$hak}")
-                    ->defaults('menu', $slug)->where('id', '[0-9]+')->name($nama);
+                    ->defaults('menu', $slug)->where(['id' => '[0-9]+', 'sales' => '[0-9]+'])->name($nama);
             }
         });
     }

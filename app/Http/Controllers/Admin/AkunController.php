@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Support\Akses\Akses;
+use App\Support\Akses\HierarkiSales;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -317,6 +318,87 @@ class AkunController extends Controller
             'koordinator' => $k->koordinator,
             'akun_aktif' => $aktif[$k->id] ?? null,
         ]));
+    }
+
+    /** Cari akun sales untuk ditambahkan ke koordinator (JSON). */
+    public function cariSales(Request $request, int $id): JsonResponse
+    {
+        $koor = $this->koordinator($request, $id);
+        $q = mb_strtolower(trim((string) $request->query('q')));
+
+        if (mb_strlen($q) < 2) {
+            return response()->json([]);
+        }
+
+        $hasil = $this->query($request->user(), 'user_sales')->whereNotNull('u.karyawan_id')
+            ->where(function (Builder $w) use ($q) {
+                foreach (['u.username', 'u.name', 'k.nama'] as $kolom) {
+                    $w->orWhereRaw("LOWER({$kolom}) LIKE ?", ['%'.$q.'%']);
+                }
+            })
+            ->addSelect('k.koordinator_id')
+            ->orderByDesc('u.aktif')->orderByRaw('LOWER(u.username)')->limit(15)->get();
+
+        return response()->json($hasil->map(fn ($s) => [
+            'id' => (int) $s->id,
+            'username' => $s->username,
+            'karyawan' => $s->karyawan,
+            'depo' => $s->depo,
+            'aktif' => (bool) $s->aktif,
+            'koordinator' => $s->koordinator,
+            'sudah' => (int) $s->koordinator_id === (int) $koor->karyawan_id,
+        ]));
+    }
+
+    /** Jadikan akun sales berada di bawah koordinator ini (pindah dari koordinator lama bila ada). */
+    public function tambahSales(Request $request, int $id): RedirectResponse
+    {
+        $koor = $this->koordinator($request, $id);
+        $data = $request->validate(['sales_id' => ['required', 'integer']], ['sales_id.required' => 'Pilih akun sales dulu.']);
+        $sales = $this->query($request->user(), 'user_sales')->where('u.id', $data['sales_id'])->first();
+
+        if (! $sales || ! $sales->karyawan_id) {
+            throw ValidationException::withMessages(['sales_id' => 'Akun sales tidak ditemukan atau belum terhubung ke karyawan.']);
+        }
+
+        if ((int) DB::table('mk_karyawan')->where('id', $sales->karyawan_id)->value('koordinator_id') === (int) $koor->karyawan_id) {
+            return back()->with('sukses', "{$sales->username} sudah berada di bawah koordinator ini.");
+        }
+
+        HierarkiSales::atur((int) $sales->karyawan_id, (int) $koor->karyawan_id, $request->user()->id);
+
+        $dari = $sales->koordinator ? " (pindah dari {$sales->koordinator})" : '';
+        Akses::catat($request->user(), 'user', (int) $koor->id, 'tambah_sales', "Sales ditambahkan: {$sales->username}{$dari}");
+        Akses::catat($request->user(), 'user', (int) $sales->id, 'ubah_koordinator', 'Koordinator: '.($sales->koordinator ?? '-').' → '.($koor->karyawan ?? $koor->username));
+
+        return back()->with('sukses', "{$sales->username} sekarang berada di bawah {$koor->username}.");
+    }
+
+    /** Lepas akun sales dari koordinator ini (menjadi tanpa koordinator). */
+    public function lepasSales(Request $request, int $id, int $sales): RedirectResponse
+    {
+        $koor = $this->koordinator($request, $id);
+        $akun = $this->query($request->user(), 'user_sales')->where('u.id', $sales)
+            ->where('k.koordinator_id', $koor->karyawan_id)->first() ?? abort(404);
+
+        HierarkiSales::atur((int) $akun->karyawan_id, null, $request->user()->id);
+
+        Akses::catat($request->user(), 'user', (int) $koor->id, 'lepas_sales', "Sales dilepas: {$akun->username}");
+        Akses::catat($request->user(), 'user', (int) $akun->id, 'ubah_koordinator', 'Koordinator: '.($akun->koordinator ?? '-').' → tanpa koordinator');
+
+        return back()->with('sukses', "{$akun->username} dilepas dari {$koor->username}.");
+    }
+
+    /** Akun koordinator (dalam cakupan) yang sudah terhubung ke karyawan. */
+    private function koordinator(Request $request, int $id): object
+    {
+        $koor = $this->cari($request, 'user_koordinator', $id);
+
+        if (! $koor->karyawan_id) {
+            throw ValidationException::withMessages(['sales_id' => 'Akun koordinator ini belum terhubung ke karyawan.']);
+        }
+
+        return $koor;
     }
 
     /** Keterangan singkat status akun untuk daftar & detail. */

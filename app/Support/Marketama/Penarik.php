@@ -2,6 +2,7 @@
 
 namespace App\Support\Marketama;
 
+use App\Support\Akses\HierarkiSales;
 use Closure;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\DB;
@@ -302,6 +303,7 @@ class Penarik
         }
 
         $this->lupaPeta('mk_karyawan');
+        HierarkiSales::terapkanUlang();
 
         if (! $detail) {
             return;
@@ -330,6 +332,9 @@ class Penarik
                 ], $areas), ['karyawan_id', 'area_id'], ['aktif']);
             });
         });
+
+        // Koordinator yang diatur dari Enesis menang atas data aplikasi lama.
+        HierarkiSales::terapkanUlang();
 
         ($this->log)(sprintf('mk_karyawan: %d orang, %d relasi area', DB::table('mk_karyawan')->count(), DB::table('mk_karyawan_area')->count()));
     }
