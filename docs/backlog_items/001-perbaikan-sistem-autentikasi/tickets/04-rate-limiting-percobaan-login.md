@@ -8,10 +8,10 @@ Batasi percobaan login yang gagal berulang-ulang dari kombinasi email+IP yang sa
 
 ## Acceptance criteria
 
-- [ ] Percobaan login gagal dihitung per kombinasi email + IP (pakai `RateLimiter` bawaan Laravel).
-- [ ] Setelah melewati batas percobaan (misal 5x), percobaan login berikutnya ditolak dengan pesan dalam Bahasa Indonesia yang menyebutkan harus menunggu beberapa saat.
-- [ ] Limit otomatis reset setelah jendela waktu terlampaui (misal 1 menit) atau setelah login berhasil.
-- [ ] Feature test baru membuktikan: percobaan ke-N gagal berturut-turut memicu lockout, dan request berikutnya dari IP/email lain tidak terpengaruh.
+- [x] Percobaan login gagal dihitung per kombinasi email + IP (pakai `RateLimiter` bawaan Laravel).
+- [x] Setelah melewati batas percobaan (misal 5x), percobaan login berikutnya ditolak dengan pesan dalam Bahasa Indonesia yang menyebutkan harus menunggu beberapa saat.
+- [x] Limit otomatis reset setelah jendela waktu terlampaui (misal 1 menit) atau setelah login berhasil.
+- [x] Feature test baru membuktikan: percobaan ke-N gagal berturut-turut memicu lockout, dan request berikutnya dari IP/email lain tidak terpengaruh.
 
 ## Blocked by
 

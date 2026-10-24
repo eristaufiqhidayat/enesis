@@ -164,6 +164,16 @@ php artisan marketama:tarik --status          # progres per menu vs total di sum
   (nama, HP, email): jangan diekspor ke repo.
 - `php artisan db:seed --class=MarketamaSumberSeeder` menjalankan semua bagian sekaligus.
 
+## Login
+
+Semua halaman wajib login (`/login`, username + password; logout dari tombol **Keluar** di topbar).
+Akun dengan password awal dari admin diarahkan ke `/ganti-password` sampai password diganti.
+Lima kali gagal login dari username + IP yang sama dikunci 60 detik.
+
+- Lokal/dev: `php artisan migrate --seed` membuat akun `admin` / `password` (`UserSeeder`).
+- Production: akun dari data lama lewat `enesis:sinkron-user` (di bawah), password awal lewat
+  `enesis:atur-password <username>`. `UserSeeder` hanya membuat `admin` bila `SEED_ADMIN_PASSWORD` diisi.
+
 ## Akun login dari data lama (`enesis:sinkron-user`)
 
 Mengisi tabel `users` dari `mk_user` + `mk_karyawan` (hasil `marketama:tarik`). Login memakai

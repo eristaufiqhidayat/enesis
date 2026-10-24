@@ -6,11 +6,12 @@ use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
+use Tests\Concerns\LoginOtomatis;
 use Tests\TestCase;
 
 class CheckinPagiKpiTest extends TestCase
 {
-    use RefreshDatabase;
+    use LoginOtomatis, RefreshDatabase;
 
     protected function setUp(): void
     {

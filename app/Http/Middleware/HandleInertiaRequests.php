@@ -40,6 +40,10 @@ class HandleInertiaRequests extends Middleware
             'menu' => config('marketama.menu'),
             'currentSlug' => $request->route('slug') ?? $request->path(),
             'appName' => config('app.name'),
+            // Hanya data yang perlu ditampilkan di topbar (bukan seluruh kolom users).
+            'auth' => [
+                'user' => fn () => $request->user()?->only(['name', 'username', 'kategori']),
+            ],
         ];
     }
 }

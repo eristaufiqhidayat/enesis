@@ -114,4 +114,16 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Akun admin awal (UserSeeder)
+    |--------------------------------------------------------------------------
+    |
+    | Password akun "admin" yang dibuat UserSeeder. Kosong = di lokal memakai
+    | "password", di production akun tidak dibuat.
+    |
+    */
+
+    'seed_admin_password' => env('SEED_ADMIN_PASSWORD'),
+
 ];

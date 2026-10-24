@@ -4,11 +4,12 @@ namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Blade;
+use Tests\Concerns\LoginOtomatis;
 use Tests\TestCase;
 
 class BreadcrumbTest extends TestCase
 {
-    use RefreshDatabase;
+    use LoginOtomatis, RefreshDatabase;
 
     private function renderBreadcrumb(string $slug): string
     {

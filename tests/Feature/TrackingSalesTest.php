@@ -4,11 +4,12 @@ namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Tests\Concerns\LoginOtomatis;
 use Tests\TestCase;
 
 class TrackingSalesTest extends TestCase
 {
-    use RefreshDatabase;
+    use LoginOtomatis, RefreshDatabase;
 
     private function seedSales(): void
     {
