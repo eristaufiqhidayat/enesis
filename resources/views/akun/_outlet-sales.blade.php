@@ -4,7 +4,7 @@
     <x-ui.molecules.card class="mb-3" body-class="overflow-x-auto" id="outlet-sales">
         <x-slot:header>
             <div class="flex flex-wrap items-center justify-between gap-2">
-                <h6 class="mb-0 font-semibold">Outlet di bawah sales ini <span class="text-gray-500 font-normal">· {{ number_format($outlet->total(), 0, ',', '.') }} outlet{{ $cariOutlet !== '' ? ' cocok' : '' }} di {{ $areaSales->where('rute', true)->count() }} area rute</span></h6>
+                <h6 class="mb-0 font-semibold">Outlet di bawah sales ini <span class="text-gray-500 font-normal">· {{ $areaSales->where('rute', true)->count() }} area aktif · {{ number_format($outlet->total(), 0, ',', '.') }} outlet{{ $cariOutlet !== '' ? ' cocok' : '' }}</span></h6>
                 <form method="GET" action="{{ url()->current() }}#outlet-sales" class="flex gap-2" role="search">
                     <x-ui.atoms.label for="cari_outlet" class="sr-only">Cari outlet</x-ui.atoms.label>
                     <x-ui.atoms.input type="search" id="cari_outlet" name="cari_outlet" value="{{ $cariOutlet }}" placeholder="Cari nama, kode, alamat outlet…" />
@@ -13,6 +13,9 @@
             </div>
         </x-slot:header>
 
+        @if ($areaSales->isNotEmpty())
+            <p class="text-xs text-gray-500 mb-1">Area sales · <span class="text-blue-700 font-semibold">biru = area aktif</span> (outletnya tampil di tabel &amp; di rute HP) · abu-abu = area tidak aktif</p>
+        @endif
         <div class="flex flex-wrap gap-2 mb-3" aria-label="Area sales">
             @forelse ($areaSales as $a)
                 <x-ui.atoms.badge :variant="$a->rute ? 'primary' : 'secondary'" title="{{ $a->rute ? 'Area rute' : 'Area tidak aktif' }}">

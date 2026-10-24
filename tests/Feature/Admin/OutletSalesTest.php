@@ -31,7 +31,7 @@ class OutletSalesTest extends AdminTestCase
 
         // Hanya area aktif yang jadi rute (sama dengan aplikasi HP).
         $this->get('/user_sales/'.$rudi->id)->assertOk()
-            ->assertSee('Outlet di bawah sales ini')->assertSee('2 outlet di 1 area rute')
+            ->assertSee('Outlet di bawah sales ini')->assertSee('1 area aktif · 2 outlet')
             ->assertSee('Toko Makmur')->assertSee('Warung Bu Sri')
             ->assertDontSee('Toko Gedangan')->assertDontSee('Toko Balaraja')
             ->assertSee('Gedangan · 1 outlet · tidak aktif');
@@ -44,7 +44,7 @@ class OutletSalesTest extends AdminTestCase
         $this->get('/user_sales/'.$rudi->id.'/edit')->assertOk()->assertSee('Toko Makmur');
 
         // Sales yang semua areanya tidak aktif: semua area jadi rute.
-        $this->get('/user_sales/'.$sinta->id.'/edit')->assertOk()->assertSee('Toko Balaraja')->assertSee('1 outlet di 1 area rute');
+        $this->get('/user_sales/'.$sinta->id.'/edit')->assertOk()->assertSee('Toko Balaraja')->assertSee('1 area aktif · 1 outlet');
 
         // Sales tanpa area.
         $this->get('/user_sales/'.$this->akun('tegar', 'sales', 3)->id)->assertOk()->assertSee('belum punya area');
