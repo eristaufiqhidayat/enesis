@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\Akses\Akses;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -37,7 +38,8 @@ class HandleInertiaRequests extends Middleware
     {
         return [
             ...parent::share($request),
-            'menu' => config('marketama.menu'),
+            // Sidebar hanya berisi menu yang boleh dilihat role akun.
+            'menu' => fn () => Akses::menu($request->user()),
             'currentSlug' => $request->route('slug') ?? $request->path(),
             'appName' => config('app.name'),
             // Hanya data yang perlu ditampilkan di topbar (bukan seluruh kolom users).

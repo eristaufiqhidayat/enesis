@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Mobile;
 
 use App\Models\User;
+use App\Support\Akses\Akses;
 use App\Support\Mobile\ApiError;
 use App\Support\Mobile\TokenPerangkat;
 use Illuminate\Http\JsonResponse;
@@ -46,7 +47,7 @@ class AuthController extends MobileController
 
         RateLimiter::clear($kunci);
 
-        if (! in_array($user->kategori, self::PERAN_DIDUKUNG, true)) {
+        if (! in_array($user->kategori, self::PERAN_DIDUKUNG, true) || ! Akses::bolehMobile($user)) {
             throw new ApiError('role_not_supported', 'Aplikasi mobile saat ini baru untuk sales motoris.', 403);
         }
 
