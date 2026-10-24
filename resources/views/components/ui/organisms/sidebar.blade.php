@@ -1,4 +1,5 @@
 @php($current = request()->route('slug') ?? request()->path())
+@php($searchMenus = collect(\App\Support\Akses\Akses::menu(auth()->user()))->flatMap(fn ($section) => collect($section['items'])->flatMap(fn ($item) => isset($item['children']) ? $item['children'] : [$item]))->map(fn ($item) => ['title' => $item['title'], 'slug' => $item['slug']])->values())
 <nav class="sidebar">
     <div class="brand">
         <div class="brand-actions">
@@ -8,6 +9,10 @@
             </button>
             <button type="button" data-sidebar-toggle aria-label="Persempit/lebarkan sidebar"><x-ui.atoms.icon name="menu" /></button>
         </div>
+        <div class="sidebar-search">
+            <x-ui.atoms.input type="search" data-sidebar-search placeholder="Cari menu..." autocomplete="off" />
+            <ul data-sidebar-search-results class="sidebar-search-results hidden"></ul>
+        </div>
     </div>
     <div class="sidebar-scroll">
     <ul class="nav flex flex-col list-none m-0 p-0">
@@ -16,7 +21,10 @@
             @if ($section['label'])
                 @php($groupSlugs = collect($section['items'])->flatMap(fn ($item) => isset($item['children']) ? array_column($item['children'], 'slug') : [$item['slug']])->implode(','))
                 <li class="section-label is-open" data-collapse-toggle="{{ $groupId }}" data-group-label="{{ $section['label'] }}" role="button" tabindex="0" aria-expanded="true">
-                    {{ $section['label'] }}
+                    <span class="section-label-text">
+                        <x-ui.atoms.icon :name="$section['icon']" class="section-label-icon" />
+                        {{ $section['label'] }}
+                    </span>
                     <x-ui.atoms.icon name="chevron-down" class="nav-chevron" />
                 </li>
             @endif
@@ -33,6 +41,7 @@
     (() => {
         const STORAGE_KEY = 'sidebar-collapsed-groups';
         const currentSlug = @json($current);
+        const searchMenus = @json($searchMenus);
 
         const readCollapsed = () => {
             try {
@@ -121,5 +130,92 @@
         });
 
         updateToggleAll();
+
+        // Pencarian menu: filter judul (substring, case-insensitive), maksimal 8 hasil di dropdown.
+        const SEARCH_LIMIT = 8;
+        const searchInput = document.querySelector('[data-sidebar-search]');
+        const searchResults = document.querySelector('[data-sidebar-search-results]');
+
+        const hideSearchResults = () => searchResults.classList.add('hidden');
+
+        const renderSearchResults = () => {
+            const query = searchInput.value.trim().toLowerCase();
+            searchResults.replaceChildren();
+            if (! query) {
+                hideSearchResults();
+                return;
+            }
+
+            const matches = searchMenus
+                .filter((menu) => menu.title.toLowerCase().includes(query))
+                .slice(0, SEARCH_LIMIT);
+
+            if (matches.length === 0) {
+                const empty = document.createElement('li');
+                empty.className = 'sidebar-search-empty';
+                empty.textContent = 'Tidak ditemukan';
+                searchResults.append(empty);
+            }
+
+            matches.forEach((menu) => {
+                const link = document.createElement('a');
+                link.href = `/${menu.slug}`;
+                link.textContent = menu.title;
+
+                const item = document.createElement('li');
+                item.setAttribute('data-search-item', '');
+                item.append(link);
+                searchResults.append(item);
+            });
+
+            // Hasil baru → sorot item pertama, supaya Enter langsung membuka hasil teratas.
+            activeSearchIndex = 0;
+            highlightSearchItem();
+            searchResults.classList.remove('hidden');
+        };
+
+        const searchItems = () => [...searchResults.querySelectorAll('[data-search-item]')];
+        let activeSearchIndex = 0;
+
+        const highlightSearchItem = () => {
+            const items = searchItems();
+            items.forEach((item, index) => item.classList.toggle('is-active', index === activeSearchIndex));
+            items[activeSearchIndex]?.scrollIntoView({ block: 'nearest' });
+        };
+
+        searchInput.addEventListener('input', renderSearchResults);
+        searchInput.addEventListener('focus', renderSearchResults);
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                // preventDefault mencegah Chrome mengosongkan input type="search" saat Escape.
+                e.preventDefault();
+                hideSearchResults();
+                return;
+            }
+
+            const items = searchItems();
+            if (items.length === 0) return;
+
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (searchResults.classList.contains('hidden')) {
+                    searchResults.classList.remove('hidden');
+                    return;
+                }
+                const step = e.key === 'ArrowDown' ? 1 : -1;
+                activeSearchIndex = (activeSearchIndex + step + items.length) % items.length;
+                highlightSearchItem();
+            }
+
+            if (e.key === 'Enter' && !searchResults.classList.contains('hidden')) {
+                e.preventDefault();
+                items[activeSearchIndex].querySelector('a').click();
+            }
+        });
+
+        // Klik di luar area pencarian menutup dropdown tanpa mengosongkan input.
+        document.addEventListener('click', (e) => {
+            if (! e.target.closest('.sidebar-search')) hideSearchResults();
+        });
     })();
 </script>

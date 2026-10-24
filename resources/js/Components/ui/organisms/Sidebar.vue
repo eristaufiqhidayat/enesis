@@ -1,6 +1,6 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
-import { Link, usePage } from '@inertiajs/vue3';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { Link, router, usePage } from '@inertiajs/vue3';
 import Icon from '@/Components/ui/atoms/Icon.vue';
 
 const page = usePage();
@@ -123,7 +123,53 @@ function toggleSubmenu(item) {
     if (collapsedFull.value) setCollapsedFull(false);
     manuallyToggled.value = { ...manuallyToggled.value, [item.id]: !isChildOpen(item) };
 }
+
+// Pencarian menu: judul menu (termasuk children) diratakan jadi satu array,
+// lalu difilter substring case-insensitive, maksimal 8 hasil. Sama dengan versi Blade (ticket 01).
+const SEARCH_LIMIT = 8;
+const query = ref('');
+const showResults = ref(false);
+
+const searchMenus = computed(() =>
+    menu.value
+        .flatMap((section) => section.items.flatMap((item) => (item.children ? item.children : [item])))
+        .filter((item) => item.slug)
+        .map((item) => ({ title: item.title, slug: item.slug })),
+);
+
+const searchResults = computed(() => {
+    const keyword = query.value.trim().toLowerCase();
+    if (!keyword) return [];
+    return searchMenus.value.filter((item) => item.title.toLowerCase().includes(keyword)).slice(0, SEARCH_LIMIT);
+});
+
+const resultsOpen = computed(() => showResults.value && query.value.trim() !== '');
+const resultsRef = ref(null);
+const activeIndex = ref(0);
+
+// Hasil baru → sorot item pertama, supaya Enter langsung membuka hasil teratas.
+watch(searchResults, () => {
+    activeIndex.value = 0;
+});
+
+function moveActive(step) {
+    if (!resultsOpen.value) {
+        showResults.value = true;
+        return;
+    }
+    const total = searchResults.value.length;
+    if (total === 0) return;
+    activeIndex.value = (activeIndex.value + step + total) % total;
+    nextTick(() => resultsRef.value?.children[activeIndex.value]?.scrollIntoView({ block: 'nearest' }));
+}
+
+function openActiveResult() {
+    const item = searchResults.value[activeIndex.value];
+    if (!resultsOpen.value || !item) return;
+    router.visit(`/${item.slug}`);
+}
 </script>
+
 
 <template>
     <nav class="sidebar">
@@ -140,6 +186,30 @@ function toggleSubmenu(item) {
                 </button>
                 <button type="button" data-sidebar-toggle aria-label="Persempit/lebarkan sidebar" @click="setCollapsedFull(!collapsedFull)"><Icon name="menu" /></button>
             </div>
+            <div class="sidebar-search">
+                <input
+                    v-model="query"
+                    type="search"
+                    class="form-control form-control-sm"
+                    data-sidebar-search
+                    placeholder="Cari menu..."
+                    autocomplete="off"
+                    @focus="showResults = true"
+                    @input="showResults = true"
+                    @blur="showResults = false"
+                    @keydown.esc.prevent="showResults = false"
+                    @keydown.down.prevent="moveActive(1)"
+                    @keydown.up.prevent="moveActive(-1)"
+                    @keydown.enter.prevent="openActiveResult"
+                />
+                <!-- mousedown.prevent menjaga fokus tetap di input, jadi klik hasil tidak terhitung blur dan dropdown tidak tertutup duluan. -->
+                <ul ref="resultsRef" class="sidebar-search-results" :class="{ hidden: !resultsOpen }" @mousedown.prevent>
+                    <li v-if="query.trim() && searchResults.length === 0" class="sidebar-search-empty">Tidak ditemukan</li>
+                    <li v-for="(item, index) in searchResults" :key="item.slug" :class="{ 'is-active': index === activeIndex }">
+                        <Link :href="`/${item.slug}`">{{ item.title }}</Link>
+                    </li>
+                </ul>
+            </div>
         </div>
         <div class="sidebar-scroll" ref="navRef">
         <ul class="nav flex flex-col list-none m-0 p-0">
@@ -155,7 +225,10 @@ function toggleSubmenu(item) {
                     @keydown.enter.prevent="toggleGroup(section, $event)"
                     @keydown.space.prevent="toggleGroup(section, $event)"
                 >
-                    {{ section.label }}
+                    <span class="section-label-text">
+                        <Icon :name="section.icon" class="section-label-icon" />
+                        {{ section.label }}
+                    </span>
                     <Icon name="chevron-down" class="nav-chevron" />
                 </li>
                 <ul class="flex flex-col list-none m-0 p-0" :class="{ hidden: !isGroupOpen(section) }">
@@ -169,14 +242,12 @@ function toggleSubmenu(item) {
                                 :title="item.title"
                                 @click.prevent="toggleSubmenu(item)"
                             >
-                                <span class="nav-link-icon"><Icon :name="item.icon" class="nav-link-icon-svg" /></span>
                                 <span class="nav-link-text">{{ item.title }}</span>
                                 <Icon name="chevron-down" class="nav-chevron" />
                             </a>
                             <ul class="nav flex flex-col list-none m-0 p-0" :class="{ hidden: !isChildOpen(item) }" :id="item.id">
                                 <li v-for="child in item.children" :key="child.slug" class="nav-item">
                                     <Link class="nav-link" :class="{ active: currentSlug === child.slug }" :href="`/${child.slug}`" :title="child.title">
-                                        <span v-if="child.icon" class="nav-link-icon"><Icon :name="child.icon" class="nav-link-icon-svg" /></span>
                                         <span class="nav-link-text">{{ child.title }}</span>
                                     </Link>
                                 </li>
@@ -184,7 +255,6 @@ function toggleSubmenu(item) {
                         </li>
                         <li v-else class="nav-item">
                             <Link class="nav-link" :class="{ active: currentSlug === item.slug }" :href="`/${item.slug}`" :title="item.title">
-                                <span class="nav-link-icon"><Icon :name="item.icon" class="nav-link-icon-svg" /></span>
                                 <span class="nav-link-text">{{ item.title }}</span>
                             </Link>
                         </li>
