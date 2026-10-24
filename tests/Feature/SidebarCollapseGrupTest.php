@@ -64,4 +64,35 @@ class SidebarCollapseGrupTest extends TestCase
         );
         $this->assertGreaterThanOrEqual($labeledGroupCount, substr_count($html, 'nav-chevron'));
     }
+
+    public function test_sidebar_tidak_lagi_mengandung_font_awesome(): void
+    {
+        $html = $this->renderSidebar();
+
+        $this->assertStringNotContainsString('fas fa-', $html);
+        $this->assertStringNotContainsString('far fa-', $html);
+    }
+
+    public function test_jumlah_svg_ikon_menu_sesuai_jumlah_entri_berikon(): void
+    {
+        $html = $this->renderSidebar();
+
+        $jumlahEntriBerikon = 0;
+        foreach (config('marketama.menu') as $section) {
+            foreach ($section['items'] as $item) {
+                if ($item['icon'] !== null) {
+                    $jumlahEntriBerikon++;
+                }
+
+                foreach ($item['children'] ?? [] as $child) {
+                    if ($child['icon'] !== null) {
+                        $jumlahEntriBerikon++;
+                    }
+                }
+            }
+        }
+
+        $this->assertSame($jumlahEntriBerikon, substr_count($html, 'nav-link-icon-svg'));
+        $this->assertGreaterThan(0, substr_count($html, '<svg'));
+    }
 }

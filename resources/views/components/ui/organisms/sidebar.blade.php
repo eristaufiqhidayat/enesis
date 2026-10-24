@@ -2,8 +2,11 @@
 <nav class="sidebar">
     <div class="brand">
         <div class="brand-actions">
-            <button type="button" data-toggle-all-groups aria-label="Buka/tutup semua grup" title="Buka/tutup semua grup"><i class="fas fa-angle-double-up"></i></button>
-            <button type="button" data-sidebar-toggle aria-label="Persempit/lebarkan sidebar"><i class="fas fa-bars"></i></button>
+            <button type="button" data-toggle-all-groups aria-label="Buka/tutup semua grup" title="Buka/tutup semua grup">
+                <x-ui.atoms.icon name="chevrons-up" data-toggle-all-icon="up" />
+                <x-ui.atoms.icon name="chevrons-down" data-toggle-all-icon="down" class="hidden" />
+            </button>
+            <button type="button" data-sidebar-toggle aria-label="Persempit/lebarkan sidebar"><x-ui.atoms.icon name="menu" /></button>
         </div>
     </div>
     <div class="sidebar-scroll">
@@ -14,7 +17,7 @@
                 @php($groupSlugs = collect($section['items'])->flatMap(fn ($item) => isset($item['children']) ? array_column($item['children'], 'slug') : [$item['slug']])->implode(','))
                 <li class="section-label is-open" data-collapse-toggle="{{ $groupId }}" data-group-label="{{ $section['label'] }}" role="button" tabindex="0" aria-expanded="true">
                     {{ $section['label'] }}
-                    <i class="fas fa-chevron-down nav-chevron"></i>
+                    <x-ui.atoms.icon name="chevron-down" class="nav-chevron" />
                 </li>
             @endif
             <ul @if ($section['label']) id="{{ $groupId }}" data-group-slugs="{{ $groupSlugs }}" @endif class="flex flex-col list-none m-0 p-0">
@@ -100,7 +103,8 @@
         const updateToggleAll = () => {
             const anyCollapsed = groups.some((group) => group.target.classList.contains('hidden'));
             const label = anyCollapsed ? 'Buka semua grup' : 'Tutup semua grup';
-            toggleAll.querySelector('i').className = anyCollapsed ? 'fas fa-angle-double-down' : 'fas fa-angle-double-up';
+            toggleAll.querySelector('[data-toggle-all-icon="up"]').classList.toggle('hidden', anyCollapsed);
+            toggleAll.querySelector('[data-toggle-all-icon="down"]').classList.toggle('hidden', !anyCollapsed);
             toggleAll.setAttribute('aria-label', label);
             toggleAll.setAttribute('title', label);
         };

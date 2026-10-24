@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
+import Icon from '@/Components/ui/atoms/Icon.vue';
 
 const page = usePage();
 const menu = computed(() => page.props.menu ?? []);
@@ -135,9 +136,9 @@ function toggleSubmenu(item) {
                     :title="toggleAllLabel"
                     @click="toggleAllGroups"
                 >
-                    <i :class="anyGroupCollapsed ? 'fas fa-angle-double-down' : 'fas fa-angle-double-up'"></i>
+                    <Icon :name="anyGroupCollapsed ? 'chevrons-down' : 'chevrons-up'" />
                 </button>
-                <button type="button" data-sidebar-toggle aria-label="Persempit/lebarkan sidebar" @click="setCollapsedFull(!collapsedFull)"><i class="fas fa-bars"></i></button>
+                <button type="button" data-sidebar-toggle aria-label="Persempit/lebarkan sidebar" @click="setCollapsedFull(!collapsedFull)"><Icon name="menu" /></button>
             </div>
         </div>
         <div class="sidebar-scroll" ref="navRef">
@@ -155,7 +156,7 @@ function toggleSubmenu(item) {
                     @keydown.space.prevent="toggleGroup(section, $event)"
                 >
                     {{ section.label }}
-                    <i class="fas fa-chevron-down nav-chevron"></i>
+                    <Icon name="chevron-down" class="nav-chevron" />
                 </li>
                 <ul class="flex flex-col list-none m-0 p-0" :class="{ hidden: !isGroupOpen(section) }">
                     <template v-for="item in section.items" :key="item.id ?? item.slug">
@@ -168,14 +169,14 @@ function toggleSubmenu(item) {
                                 :title="item.title"
                                 @click.prevent="toggleSubmenu(item)"
                             >
-                                <span class="nav-link-icon"><i :class="item.icon"></i></span>
+                                <span class="nav-link-icon"><Icon :name="item.icon" class="nav-link-icon-svg" /></span>
                                 <span class="nav-link-text">{{ item.title }}</span>
-                                <i class="fas fa-chevron-down nav-chevron"></i>
+                                <Icon name="chevron-down" class="nav-chevron" />
                             </a>
                             <ul class="nav flex flex-col list-none m-0 p-0" :class="{ hidden: !isChildOpen(item) }" :id="item.id">
                                 <li v-for="child in item.children" :key="child.slug" class="nav-item">
                                     <Link class="nav-link" :class="{ active: currentSlug === child.slug }" :href="`/${child.slug}`" :title="child.title">
-                                        <span v-if="child.icon" class="nav-link-icon"><i :class="child.icon"></i></span>
+                                        <span v-if="child.icon" class="nav-link-icon"><Icon :name="child.icon" class="nav-link-icon-svg" /></span>
                                         <span class="nav-link-text">{{ child.title }}</span>
                                     </Link>
                                 </li>
@@ -183,7 +184,7 @@ function toggleSubmenu(item) {
                         </li>
                         <li v-else class="nav-item">
                             <Link class="nav-link" :class="{ active: currentSlug === item.slug }" :href="`/${item.slug}`" :title="item.title">
-                                <span class="nav-link-icon"><i :class="item.icon"></i></span>
+                                <span class="nav-link-icon"><Icon :name="item.icon" class="nav-link-icon-svg" /></span>
                                 <span class="nav-link-text">{{ item.title }}</span>
                             </Link>
                         </li>
