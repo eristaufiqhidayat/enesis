@@ -131,6 +131,12 @@ Route::middleware(['auth', 'wajib-ganti-password'])->group(function () {
         'rekap_pencapaian_depo_sku' => 'depo',
     ]);
 
+    $redirectSlugLama('motoris_report', [
+        'motoris_coverage' => 'coverage',
+        'motoris_performance' => 'performance',
+        'monitor_absensi_motoris' => 'absensi',
+    ]);
+
     Route::get('/{slug}', [MenuController::class, 'show'])
         ->middleware('hak:@slug')
         ->whereIn('slug', array_keys(config('marketama.pages')))

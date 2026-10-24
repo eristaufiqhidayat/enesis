@@ -280,6 +280,30 @@ class MenuTest extends TestCase
         );
     }
 
+    public function test_slug_lama_motoris_coverage_redirects_to_tab_coverage(): void
+    {
+        $this->get('/motoris_coverage')
+            ->assertRedirect('/motoris_report?tab=coverage');
+    }
+
+    public function test_slug_lama_motoris_performance_redirects_to_tab_performance(): void
+    {
+        $this->get('/motoris_performance')
+            ->assertRedirect('/motoris_report?tab=performance');
+    }
+
+    public function test_slug_lama_monitor_absensi_motoris_redirects_to_tab_absensi(): void
+    {
+        $this->get('/monitor_absensi_motoris')
+            ->assertRedirect('/motoris_report?tab=absensi');
+    }
+
+    public function test_redirect_slug_lama_motoris_meneruskan_query_string_lain(): void
+    {
+        $this->get('/motoris_performance?q=budi')
+            ->assertRedirect('/motoris_report?q=budi&tab=performance');
+    }
+
     protected function tearDown(): void
     {
         Carbon::setTestNow();

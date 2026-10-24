@@ -8,11 +8,11 @@ Tambahkan redirect dari tiga slug lama (`/motoris_coverage`, `/motoris_performan
 
 ## Acceptance criteria
 
-- [ ] GET `/motoris_coverage` me-redirect (302) ke `/motoris_report?tab=<tab coverage>`.
-- [ ] GET `/motoris_performance` me-redirect (302) ke `/motoris_report?tab=<tab performance>`.
-- [ ] GET `/monitor_absensi_motoris` me-redirect (302) ke `/motoris_report?tab=<tab absensi>`.
-- [ ] Query string lain yang dikirim ke slug lama (misal `q`) tetap diteruskan ke redirect target, tidak hilang.
-- [ ] Feature test di `tests/Feature/MenuTest.php` meng-assert ketiga redirect di atas (status code + target URL/query).
+- [x] GET `/motoris_coverage` me-redirect (302) ke `/motoris_report?tab=<tab coverage>`.
+- [x] GET `/motoris_performance` me-redirect (302) ke `/motoris_report?tab=<tab performance>`.
+- [x] GET `/monitor_absensi_motoris` me-redirect (302) ke `/motoris_report?tab=<tab absensi>`.
+- [x] Query string lain yang dikirim ke slug lama (misal `q`) tetap diteruskan ke redirect target, tidak hilang.
+- [x] Feature test di `tests/Feature/MenuTest.php` meng-assert ketiga redirect di atas (status code + target URL/query).
 
 ## Blocked by
 
