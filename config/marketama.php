@@ -742,28 +742,31 @@ return [
             'same_as' => null,
         ],
         // Gabungan menu monitoring harian sales. Filter tanggal dan KPI diatur per tabel.
-        // 'tabs' => true: hanya tabel tab aktif (query ?tab=) yang ditampilkan.
+        // 'tabs' => true: hanya tabel grup tab aktif (query ?tab=) yang ditampilkan. Tiap grup: tab_key, tab_label, tables.
         'monitoring_harian_sales' => [
             'title' => 'Monitoring Harian Sales',
             'tabs' => true,
             'tables' => [
                 [
-                    'table' => 'checkin_pagi',
+                    'tab_key' => 'checkin_pagi',
                     'tab_label' => 'Sales Checkin Outlet Pagi',
-                    'date_filter_column' => 'tanggal_data',
-                    'kpi' => 'checkin_pagi',
+                    'tables' => [
+                        ['table' => 'checkin_pagi', 'date_filter_column' => 'tanggal_data', 'kpi' => 'checkin_pagi'],
+                    ],
                 ],
                 [
-                    'table' => 'sales_tidak_penjualan',
+                    'tab_key' => 'sales_tidak_penjualan',
                     'tab_label' => 'Sales Tidak Penjualan',
-                    'date_filter_column' => null,
-                    'kpi' => null,
+                    'tables' => [
+                        ['table' => 'sales_tidak_penjualan', 'date_filter_column' => null, 'kpi' => null],
+                    ],
                 ],
                 [
-                    'table' => 'sales_tidak_absen',
+                    'tab_key' => 'sales_tidak_absen',
                     'tab_label' => 'Sales Tidak Absen Pagi',
-                    'date_filter_column' => null,
-                    'kpi' => null,
+                    'tables' => [
+                        ['table' => 'sales_tidak_absen', 'date_filter_column' => null, 'kpi' => null],
+                    ],
                 ],
             ],
             'same_as' => null,

@@ -107,6 +107,25 @@ class MenuTest extends TestCase
             );
     }
 
+    public function test_satu_tab_bisa_berisi_lebih_dari_satu_tabel(): void
+    {
+        // Konfigurasi tab diganti sementara: satu grup berisi dua tabel, grup lain berisi satu tabel.
+        config(['marketama.pages.monitoring_harian_sales.tables' => [
+            ['tab_key' => 'gabungan', 'tab_label' => 'Gabungan', 'tables' => ['checkin_pagi', 'sales_tidak_penjualan']],
+            ['tab_key' => 'lain', 'tab_label' => 'Lain', 'tables' => ['sales_tidak_absen']],
+        ]]);
+
+        $this->get('/monitoring_harian_sales?tab=gabungan')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('activeTab', 'gabungan')
+                ->has('tables', 3)
+                ->where('tables.0.tab_key', 'gabungan')
+                ->where('tables.1.tab_key', 'gabungan')
+                ->where('tables.2.tab_key', 'lain')
+            );
+    }
+
     public function test_slug_lama_checkin_pagi_redirects_to_tab_checkin(): void
     {
         $this->get('/checkin_pagi')

@@ -16,11 +16,21 @@ class MenuController extends Controller
         abort_unless($page, 404);
 
         $search = trim((string) $request->query('q'));
+        // Tabel dikelompokkan per grup tab (tab_key, tab_label, tables). Halaman tanpa tab: tiap tabel jadi grup sendiri.
         // Filter tanggal dan KPI diatur per tabel; tanggal query string dipakai bersama oleh tabel yang punya filter.
-        $konfigDefault = ['tab_label' => null, 'date_filter_column' => null, 'kpi' => null];
-        $konfigTabel = array_map(fn ($item) => is_array($item)
-            ? $item + $konfigDefault
-            : ['table' => $item] + $konfigDefault, $page['tables']);
+        $konfigDefault = ['date_filter_column' => null, 'kpi' => null];
+        $konfigTabel = [];
+
+        foreach ($page['tables'] as $item) {
+            $grup = is_array($item) && isset($item['tables'])
+                ? $item
+                : ['tab_key' => $item, 'tab_label' => null, 'tables' => [$item]];
+
+            foreach ($grup['tables'] as $tabel) {
+                $konfigTabel[] = (is_array($tabel) ? $tabel : ['table' => $tabel]) + $konfigDefault
+                    + ['tab_key' => $grup['tab_key'], 'tab_label' => $grup['tab_label']];
+            }
+        }
         $hasDateFilter = collect($konfigTabel)->contains(fn ($konfig) => $konfig['date_filter_column'] !== null);
         $tanggal = $hasDateFilter ? $this->resolveTanggal($request) : null;
         $tables = [];
@@ -61,6 +71,7 @@ class MenuController extends Controller
             $tables[] = [
                 'name' => $table,
                 'title' => config("marketama.tables.{$table}.title"),
+                'tab_key' => $konfig['tab_key'],
                 'tab_label' => $konfig['tab_label'] ?? config("marketama.tables.{$table}.title"),
                 'date_filter' => $dateColumn !== null,
                 'columns' => $columns,
@@ -73,10 +84,10 @@ class MenuController extends Controller
             ];
         }
 
-        // Tab aktif dari query ?tab=, harus salah satu tabel yang tampil. Jika kosong/tidak valid, pakai tab pertama.
-        $namaTabel = array_column($tables, 'name');
+        // Tab aktif dari query ?tab=, harus salah satu tab_key yang tampil. Jika kosong/tidak valid, pakai tab pertama.
+        $tabKeys = array_values(array_unique(array_column($tables, 'tab_key')));
         $tab = $request->query('tab');
-        $activeTab = in_array($tab, $namaTabel, true) ? $tab : ($namaTabel[0] ?? null);
+        $activeTab = in_array($tab, $tabKeys, true) ? $tab : ($tabKeys[0] ?? null);
 
         return Inertia::render('Menu/Show', [
             'slug' => $slug,

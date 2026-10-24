@@ -25,8 +25,11 @@ const appName = usePage().props.appName;
 
 // Halaman bertab hanya menampilkan tabel aktif; halaman lain tetap menumpuk semua tabel.
 const bertab = computed(() => props.page.tabs === true);
-const visibleTables = computed(() => bertab.value ? props.tables.filter((table) => table.name === props.activeTab) : props.tables);
-const tabItems = computed(() => props.tables.map((table) => ({ key: table.name, label: table.tab_label })));
+const visibleTables = computed(() => bertab.value ? props.tables.filter((table) => table.tab_key === props.activeTab) : props.tables);
+// Satu tab per grup: tab_key unik, label diambil dari tabel pertama grup tersebut.
+const tabItems = computed(() => props.tables
+    .filter((table, index) => props.tables.findIndex((other) => other.tab_key === table.tab_key) === index)
+    .map((table) => ({ key: table.tab_key, label: table.tab_label })));
 const formDateFilter = computed(() => bertab.value ? visibleTables.value.some((table) => table.date_filter) : props.hasDateFilter);
 
 // Komponen ini dipakai ulang saat navigasi Inertia, jadi nilai input ikut props terbaru.
@@ -57,13 +60,13 @@ function submitSearch() {
 
 function pindahTab(key) {
     const query = { tab: key };
-    const tabBaru = props.tables.find((table) => table.name === key);
+    const tabBaruPakaiTanggal = props.tables.some((table) => table.tab_key === key && table.date_filter);
 
     if (search.value) {
         query.q = search.value;
     }
 
-    if (tabBaru?.date_filter && tanggal.value) {
+    if (tabBaruPakaiTanggal && tanggal.value) {
         query.tanggal = tanggal.value;
     }
 
