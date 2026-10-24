@@ -1,7 +1,14 @@
 <script setup>
-import { onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { usePage } from '@inertiajs/vue3';
 import Breadcrumb from '@/Components/ui/molecules/Breadcrumb.vue';
+import Button from '@/Components/ui/atoms/Button.vue';
 import Tooltip from '@/Components/ui/atoms/Tooltip.vue';
+
+const page = usePage();
+const user = computed(() => page.props.auth?.user ?? null);
+// Logout lewat form biasa (bukan kunjungan Inertia) karena halaman login adalah Blade.
+const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
 
 const notifOpen = ref(false);
 const notifWrapper = ref(null);
@@ -26,6 +33,14 @@ onUnmounted(() => document.removeEventListener('click', closeNotifOnOutsideClick
                 <div class="dropdown-menu" :class="{ hidden: !notifOpen }">
                     <i class="fas fa-bell-slash me-1"></i> Tidak ada notifikasi baru
                 </div>
+            </div>
+            <div v-if="user" class="topbar-user">
+                <i class="fas fa-user-circle"></i>
+                <span class="topbar-user-name" :title="user.username">{{ user.name }}</span>
+                <form method="POST" action="/logout">
+                    <input type="hidden" name="_token" :value="csrfToken">
+                    <Button type="submit" variant="outline-secondary">Keluar</Button>
+                </form>
             </div>
         </div>
     </div>

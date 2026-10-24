@@ -74,3 +74,12 @@ Tidak perlu membangun fitur registrasi mandiri (self-service signup) — user di
 - Ini bukan "perbaikan" dalam arti memperbaiki bug pada sistem yang sudah ada — sistem autentikasinya **belum pernah dibangun**. Judul backlog "perbaikan sistem autentikasi" di sini dibaca sebagai "membangun & mengamankan sistem autentikasi yang saat ini tidak ada".
 - Begitu middleware `auth` dipasang di catch-all `/{slug}`, seluruh 119 menu otomatis ikut terlindungi tanpa perlu diubah satu per satu — konsisten dengan pendekatan config-driven di `config/marketama.php`.
 - Perlu koordinasi dengan tim mobile (lihat `docs/PRD.md` baris 101) kalau nanti autentikasi token API dibangun, supaya tidak dua sistem auth yang tidak konsisten.
+
+## Keputusan saat implementasi (24 Okt 2026)
+
+- **Login memakai username, bukan email.** Akun Enesis diisi dari akun aplikasi lama lewat `php artisan enesis:sinkron-user` (tabel `mk_user` + `mk_karyawan`), dan hampir semuanya tidak punya email. Username tidak membedakan huruf besar/kecil. Rate limit memakai kunci `username|IP` (5 kali gagal, kunci 60 detik).
+- **Hanya akun `aktif` yang bisa login.** Akun milik karyawan nonaktif sudah dinonaktifkan saat migrasi.
+- **Wajib ganti password.** Password lama tidak bisa diambil dari aplikasi lama, jadi admin membuat password awal dengan `php artisan enesis:atur-password <username>`. Akun dengan `wajib_ganti_password` hanya bisa membuka `/ganti-password` (middleware `wajib-ganti-password`) sampai password diganti.
+- **`UserSeeder`** membuat akun `admin` / `password` untuk lokal/dev. Di production akun ini hanya dibuat bila `SEED_ADMIN_PASSWORD` diisi, dan password itu wajib diganti saat login pertama.
+- Topbar Vue melakukan logout lewat form biasa (bukan kunjungan Inertia), karena halaman login adalah Blade.
+

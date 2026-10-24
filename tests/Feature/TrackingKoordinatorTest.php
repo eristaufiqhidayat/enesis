@@ -4,11 +4,12 @@ namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Tests\Concerns\LoginOtomatis;
 use Tests\TestCase;
 
 class TrackingKoordinatorTest extends TestCase
 {
-    use RefreshDatabase;
+    use LoginOtomatis, RefreshDatabase;
 
     public function test_page_shows_map_and_koordinator_list(): void
     {

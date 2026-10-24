@@ -25,12 +25,16 @@ class MenuController extends Controller
         $tables = [];
 
         foreach ($page['tables'] as $table) {
-            if (! Schema::hasTable($table)) {
+            // "sumber" = [Kelas, 'metode'] yang mengembalikan query (mis. menu User Sales dari tabel users);
+            // tanpa itu, tabel dibaca apa adanya.
+            $sumber = config("marketama.tables.{$table}.sumber");
+
+            if (! $sumber && ! Schema::hasTable($table)) {
                 continue;
             }
 
             $columns = config("marketama.tables.{$table}.columns", []);
-            $query = DB::table($table);
+            $query = $sumber ? call_user_func($sumber) : DB::table($table);
 
             if ($dateColumn !== null) {
                 $query->where($dateColumn, $tanggal);

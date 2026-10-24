@@ -54,6 +54,23 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
 .notif-bell { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 2.25rem; height: 2.25rem; color: var(--color-ink-muted); font-size: 1.25rem; text-decoration: none; }
 .notif-bell:hover { color: var(--color-brand); }
 .notif-bell::before { content: ""; position: absolute; right: .3rem; top: .35rem; width: .7rem; height: .7rem; border-radius: 40%; background-color: var(--color-brand); border: 2px solid var(--color-surface); }
+/* Info user login + tombol Keluar di kanan topbar. */
+.topbar-user { display: inline-flex; align-items: center; gap: .5rem; padding-left: .75rem; margin-left: .25rem; border-left: 1px solid #e5e7eb; color: var(--color-ink-muted); font-size: .8rem; }
+.topbar-user-name { font-weight: 600; color: var(--color-ink, #344050); max-width: 12rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Halaman tamu (login, ganti password): tanpa sidebar/topbar, kartu di tengah. */
+.auth-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem; background-image: linear-gradient(-45deg, var(--color-brand-light), var(--color-brand-dark)); }
+.auth-box { width: 100%; max-width: 24rem; }
+.password-field { position: relative; }
+.password-field .form-control { padding-right: 2.25rem; }
+.password-toggle { position: absolute; top: 50%; right: .5rem; transform: translateY(-50%); background: transparent; border: 0; color: var(--color-ink-muted); cursor: pointer; padding: .25rem; line-height: 1; }
+.password-toggle:hover { color: var(--color-brand); }
+.form-check { display: inline-flex; align-items: center; gap: .5rem; font-size: .8rem; color: var(--color-ink-muted); cursor: pointer; }
+.form-check-input { width: 1rem; height: 1rem; accent-color: var(--color-brand); }
+/* Kotak "Demo masuk cepat" (hanya tampil bila DEMO_LOGIN aktif). */
+.demo-login { margin-top: 1rem; padding: .75rem; border: 1px dashed #d4a537; border-radius: .375rem; background: #fdf6e9; }
+.demo-login-title { font-size: .75rem; color: #8a6d2b; margin-bottom: .5rem; }
+.demo-login-buttons { display: flex; flex-wrap: wrap; gap: .5rem; }
+.auth-brand { color: #fff; font-weight: 700; font-size: 1.25rem; text-align: center; margin-bottom: 1rem; text-shadow: 0 1px 2px rgba(0, 0, 0, .35); }
 /* Breadcrumb di topbar: menunjukkan posisi menu aktif (grup > menu), derived dari config('marketama.menu'). */
 .breadcrumb { display: flex; align-items: center; gap: .4rem; font-size: .75rem; color: var(--color-ink-muted); }
 .breadcrumb-item { font-weight: 500; }
@@ -146,6 +163,8 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
 
     .alert { @apply rounded-md px-3 py-2 text-sm; }
     .alert-info { @apply bg-sky-50 text-sky-700 border border-sky-100; }
+    .alert-danger { @apply bg-red-50 text-red-700 border border-red-100; }
+    .alert-success { @apply bg-green-50 text-green-700 border border-green-100; }
 
     .dropdown-menu { @apply absolute right-0 z-20 mt-2 min-w-[14rem] rounded-md border border-gray-200 bg-white p-3 text-sm text-gray-500 shadow-lg; }
 

@@ -8,10 +8,10 @@ Ganti form login minimal dari ticket pertama dengan tampilan yang memakai kompon
 
 ## Acceptance criteria
 
-- [ ] Halaman `/login` disusun dari komponen `x-ui.*` yang sudah ada, bukan markup mentah (`<div class="card">`, `<button class="btn">`, dst. yang ditulis ulang).
-- [ ] Pesan error validasi ditampilkan lewat komponen `x-ui.molecules.alert`.
-- [ ] Tampilan responsif dan konsisten dengan gaya visual aplikasi (lihat `resources/css/app.css`).
-- [ ] Test feature dari ticket pertama tetap lulus tanpa perubahan assertion yang bergantung pada markup.
+- [x] Halaman `/login` disusun dari komponen `x-ui.*` yang sudah ada, bukan markup mentah (`<div class="card">`, `<button class="btn">`, dst. yang ditulis ulang).
+- [x] Pesan error validasi ditampilkan lewat komponen `x-ui.molecules.alert`.
+- [x] Tampilan responsif dan konsisten dengan gaya visual aplikasi (lihat `resources/css/app.css`).
+- [x] Test feature dari ticket pertama tetap lulus tanpa perubahan assertion yang bergantung pada markup.
 
 ## Blocked by
 
