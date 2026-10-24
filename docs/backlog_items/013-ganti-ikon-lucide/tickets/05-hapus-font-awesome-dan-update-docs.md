@@ -8,10 +8,10 @@ Setelah tiket 02-04 selesai dan grep `fas fa-` di `resources/` & `config/` koson
 
 ## Acceptance criteria
 
-- [ ] `grep -r "fas fa-" resources/ config/` tidak menghasilkan match apa pun.
-- [ ] `public/vendor/fontawesome/` dihapus dari repo.
-- [ ] Tidak ada lagi `<link>` ke `vendor/fontawesome/css/all.min.css` di `app.blade.php`, `layouts/app.blade.php`, `layouts/auth.blade.php`.
-- [ ] `docs/STYLE_GUIDE.md` dan `docs/TECH.md` menyebut Lucide (bukan Font Awesome) sebagai sistem ikon aplikasi.
+- [x] `grep -r "fas fa-" resources/ config/` tidak menghasilkan match apa pun.
+- [x] `public/vendor/fontawesome/` dihapus dari repo.
+- [x] Tidak ada lagi `<link>` ke `vendor/fontawesome/css/all.min.css` di `app.blade.php`, `layouts/app.blade.php`, `layouts/auth.blade.php`.
+- [x] `docs/STYLE_GUIDE.md` dan `docs/TECH.md` menyebut Lucide (bukan Font Awesome) sebagai sistem ikon aplikasi.
 - [ ] Full test suite (`composer test`) tetap hijau setelah penghapusan.
 - [ ] Verifikasi manual: jalankan aplikasi, pastikan tidak ada ikon yang hilang/rusak di halaman mana pun (sidebar, topbar, login, area design, tracking) setelah stylesheet Font Awesome dicabut.
 

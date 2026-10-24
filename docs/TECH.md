@@ -11,7 +11,7 @@ Dokumen ini merangkum teknologi yang dipakai di aplikasi Enesis Canvassing, berd
 | Template / rendering | Laravel Blade (server-side rendering) |
 | Database | MySQL (default `.env.example`), PostgreSQL 16 (didukung), SQLite (default `config/database.php` dan dipakai di test) |
 | Styling | Tailwind CSS 4 (lewat Vite) |
-| Ikon | Font Awesome 5 Free |
+| Ikon | Lucide (SVG self-hosted di `public/vendor/lucide/`) |
 | JavaScript | Vanilla JS, tanpa framework SPA |
 | Peta | Leaflet, tile OpenStreetMap dan Esri |
 | Build asset | Vite 8, `laravel-vite-plugin`, `@tailwindcss/vite` |
@@ -42,7 +42,7 @@ Dokumen ini merangkum teknologi yang dipakai di aplikasi Enesis Canvassing, berd
 - **Vue 3 + Inertia.js** untuk halaman menu tabel generik (`MenuController` me-render `Inertia::render('Menu/Show', ...)`, komponen di `resources/js/Pages/Menu/Show.vue`, layout sidebar/topbar di `resources/js/Layouts/AppLayout.vue`).
 - **Blade** untuk halaman lain (tracking, design area polygon, coming soon). Layout utama ada di `resources/views/layouts/app.blade.php`, dengan sidebar dan topbar sebagai include.
 - **Tailwind CSS 4** (`resources/css/app.css`, lewat Vite) adalah satu-satunya sistem styling — tidak ada Bootstrap. Sebagian komponen umum (card, btn, form, badge, list-group, pagination, alert, modal, dropdown) didefinisikan sebagai class pendek di `app.css` lewat `@layer components` + `@apply`.
-- **Font Awesome 5 Free** (`public/vendor/fontawesome/`) untuk ikon sidebar dan topbar. File disalin ke `public/vendor`, bukan diinstal lewat npm.
+- **Lucide** (`public/vendor/lucide/`) untuk ikon sidebar, topbar, dan halaman lain. Setiap ikon adalah file SVG, dimuat lewat atom `icon` (Blade: `resources/views/components/ui/atoms/icon.blade.php`; Vue: `resources/js/Components/ui/atoms/Icon.vue`). File disalin ke `public/vendor`, bukan diinstal lewat npm.
 - Tidak ada lagi JS komponen Bootstrap (tooltip/collapse/dropdown/modal) — diganti helper vanilla JS kecil (toggle class `hidden`) di `layouts/app.blade.php` untuk halaman Blade, dan state reaktif Vue di `AppLayout.vue`.
 - **Vanilla JavaScript** dengan `fetch` untuk memanggil endpoint JSON di halaman Blade. Token CSRF dikirim lewat header `X-CSRF-TOKEN`. Tidak ada Livewire atau Alpine.
 - **Leaflet** (`public/vendor/leaflet/`) untuk peta tracking koordinator, tracking sales, dan design polygon area. Dimuat statis, bukan lewat npm.
@@ -73,4 +73,4 @@ Langkah lengkap ada di `README.md`.
 ## Catatan dan hal yang perlu diperhatikan
 
 - **Default database tidak konsisten.** `config/database.php` default ke SQLite, sedangkan `.env.example` dan `README.md` memakai MySQL. Pastikan `.env` lokal sesuai dengan database yang dipakai.
-- **Dependensi frontend di `public/vendor`** (Font Awesome, Leaflet) tidak tercatat di `package.json`, sehingga update versinya harus dilakukan manual.
+- **Dependensi frontend di `public/vendor`** (Lucide, Leaflet) tidak tercatat di `package.json`, sehingga update versinya harus dilakukan manual.

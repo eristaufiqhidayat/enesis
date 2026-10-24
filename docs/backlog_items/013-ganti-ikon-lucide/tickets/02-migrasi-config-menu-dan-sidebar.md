@@ -11,12 +11,12 @@ Migrasikan field `'icon'` di seluruh entri `menu` (119+ menu + grup) di `config/
 
 ## Acceptance criteria
 
-- [ ] Semua nilai `'icon'` di `config('marketama.menu')` (termasuk level grup dan `children`) tidak lagi berawalan `'fas '`/`'far '`.
-- [ ] Setiap nama ikon di `config('marketama.menu')` punya file SVG yang sesuai di `public/vendor/lucide/`.
-- [ ] Render `<x-ui.organisms.sidebar />` tidak mengandung string `fas fa-` sama sekali.
-- [ ] Setiap entri menu/grup berlabel di `config('marketama.menu')` menghasilkan elemen `<svg>` di output sidebar (lewat Icon atom), jumlahnya cocok dengan jumlah entri yang punya `icon`.
-- [ ] Update test `tests/Feature/SidebarCollapseGrupTest.php` (atau tes baru) yang sebelumnya mengasumsikan `fas fa-*`/`nav-chevron` sebagai class `<i>`, supaya sesuai assertion `<svg>` yang baru.
-- [ ] Verifikasi manual: sidebar (Blade & Vue/Inertia) menampilkan ikon Lucide yang representatif untuk tiap menu, tidak ada ikon kosong/patah.
+- [x] Semua nilai `'icon'` di `config('marketama.menu')` (termasuk level grup dan `children`) tidak lagi berawalan `'fas '`/`'far '`.
+- [x] Setiap nama ikon di `config('marketama.menu')` punya file SVG yang sesuai di `public/vendor/lucide/`.
+- [x] Render `<x-ui.organisms.sidebar />` tidak mengandung string `fas fa-` sama sekali.
+- [x] Setiap entri menu/grup berlabel di `config('marketama.menu')` menghasilkan elemen `<svg>` di output sidebar (lewat Icon atom), jumlahnya cocok dengan jumlah entri yang punya `icon`.
+- [x] Update test `tests/Feature/SidebarCollapseGrupTest.php` (atau tes baru) yang sebelumnya mengasumsikan `fas fa-*`/`nav-chevron` sebagai class `<i>`, supaya sesuai assertion `<svg>` yang baru.
+- [x] Verifikasi manual: sidebar (Blade & Vue/Inertia) menampilkan ikon Lucide yang representatif untuk tiap menu, tidak ada ikon kosong/patah.
 
 ## Blocked by
 

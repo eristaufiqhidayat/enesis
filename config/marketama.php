@@ -11,52 +11,52 @@ return [
                 [
                     'slug' => 'home',
                     'title' => 'Beranda',
-                    'icon' => 'fas fa-home',
+                    'icon' => 'home',
                 ],
                 [
                     'slug' => 'checkin_pagi',
                     'title' => 'Sales Checkin Outlet Pagi',
-                    'icon' => 'fas fa-clock',
+                    'icon' => 'clock',
                 ],
                 [
                     'slug' => 'sales_tidak_penjualan',
                     'title' => 'Sales Tidak Penjualan',
-                    'icon' => 'fas fa-shopping-cart',
+                    'icon' => 'shopping-cart',
                 ],
                 [
                     'slug' => 'sales_tidak_absen',
                     'title' => 'Sales Tidak Absen Pagi',
-                    'icon' => 'fas fa-user-times',
+                    'icon' => 'user-x',
                 ],
                 [
                     'slug' => 'rekap_pencapaian_sku_motoris',
                     'title' => 'Rekap Pencapaian SKU per Motoris',
-                    'icon' => 'fas fa-boxes',
+                    'icon' => 'boxes',
                 ],
                 [
                     'slug' => 'rekap_pencapaian_depo_sku',
                     'title' => 'Rekap Pencapaian SKU per Depo',
-                    'icon' => 'fas fa-warehouse',
+                    'icon' => 'warehouse',
                 ],
                 [
                     'slug' => 'summary_all_depo',
                     'title' => 'Summary All Depo',
-                    'icon' => 'fas fa-chart-pie',
+                    'icon' => 'chart-pie',
                 ],
                 [
                     'slug' => 'motoris_coverage',
                     'title' => 'Motoris Coverage',
-                    'icon' => 'fas fa-users',
+                    'icon' => 'users',
                 ],
                 [
                     'slug' => 'motoris_performance',
                     'title' => 'Motoris Performance',
-                    'icon' => 'fas fa-chart-bar',
+                    'icon' => 'chart-bar',
                 ],
                 [
                     'slug' => 'monitor_absensi_motoris',
                     'title' => 'Monitor Absensi Motoris',
-                    'icon' => 'fas fa-user-clock',
+                    'icon' => 'user-check',
                 ],
             ],
         ],
@@ -66,46 +66,46 @@ return [
                 [
                     'slug' => 'checkin_depo',
                     'title' => 'Checkin Checkout Depo',
-                    'icon' => 'fas fa-camera',
+                    'icon' => 'camera',
                 ],
                 [
                     'slug' => 'template_barang_canvassing',
                     'title' => 'Template Barang Canvassing',
-                    'icon' => 'fas fa-clipboard-list',
+                    'icon' => 'clipboard-list',
                 ],
                 [
                     'slug' => 'barang_canvassing',
                     'title' => 'Barang Canvassing',
-                    'icon' => 'fas fa-motorcycle',
+                    'icon' => 'bike',
                 ],
                 [
                     'slug' => 'pengembalian_barang',
                     'title' => 'Pengembalian Barang',
-                    'icon' => 'fas fa-undo',
+                    'icon' => 'undo',
                 ],
                 [
                     'slug' => 'tracking_sales',
                     'title' => 'Tracking Last Seen Sales',
-                    'icon' => 'fas fa-map-marker-alt',
+                    'icon' => 'map-pin',
                 ],
                 [
                     'slug' => 'tracking_sales_history_location',
                     'title' => 'Tracking History Sales Location',
-                    'icon' => 'fas fa-map-marker-alt',
+                    'icon' => 'map-pin',
                 ],
                 [
                     'slug' => 'tracking_koordinator',
                     'title' => 'Tracking Last Seen Koordinator',
-                    'icon' => 'fas fa-map-marker-alt',
+                    'icon' => 'map-pin',
                 ],
                 [
                     'slug' => 'tracking_koordinator_history_location',
                     'title' => 'Tracking History Koordinator Location',
-                    'icon' => 'fas fa-map-marker-alt',
+                    'icon' => 'map-pin',
                 ],
                 [
                     'title' => 'Laporan',
-                    'icon' => 'fas fa-book',
+                    'icon' => 'book',
                     'id' => 'lapcanvassing',
                     'children' => [
                         [
@@ -138,31 +138,31 @@ return [
                 [
                     'slug' => 'loading_barang',
                     'title' => 'Loading Barang',
-                    'icon' => 'fas fa-shopping-cart',
+                    'icon' => 'shopping-cart',
                 ],
                 [
                     'slug' => 'retur_barang',
                     'title' => 'Retur Barang',
-                    'icon' => 'fas fa-camera',
+                    'icon' => 'camera',
                 ],
                 [
                     'slug' => 'pembayaran_pembelian',
                     'title' => 'Setoran',
-                    'icon' => 'fas fa-money-bill',
+                    'icon' => 'banknote',
                 ],
                 [
                     'slug' => 'setor_margin',
                     'title' => 'Setor Margin',
-                    'icon' => 'fas fa-money-bill',
+                    'icon' => 'banknote',
                 ],
                 [
                     'slug' => 'distributor',
                     'title' => 'Distributor',
-                    'icon' => 'fas fa-warehouse',
+                    'icon' => 'warehouse',
                 ],
                 [
                     'title' => 'Laporan',
-                    'icon' => 'fas fa-book',
+                    'icon' => 'book',
                     'id' => 'lappurchasing',
                     'children' => [
                         [
@@ -205,26 +205,26 @@ return [
                 [
                     'slug' => 'checkin_outlet',
                     'title' => 'Checkin Outlet',
-                    'icon' => 'fas fa-camera',
+                    'icon' => 'camera',
                 ],
                 [
                     'slug' => 'penjualan_barang',
                     'title' => 'Penjualan Barang',
-                    'icon' => 'fas fa-box',
+                    'icon' => 'box',
                 ],
                 [
                     'slug' => 'stok_outlet',
                     'title' => 'Stok Outlet',
-                    'icon' => 'fas fa-store',
+                    'icon' => 'store',
                 ],
                 [
                     'slug' => 'stok_kompetitor',
                     'title' => 'Stok Kompetitor',
-                    'icon' => 'fas fa-store',
+                    'icon' => 'store',
                 ],
                 [
                     'title' => 'Laporan',
-                    'icon' => 'fas fa-book',
+                    'icon' => 'book',
                     'id' => 'laptransaksi',
                     'children' => [
                         [
@@ -287,31 +287,31 @@ return [
                 [
                     'slug' => 'absensi_sales',
                     'title' => 'Absensi Sales',
-                    'icon' => 'fas fa-calendar',
+                    'icon' => 'calendar',
                 ],
                 [
                     'slug' => 'absensi_sales_terlambat',
                     'title' => 'Absensi Sales Terlambat',
-                    'icon' => 'fas fa-clock text-danger',
+                    'icon' => 'clock',
                 ],
                 [
                     'slug' => 'absensi_koordinator',
                     'title' => 'Absensi Koordinator',
-                    'icon' => 'fas fa-calendar',
+                    'icon' => 'calendar',
                 ],
                 [
                     'slug' => 'absensi_ssk_supervisor',
                     'title' => 'Absensi SSK / Supervisor',
-                    'icon' => 'fas fa-calendar-check',
+                    'icon' => 'calendar-check',
                 ],
                 [
                     'slug' => 'permintaan_izin',
                     'title' => 'Permintaan Izin',
-                    'icon' => 'fas fa-signature',
+                    'icon' => 'signature',
                 ],
                 [
                     'title' => 'Penggajian',
-                    'icon' => 'fas fa-file-alt',
+                    'icon' => 'file-text',
                     'id' => 'penggajian',
                     'children' => [
                         [
@@ -338,7 +338,7 @@ return [
                 ],
                 [
                     'title' => 'Laporan',
-                    'icon' => 'fas fa-book',
+                    'icon' => 'book',
                     'id' => 'lappenggajian',
                     'children' => [
                         [
@@ -385,54 +385,54 @@ return [
             'items' => [
                 [
                     'title' => 'Outlet',
-                    'icon' => 'fas fa-book',
+                    'icon' => 'book',
                     'id' => 'groupoutlet',
                     'children' => [
                         [
                             'slug' => 'outlet_noo',
                             'title' => 'New Open Outlet',
-                            'icon' => 'fas fa-store',
+                            'icon' => 'store',
                         ],
                         [
                             'slug' => 'outlet_all',
                             'title' => 'All Outlet',
-                            'icon' => 'fas fa-store',
+                            'icon' => 'store',
                         ],
                         [
                             'slug' => 'outlet_ac',
                             'title' => 'Actual Call',
-                            'icon' => 'fas fa-store',
+                            'icon' => 'store',
                         ],
                         [
                             'slug' => 'outlet_ec',
                             'title' => 'Effective Call',
-                            'icon' => 'fas fa-store',
+                            'icon' => 'store',
                         ],
                         [
                             'slug' => 'outlet_ro',
                             'title' => 'Repeat Order',
-                            'icon' => 'fas fa-store',
+                            'icon' => 'store',
                         ],
                         [
                             'slug' => 'outlet_oss',
                             'title' => 'Out of Stock',
-                            'icon' => 'fas fa-store',
+                            'icon' => 'store',
                         ],
                         [
                             'slug' => 'outlet_duplikat',
                             'title' => 'Outlet Duplikat / Fiktif',
-                            'icon' => 'fas fa-copy',
+                            'icon' => 'copy',
                         ],
                     ],
                 ],
                 [
                     'slug' => 'join_visit',
                     'title' => 'Join Visit',
-                    'icon' => 'fas fa-map',
+                    'icon' => 'map',
                 ],
                 [
                     'title' => 'Laporan',
-                    'icon' => 'fas fa-book',
+                    'icon' => 'book',
                     'id' => 'lapoutlet',
                     'children' => [
                         [
@@ -484,81 +484,81 @@ return [
             'items' => [
                 [
                     'title' => 'Users',
-                    'icon' => 'fas fa-users',
+                    'icon' => 'users',
                     'id' => 'group_users',
                     'children' => [
                         [
                             'slug' => 'super_admin',
                             'title' => 'Super Admin',
-                            'icon' => 'fas fa-users',
+                            'icon' => 'users',
                         ],
                         [
                             'slug' => 'user_koordinator',
                             'title' => 'User Koordinator',
-                            'icon' => 'fas fa-users',
+                            'icon' => 'users',
                         ],
                         [
                             'slug' => 'user_sales',
                             'title' => 'User Sales',
-                            'icon' => 'fas fa-users',
+                            'icon' => 'users',
                         ],
                         [
                             'slug' => 'user_lainnya',
                             'title' => 'User Lainnya',
-                            'icon' => 'fas fa-users',
+                            'icon' => 'users',
                         ],
                     ],
                 ],
                 [
                     'slug' => 'role',
                     'title' => 'Role & Hak Akses',
-                    'icon' => 'fas fa-user-shield',
+                    'icon' => 'shield-user',
                 ],
                 [
                     'title' => 'Karyawan',
-                    'icon' => 'fas fa-users',
+                    'icon' => 'users',
                     'id' => 'group_karyawan',
                     'children' => [
                         [
                             'slug' => 'karyawan_supervisor',
                             'title' => 'Karyawan Supervisor',
-                            'icon' => 'fas fa-id-badge',
+                            'icon' => 'id-card',
                         ],
                         [
                             'slug' => 'karyawan_koordinator',
                             'title' => 'Karyawan Koordinator',
-                            'icon' => 'fas fa-id-badge',
+                            'icon' => 'id-card',
                         ],
                         [
                             'slug' => 'karyawan_sales',
                             'title' => 'Karyawan Sales',
-                            'icon' => 'fas fa-id-badge',
+                            'icon' => 'id-card',
                         ],
                         [
                             'slug' => 'karyawan_lainnya',
                             'title' => 'Karyawan Lainnya',
-                            'icon' => 'fas fa-id-badge',
+                            'icon' => 'id-card',
                         ],
                         [
                             'slug' => 'kategori_surat_peringatan',
                             'title' => 'Kategori Surat Peringatan',
-                            'icon' => 'fas fa-tags',
+                            'icon' => 'tags',
                         ],
                         [
                             'slug' => 'surat_peringatan',
                             'title' => 'Surat Peringatan',
-                            'icon' => 'fas fa-file-alt',
+                            'icon' => 'file-text',
                         ],
                     ],
                 ],
                 [
                     'slug' => 'login_session',
                     'title' => 'Sesi Login',
-                    'icon' => 'fas fa-key',
+                    'icon' => 'key',
                 ],
                 [
                     'title' => 'Laporan',
-                    'icon' => 'fas fa-book',
+                    'icon' => 'book',
                     'id' => 'laptuser',
                     'children' => [
                         [
@@ -581,156 +581,156 @@ return [
                 [
                     'slug' => 'panduan',
                     'title' => 'Panduan',
-                    'icon' => 'fas fa-info-circle',
+                    'icon' => 'info',
                 ],
                 [
                     'slug' => 'pengumuman',
                     'title' => 'Pengumuman',
-                    'icon' => 'fas fa-bullhorn',
+                    'icon' => 'megaphone',
                 ],
                 [
                     'title' => 'Manajemen Produk',
-                    'icon' => 'fas fa-boxes',
+                    'icon' => 'boxes',
                     'id' => 'produk_group',
                     'children' => [
                         [
                             'slug' => 'produk',
                             'title' => 'Produk',
-                            'icon' => 'fas fa-barcode',
+                            'icon' => 'barcode',
                         ],
                         [
                             'slug' => 'produk_kompetitor',
                             'title' => 'Produk Kompetitor',
-                            'icon' => 'fas fa-box',
+                            'icon' => 'box',
                         ],
                         [
                             'slug' => 'kategori_produk',
                             'title' => 'Kategori Produk',
-                            'icon' => 'fas fa-tags',
+                            'icon' => 'tags',
                         ],
                         [
                             'slug' => 'merk_produk',
                             'title' => 'Brand',
-                            'icon' => 'fas fa-trademark',
+                            'icon' => 'badge-check',
                         ],
                         [
                             'slug' => 'satuan_produk',
                             'title' => 'Satuan Produk',
-                            'icon' => 'fas fa-ruler',
+                            'icon' => 'ruler',
                         ],
                     ],
                 ],
                 [
                     'title' => 'Konfirgurasi',
-                    'icon' => 'fas fa-cogs',
+                    'icon' => 'settings',
                     'id' => 'konfigurasi_group',
                     'children' => [
                         [
                             'slug' => 'master_area',
                             'title' => 'Master Area',
-                            'icon' => 'fas fa-map-marker-alt',
+                            'icon' => 'map-pin',
                         ],
                         [
                             'slug' => 'master_depo',
                             'title' => 'Master Warehouse / Depo',
-                            'icon' => 'fas fa-building',
+                            'icon' => 'building',
                         ],
                         [
                             'slug' => 'wilayah_depo',
                             'title' => 'Wilayah Depo',
-                            'icon' => 'fas fa-map-signs',
+                            'icon' => 'signpost',
                         ],
                         [
                             'slug' => 'master_project',
                             'title' => 'Master Project',
-                            'icon' => 'fas fa-project-diagram',
+                            'icon' => 'network',
                         ],
                         [
                             'slug' => 'holiday_dates',
                             'title' => 'Tanggal Libur',
-                            'icon' => 'fas fa-calendar',
+                            'icon' => 'calendar',
                         ],
                         [
                             'slug' => 'waktu_aktif_app',
                             'title' => 'Hari Kerja Aktif',
-                            'icon' => 'fas fa-clock',
+                            'icon' => 'clock',
                         ],
                         [
                             'slug' => 'target_setting',
                             'title' => 'Setting Target',
-                            'icon' => 'fas fa-chart-bar',
+                            'icon' => 'chart-bar',
                         ],
                     ],
                 ],
                 [
                     'title' => 'Master Data',
-                    'icon' => 'fas fa-book',
+                    'icon' => 'book',
                     'id' => 'master_data_group',
                     'children' => [
                         [
                             'slug' => 'provinsi',
                             'title' => 'Provinsi',
-                            'icon' => 'fas fa-flag',
+                            'icon' => 'flag',
                         ],
                         [
                             'slug' => 'city_group',
                             'title' => 'City Group',
-                            'icon' => 'fas fa-layer-group',
+                            'icon' => 'layers',
                         ],
                         [
                             'slug' => 'kota_kabupaten',
                             'title' => 'Kota Kabupaten',
-                            'icon' => 'fas fa-flag',
+                            'icon' => 'flag',
                         ],
                         [
                             'slug' => 'kecamatan',
                             'title' => 'Kecamatan',
-                            'icon' => 'fas fa-flag',
+                            'icon' => 'flag',
                         ],
                         [
                             'slug' => 'kelurahan',
                             'title' => 'Kelurahan',
-                            'icon' => 'fas fa-flag',
+                            'icon' => 'flag',
                         ],
                         [
                             'slug' => 'kategori_user',
                             'title' => 'Kategori User',
-                            'icon' => 'fas fa-user',
+                            'icon' => 'user',
                         ],
                         [
                             'slug' => 'kategori_karyawan',
                             'title' => 'Kategori Karyawan',
-                            'icon' => 'fas fa-id-badge',
+                            'icon' => 'id-card',
                         ],
                         [
                             'slug' => 'tipe_outlet',
                             'title' => 'Tipe Outlet',
-                            'icon' => 'fas fa-tags',
+                            'icon' => 'tags',
                         ],
                         [
                             'slug' => 'kategori_outlet',
                             'title' => 'Kategori Outlet',
-                            'icon' => 'fas fa-tags',
+                            'icon' => 'tags',
                         ],
                         [
                             'slug' => 'rumus_insentif_point_sales',
                             'title' => 'Rumus Insentif Poin Sales',
-                            'icon' => 'fas fa-calculator',
+                            'icon' => 'calculator',
                         ],
                         [
                             'slug' => 'sales_point_conversion_per_warehouse',
                             'title' => 'Konversi Poin Per Depo',
-                            'icon' => 'fas fa-exchange-alt',
+                            'icon' => 'arrow-left-right',
                         ],
                         [
                             'slug' => 'rumus_insentif_sales',
                             'title' => 'Rumus Insentif Sales',
-                            'icon' => 'fas fa-calculator',
+                            'icon' => 'calculator',
                         ],
                         [
                             'slug' => 'rumus_insentif_koordinator',
                             'title' => 'Rumus Insentif Koordinator',
-                            'icon' => 'fas fa-calculator',
+                            'icon' => 'calculator',
                         ],
                     ],
                 ],

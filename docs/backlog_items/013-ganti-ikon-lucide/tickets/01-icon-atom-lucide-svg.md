@@ -13,11 +13,11 @@ Icon atom lama (`<i class="fas fa-{name}">`) tidak dipakai lagi setelah tiket in
 
 ## Acceptance criteria
 
-- [ ] `public/vendor/lucide/home.svg`, `chevron-down.svg`, `eye.svg`, `eye-off.svg` ada sebagai file SVG individual.
-- [ ] `<x-ui.atoms.icon name="home" />` merender elemen `<svg>` (bukan `<i class="fas fa-home">`).
-- [ ] `<x-ui.atoms.icon name="home" class="foo" />` menghasilkan elemen `<svg class="foo">` (atribut tambahan ter-merge ke root).
-- [ ] `<Icon name="home" />` (Vue) merender elemen `<svg>` yang sama isinya dengan file `public/vendor/lucide/home.svg`.
-- [ ] Feature test baru (`tests/Feature/IconAtomTest.php` atau serupa, pola `Blade::render`) meng-assert poin di atas untuk sisi Blade.
+- [x] `public/vendor/lucide/home.svg`, `chevron-down.svg`, `eye.svg`, `eye-off.svg` ada sebagai file SVG individual.
+- [x] `<x-ui.atoms.icon name="home" />` merender elemen `<svg>` (bukan `<i class="fas fa-home">`).
+- [x] `<x-ui.atoms.icon name="home" class="foo" />` menghasilkan elemen `<svg class="foo">` (atribut tambahan ter-merge ke root).
+- [x] `<Icon name="home" />` (Vue) merender elemen `<svg>` yang sama isinya dengan file `public/vendor/lucide/home.svg`.
+- [x] Feature test baru (`tests/Feature/IconAtomTest.php` atau serupa, pola `Blade::render`) meng-assert poin di atas untuk sisi Blade.
 
 ## Blocked by
 

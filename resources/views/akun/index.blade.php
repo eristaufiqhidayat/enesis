@@ -108,7 +108,7 @@
                                 <x-ui.atoms.button tag="a" variant="light" href="{{ route('akun.' . $menu . '.edit', $a->id) }}" aria-label="Edit {{ $a->username }}" title="Edit"><x-ui.atoms.icon name="pen" /></x-ui.atoms.button>
                             @endif
                             <span class="relative inline-block">
-                                <x-ui.atoms.button variant="light" data-dropdown-toggle="aksi-{{ $a->id }}" aria-label="Aksi lain untuk {{ $a->username }}" title="Aksi lain"><x-ui.atoms.icon name="ellipsis-h" /></x-ui.atoms.button>
+                                <x-ui.atoms.button variant="light" data-dropdown-toggle="aksi-{{ $a->id }}" aria-label="Aksi lain untuk {{ $a->username }}" title="Aksi lain"><x-ui.atoms.icon name="ellipsis" /></x-ui.atoms.button>
                                 <div id="aksi-{{ $a->id }}" class="dropdown-menu hidden text-start">
                                     <a class="block py-1" href="{{ route('akun.' . $menu . '.show', $a->id) }}">Lihat detail &amp; sesi HP</a>
                                     @if ($bisaUbah)

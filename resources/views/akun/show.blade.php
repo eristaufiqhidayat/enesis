@@ -89,7 +89,7 @@
             </x-slot:header>
             @if ($sesiAktif)
                 <div class="flex items-center gap-3 rounded-md bg-gray-50 p-3 mb-2">
-                    <x-ui.atoms.icon name="mobile-alt" class="text-2xl text-blue-600" />
+                    <x-ui.atoms.icon name="smartphone" class="text-2xl text-blue-600" />
                     <div>
                         <strong>{{ $sesiAktif->device_model ?: 'HP' }}</strong>
                         <div class="text-gray-500">Aplikasi v{{ $sesiAktif->app_version ?? '?' }} · login {{ $waktu($sesiAktif->created_at) }} · dipakai {{ $waktu($sesiAktif->last_used_at) }}</div>

@@ -8,17 +8,17 @@ const STORAGE_KEY = 'sidebar-collapsed-groups';
 const menu = [
     {
         label: null,
-        items: [{ id: 1, slug: 'dashboard', title: 'Dashboard', icon: 'fas fa-home' }],
+        items: [{ id: 1, slug: 'dashboard', title: 'Dashboard', icon: 'home' }],
     },
     {
         label: 'Master Data',
         items: [
-            { id: 2, slug: 'outlet', title: 'Outlet', icon: 'fas fa-store' },
-            { id: 3, slug: 'area', title: 'Area', icon: 'fas fa-map' },
+            { id: 2, slug: 'outlet', title: 'Outlet', icon: 'store' },
+            { id: 3, slug: 'area', title: 'Area', icon: 'map' },
             {
                 id: 4,
                 title: 'Laporan',
-                icon: 'fas fa-file',
+                icon: 'file-text',
                 children: [{ slug: 'laporan-harian', title: 'Laporan Harian', icon: null }],
             },
         ],

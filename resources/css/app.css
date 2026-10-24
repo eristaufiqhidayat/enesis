@@ -22,13 +22,15 @@ body { background: var(--color-surface); font-size: .875rem; }
 /* Hanya menu yang di-scroll; .brand (tombol di atasnya) tetap di tempat. */
 .sidebar .sidebar-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; padding-bottom: 2rem; scrollbar-color: rgba(255, 255, 255, .3) transparent; }
 .sidebar .brand { flex: 0 0 auto; display: flex; align-items: center; justify-content: flex-end; gap: .5rem; font-weight: 700; font-size: 1.1rem; color: #fff; padding: 0 .5rem 1rem; text-shadow: 0 1px 2px rgba(0, 0, 0, .35); }
-.sidebar .brand [data-sidebar-toggle], .sidebar .brand [data-toggle-all-groups] { flex: 0 0 auto; background: transparent; border: 0; color: rgba(255, 255, 255, .8); font-size: 1rem; line-height: 1; padding: .25rem; cursor: pointer; }
+.sidebar .brand [data-sidebar-toggle], .sidebar .brand [data-toggle-all-groups] { flex: 0 0 auto; background: transparent; border: 0; color: rgba(255, 255, 255, .8); line-height: 1; padding: .25rem; cursor: pointer; }
+.sidebar .brand [data-sidebar-toggle] svg, .sidebar .brand [data-toggle-all-groups] svg { width: 1rem; height: 1rem; }
 .sidebar .brand .brand-actions { flex: 0 0 auto; display: flex; align-items: center; gap: .25rem; }
 .sidebar .brand [data-sidebar-toggle]:hover, .sidebar .brand [data-toggle-all-groups]:hover { color: #fff; }
 .sidebar .nav-link { display: flex; align-items: flex-start; gap: .25rem; color: rgba(255, 255, 255, .9); padding: .35rem .5rem; border-radius: .25rem; text-shadow: 0 1px 2px rgba(0, 0, 0, .35); }
 .sidebar .nav-link:hover, .sidebar .nav-link:focus { color: #fff; background: rgba(255, 255, 255, .08); }
 .sidebar .nav-link.active { color: #fff; font-weight: 600; background: rgba(255, 255, 255, .12); }
 .sidebar .nav-link-icon { flex: 0 0 1.5rem; width: 1.5rem; display: inline-flex; justify-content: center; padding-top: .125rem; }
+.nav-link-icon-svg { width: 1.1rem; height: 1.1rem; }
 .sidebar .nav-link-text { flex: 1 1 auto; min-width: 0; }
 .sidebar .nav-link .nav-chevron { flex: 0 0 auto; align-self: center; }
 .sidebar .nav .nav .nav-link { padding-left: 2.25rem; }
@@ -55,11 +57,15 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
 /* Ikon kanan atas sama dengan Marketama: tombol bulat biru (.shortcut-btn) dan lonceng abu-abu dengan titik biru. */
 .shortcut-btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background-color: var(--color-brand); color: #fff !important; font-size: 14px; transition: all .2s ease; text-decoration: none; }
 .shortcut-btn:hover { opacity: .85; color: #fff !important; }
+.shortcut-btn svg { width: .9rem; height: .9rem; }
 .notif-bell { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 2.25rem; height: 2.25rem; color: var(--color-ink-muted); font-size: 1.25rem; text-decoration: none; }
 .notif-bell:hover { color: var(--color-brand); }
 .notif-bell::before { content: ""; position: absolute; right: .3rem; top: .35rem; width: .7rem; height: .7rem; border-radius: 40%; background-color: var(--color-brand); border: 2px solid var(--color-surface); }
+.notif-bell svg { width: 1.25rem; height: 1.25rem; }
+.dropdown-menu svg { width: 1rem; height: 1rem; vertical-align: -.15em; }
 /* Info user login + tombol Keluar di kanan topbar. */
 .topbar-user { display: inline-flex; align-items: center; gap: .5rem; padding-left: .75rem; margin-left: .25rem; border-left: 1px solid #e5e7eb; color: var(--color-ink-muted); font-size: .8rem; }
+.topbar-user svg { width: 1.1rem; height: 1.1rem; }
 .topbar-user-name { font-weight: 600; color: var(--color-ink, #344050); max-width: 12rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Halaman tamu (login, ganti password): tanpa sidebar/topbar, kartu di tengah. */
 .auth-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem; background-image: linear-gradient(-45deg, var(--color-brand-light), var(--color-brand-dark)); }
@@ -68,6 +74,7 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
 .password-field .form-control { padding-right: 2.25rem; }
 .password-toggle { position: absolute; top: 50%; right: .5rem; transform: translateY(-50%); background: transparent; border: 0; color: var(--color-ink-muted); cursor: pointer; padding: .25rem; line-height: 1; }
 .password-toggle:hover { color: var(--color-brand); }
+.password-toggle svg { width: 1rem; height: 1rem; }
 .form-check { display: inline-flex; align-items: center; gap: .5rem; font-size: .8rem; color: var(--color-ink-muted); cursor: pointer; }
 .form-check-input { width: 1rem; height: 1rem; accent-color: var(--color-brand); }
 /* Kotak "Demo masuk cepat" (hanya tampil bila DEMO_LOGIN aktif). */
@@ -116,7 +123,7 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
 .tooltip-right::after { left: calc(100% + 6px); top: 50%; --tooltip-shift: translateY(-50%); transform-origin: center left; }
 .tooltip-right::before { left: calc(100% + 1px); top: 50%; --tooltip-shift: translateY(-50%); transform-origin: center left; border-right-color: #1f2937; }
 @media (max-width: 991px) { .sidebar { position: static; width: 100%; height: auto; } .sidebar .brand { display: none; } main { margin-left: 0; padding-top: 1rem; } .topbar { position: static; left: 0; height: auto; padding: 0; margin-bottom: .75rem; } [data-sidebar-toggle], [data-toggle-all-groups] { display: none; } }
-.nav-chevron { font-size: 10px; transition: transform .15s ease; }
+.nav-chevron { width: .7rem; height: .7rem; transition: transform .15s ease; }
 .sidebar .nav-link.is-open .nav-chevron { transform: rotate(180deg); }
 .sidebar .section-label.is-open .nav-chevron { transform: rotate(180deg); }
 

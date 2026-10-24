@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 import Breadcrumb from '@/Components/ui/molecules/Breadcrumb.vue';
 import Button from '@/Components/ui/atoms/Button.vue';
+import Icon from '@/Components/ui/atoms/Icon.vue';
 import Tooltip from '@/Components/ui/atoms/Tooltip.vue';
 
 const page = usePage();
@@ -25,17 +26,17 @@ onUnmounted(() => document.removeEventListener('click', closeNotifOnOutsideClick
     <div class="topbar flex justify-between items-center gap-2 mb-3">
         <Breadcrumb />
         <div class="flex items-center gap-2">
-            <Tooltip label="Tambah Loading Barang" align="end"><a class="shortcut-btn" href="/loading_barang/add"><i class="fas fa-truck-loading"></i></a></Tooltip>
-            <Tooltip label="Tambah Barang Canvassing" align="end"><a class="shortcut-btn" href="/barang_canvassing/add"><i class="fas fa-boxes"></i></a></Tooltip>
-            <Tooltip label="Design Polygon Area" align="end"><a class="shortcut-btn" href="/master_area/design_area"><i class="fas fa-draw-polygon"></i></a></Tooltip>
+            <Tooltip label="Tambah Loading Barang" align="end"><a class="shortcut-btn" href="/loading_barang/add"><Icon name="truck" /></a></Tooltip>
+            <Tooltip label="Tambah Barang Canvassing" align="end"><a class="shortcut-btn" href="/barang_canvassing/add"><Icon name="boxes" /></a></Tooltip>
+            <Tooltip label="Design Polygon Area" align="end"><a class="shortcut-btn" href="/master_area/design_area"><Icon name="shapes" /></a></Tooltip>
             <div class="relative" ref="notifWrapper">
-                <Tooltip label="Notifikasi Transaksi" align="end"><a class="notif-bell" href="#" aria-label="Notifikasi Transaksi" @click.prevent="notifOpen = !notifOpen"><i class="fas fa-bell"></i></a></Tooltip>
+                <Tooltip label="Notifikasi Transaksi" align="end"><a class="notif-bell" href="#" aria-label="Notifikasi Transaksi" @click.prevent="notifOpen = !notifOpen"><Icon name="bell" /></a></Tooltip>
                 <div class="dropdown-menu" :class="{ hidden: !notifOpen }">
-                    <i class="fas fa-bell-slash me-1"></i> Tidak ada notifikasi baru
+                    <Icon name="bell-off" class="me-1" /> Tidak ada notifikasi baru
                 </div>
             </div>
             <div v-if="user" class="topbar-user">
-                <i class="fas fa-user-circle"></i>
+                <Icon name="circle-user" />
                 <span class="topbar-user-name" :title="user.username">{{ user.name }}</span>
                 <form method="POST" action="/logout">
                     <input type="hidden" name="_token" :value="csrfToken">

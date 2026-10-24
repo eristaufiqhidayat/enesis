@@ -25,11 +25,14 @@ class DesignAreaTest extends TestCase
     {
         $this->seedArea();
 
-        $this->get('/master_area/design_area')
+        $response = $this->get('/master_area/design_area')
             ->assertOk()
             ->assertSee('id="polygon_map"', false)
             ->assertSee('Kalimantan Selatan')
             ->assertSee('Design Polygon Area');
+
+        $response->assertDontSee('fas fa-', false);
+        $response->assertSee('<svg', false);
 
         $this->get('/loading_barang/add')->assertOk();
         $this->get('/barang_canvassing/add')->assertOk();

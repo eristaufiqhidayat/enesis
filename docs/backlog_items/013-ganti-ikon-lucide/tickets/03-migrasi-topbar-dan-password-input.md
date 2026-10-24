@@ -11,10 +11,10 @@ Pindahkan ikon statis di topbar dan password-input dari `<i class="fas fa-*">` m
 
 ## Acceptance criteria
 
-- [ ] `topbar.blade.php` dan `Topbar.vue` tidak lagi mengandung `fas fa-*` sama sekali; semua ikon tombol aksi & notifikasi dirender lewat Icon atom.
-- [ ] `password-input.blade.php` tidak lagi mengandung `fas fa-eye`/`fas fa-eye-slash`; toggle show/hide password tetap berfungsi (klik tombol mata mengganti ikon dan `type` input).
-- [ ] Feature test yang mem-render topbar/password-input component (pola `Blade::render`) meng-assert tidak ada `fas fa-` di output dan elemen `<svg>` muncul di tempat yang diharapkan.
-- [ ] Verifikasi manual: tombol shortcut topbar, notifikasi bell, user menu, dan toggle show/hide password di form login/ganti-password semuanya tampil Lucide dan tetap berfungsi seperti sebelumnya.
+- [x] `topbar.blade.php` dan `Topbar.vue` tidak lagi mengandung `fas fa-*` sama sekali; semua ikon tombol aksi & notifikasi dirender lewat Icon atom.
+- [x] `password-input.blade.php` tidak lagi mengandung `fas fa-eye`/`fas fa-eye-slash`; toggle show/hide password tetap berfungsi (klik tombol mata mengganti ikon dan `type` input).
+- [x] Feature test yang mem-render topbar/password-input component (pola `Blade::render`) meng-assert tidak ada `fas fa-` di output dan elemen `<svg>` muncul di tempat yang diharapkan.
+- [x] Verifikasi manual: tombol shortcut topbar, notifikasi bell, user menu, dan toggle show/hide password di form login/ganti-password semuanya tampil Lucide dan tetap berfungsi seperti sebelumnya.
 
 ## Blocked by
 
