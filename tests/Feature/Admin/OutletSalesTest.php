@@ -16,6 +16,9 @@ class OutletSalesTest extends AdminTestCase
         DB::table('mk_karyawan_area')->insert([
             ['karyawan_id' => 1, 'area_id' => 10, 'aktif' => true],
             ['karyawan_id' => 1, 'area_id' => 11, 'aktif' => false],
+            // Area tidak aktif yang namanya di urutan awal (dulu memutus perulangan penanda rute).
+            ['karyawan_id' => 1, 'area_id' => 12, 'aktif' => false],
+            ['karyawan_id' => 2, 'area_id' => 12, 'aktif' => false],
         ]);
         DB::table('mk_outlet')->insert([
             ['id' => 1, 'kode' => 'OT-1', 'nama' => 'Toko Makmur', 'area_id' => 10, 'kecamatan' => 'Waru', 'latitude' => -7.35, 'longitude' => 112.73],
@@ -40,8 +43,11 @@ class OutletSalesTest extends AdminTestCase
         // Juga di halaman edit.
         $this->get('/user_sales/'.$rudi->id.'/edit')->assertOk()->assertSee('Toko Makmur');
 
+        // Sales yang semua areanya tidak aktif: semua area jadi rute.
+        $this->get('/user_sales/'.$sinta->id.'/edit')->assertOk()->assertSee('Toko Balaraja')->assertSee('1 outlet di 1 area rute');
+
         // Sales tanpa area.
-        $this->get('/user_sales/'.$sinta->id)->assertOk()->assertSee('belum punya area');
+        $this->get('/user_sales/'.$this->akun('tegar', 'sales', 3)->id)->assertOk()->assertSee('belum punya area');
 
         // Akun koordinator tidak menampilkan kartu outlet.
         $koor = $this->akun('koor.satu', 'koordinator', 137);

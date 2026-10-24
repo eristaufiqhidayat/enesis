@@ -532,7 +532,12 @@ class AkunController extends Controller
             ->where('ka.karyawan_id', $akun->karyawan_id)
             ->selectRaw('ka.area_id, ka.aktif, a.nama, a.kode, (SELECT COUNT(*) FROM mk_outlet o WHERE o.area_id = ka.area_id) as jumlah_outlet')
             ->orderByDesc('ka.aktif')->orderBy('a.nama')->get()
-            ->each(fn ($a) => $a->rute = in_array((int) $a->area_id, $rute, true));
+            // Jangan pakai each(fn ...): nilai false dari callback menghentikan perulangan.
+            ->map(function ($a) use ($rute) {
+                $a->rute = in_array((int) $a->area_id, $rute, true);
+
+                return $a;
+            });
 
         $q = trim((string) $request->query('cari_outlet'));
         $outlet = DB::table('mk_outlet as o')->leftJoin('mk_area as a', 'a.id', '=', 'o.area_id')
