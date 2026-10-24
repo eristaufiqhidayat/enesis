@@ -202,8 +202,8 @@ class Akses
                     $hasil[] = ['title' => $m['title'], 'slug' => $m['slug']];
 
                     if (config("marketama.pages.{$m['slug']}.tabs") === true) {
-                        foreach (config("marketama.pages.{$m['slug']}.tables") as $tabel) {
-                            $hasil[] = ['title' => $tabel['tab_label'], 'slug' => "{$m['slug']}?tab={$tabel['table']}"];
+                        foreach (config("marketama.pages.{$m['slug']}.tables") as $grupTab) {
+                            $hasil[] = ['title' => $grupTab['tab_label'], 'slug' => "{$m['slug']}?tab={$grupTab['tab_key']}"];
                         }
                     }
                 }

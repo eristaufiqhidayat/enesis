@@ -19,14 +19,9 @@ return [
                     'icon' => 'clock',
                 ],
                 [
-                    'slug' => 'rekap_pencapaian_sku_motoris',
-                    'title' => 'Rekap Pencapaian SKU per Motoris',
+                    'slug' => 'rekap_pencapaian_sku',
+                    'title' => 'Rekap Pencapaian SKU',
                     'icon' => 'boxes',
-                ],
-                [
-                    'slug' => 'rekap_pencapaian_depo_sku',
-                    'title' => 'Rekap Pencapaian SKU per Depo',
-                    'icon' => 'warehouse',
                 ],
                 [
                     'slug' => 'summary_all_depo',
@@ -34,19 +29,9 @@ return [
                     'icon' => 'chart-pie',
                 ],
                 [
-                    'slug' => 'motoris_coverage',
-                    'title' => 'Motoris Coverage',
-                    'icon' => 'users',
-                ],
-                [
-                    'slug' => 'motoris_performance',
-                    'title' => 'Motoris Performance',
-                    'icon' => 'chart-bar',
-                ],
-                [
-                    'slug' => 'monitor_absensi_motoris',
-                    'title' => 'Monitor Absensi Motoris',
-                    'icon' => 'user-check',
+                    'slug' => 'motoris_report',
+                    'title' => 'Motoris Report',
+                    'icon' => 'bike',
                 ],
             ],
         ],
@@ -742,45 +727,56 @@ return [
             'same_as' => null,
         ],
         // Gabungan menu monitoring harian sales. Filter tanggal dan KPI diatur per tabel.
-        // 'tabs' => true: hanya tabel tab aktif (query ?tab=) yang ditampilkan.
+        // 'tabs' => true: hanya tabel grup tab aktif (query ?tab=) yang ditampilkan. Tiap grup: tab_key, tab_label, tables.
         'monitoring_harian_sales' => [
             'title' => 'Monitoring Harian Sales',
             'tabs' => true,
             'tables' => [
                 [
-                    'table' => 'checkin_pagi',
+                    'tab_key' => 'checkin_pagi',
                     'tab_label' => 'Sales Checkin Outlet Pagi',
-                    'date_filter_column' => 'tanggal_data',
-                    'kpi' => 'checkin_pagi',
+                    'tables' => [
+                        ['table' => 'checkin_pagi', 'date_filter_column' => 'tanggal_data', 'kpi' => 'checkin_pagi'],
+                    ],
                 ],
                 [
-                    'table' => 'sales_tidak_penjualan',
+                    'tab_key' => 'sales_tidak_penjualan',
                     'tab_label' => 'Sales Tidak Penjualan',
-                    'date_filter_column' => null,
-                    'kpi' => null,
+                    'tables' => [
+                        ['table' => 'sales_tidak_penjualan', 'date_filter_column' => null, 'kpi' => null],
+                    ],
                 ],
                 [
-                    'table' => 'sales_tidak_absen',
+                    'tab_key' => 'sales_tidak_absen',
                     'tab_label' => 'Sales Tidak Absen Pagi',
-                    'date_filter_column' => null,
-                    'kpi' => null,
+                    'tables' => [
+                        ['table' => 'sales_tidak_absen', 'date_filter_column' => null, 'kpi' => null],
+                    ],
                 ],
             ],
             'same_as' => null,
         ],
-        'rekap_pencapaian_sku_motoris' => [
-            'title' => 'Rekap Pencapaian SKU per Motoris',
+        // Gabungan rekap pencapaian SKU per motoris & per depo. 'tabs' => true: hanya grup tab aktif (query ?tab=) yang ditampilkan.
+        'rekap_pencapaian_sku' => [
+            'title' => 'Rekap Pencapaian SKU',
+            'tabs' => true,
             'tables' => [
-                'rekap_pencapaian_sku_motoris_tableachieved',
-                'rekap_pencapaian_sku_motoris_tablenotachieved',
-            ],
-            'same_as' => null,
-        ],
-        'rekap_pencapaian_depo_sku' => [
-            'title' => 'Rekap Pencapaian SKU per Depo',
-            'tables' => [
-                'rekap_pencapaian_depo_sku_tableachieved',
-                'rekap_pencapaian_depo_sku_tablenotachieved',
+                [
+                    'tab_key' => 'motoris',
+                    'tab_label' => 'Per Motoris',
+                    'tables' => [
+                        'rekap_pencapaian_sku_motoris_tableachieved',
+                        'rekap_pencapaian_sku_motoris_tablenotachieved',
+                    ],
+                ],
+                [
+                    'tab_key' => 'depo',
+                    'tab_label' => 'Per Depo',
+                    'tables' => [
+                        'rekap_pencapaian_depo_sku_tableachieved',
+                        'rekap_pencapaian_depo_sku_tablenotachieved',
+                    ],
+                ],
             ],
             'same_as' => null,
         ],
@@ -789,24 +785,32 @@ return [
             'tables' => [],
             'same_as' => null,
         ],
-        'motoris_coverage' => [
-            'title' => 'Motoris Coverage',
+        // Gabungan Motoris Coverage, Motoris Performance, Monitor Absensi Motoris. 'tabs' => true: hanya grup tab aktif (query ?tab=) yang ditampilkan.
+        'motoris_report' => [
+            'title' => 'Motoris Report',
+            'tabs' => true,
             'tables' => [
-                'motoris_coverage',
-            ],
-            'same_as' => null,
-        ],
-        'motoris_performance' => [
-            'title' => 'Motoris Performance',
-            'tables' => [
-                'motoris_performance',
-            ],
-            'same_as' => null,
-        ],
-        'monitor_absensi_motoris' => [
-            'title' => 'Monitor Absensi Motoris',
-            'tables' => [
-                'monitor_absensi_motoris',
+                [
+                    'tab_key' => 'coverage',
+                    'tab_label' => 'Coverage',
+                    'tables' => [
+                        'motoris_coverage',
+                    ],
+                ],
+                [
+                    'tab_key' => 'performance',
+                    'tab_label' => 'Performance',
+                    'tables' => [
+                        'motoris_performance',
+                    ],
+                ],
+                [
+                    'tab_key' => 'absensi',
+                    'tab_label' => 'Absensi',
+                    'tables' => [
+                        'monitor_absensi_motoris',
+                    ],
+                ],
             ],
             'same_as' => null,
         ],

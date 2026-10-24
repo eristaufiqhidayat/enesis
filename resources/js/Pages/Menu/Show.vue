@@ -23,10 +23,14 @@ const search = ref(props.search);
 const tanggal = ref(props.tanggal);
 const appName = usePage().props.appName;
 
-// Halaman bertab hanya menampilkan tabel aktif; halaman lain tetap menumpuk semua tabel.
+// Halaman bertab: backend hanya meng-query tabel grup aktif (lihat MenuController), jadi `tables` di sini
+// sudah berisi tabel tab aktif saja. Daftar tab (termasuk tab yang tidak aktif) diambil dari config
+// `page.tables` yang statis, bukan dari hasil query, supaya tombol tab lain tetap muncul.
 const bertab = computed(() => props.page.tabs === true);
-const visibleTables = computed(() => bertab.value ? props.tables.filter((table) => table.name === props.activeTab) : props.tables);
-const tabItems = computed(() => props.tables.map((table) => ({ key: table.name, label: table.tab_label })));
+const visibleTables = computed(() => props.tables);
+const tabItems = computed(() => bertab.value
+    ? props.page.tables.map((grup) => ({ key: grup.tab_key, label: grup.tab_label }))
+    : []);
 const formDateFilter = computed(() => bertab.value ? visibleTables.value.some((table) => table.date_filter) : props.hasDateFilter);
 
 // Komponen ini dipakai ulang saat navigasi Inertia, jadi nilai input ikut props terbaru.
@@ -57,13 +61,15 @@ function submitSearch() {
 
 function pindahTab(key) {
     const query = { tab: key };
-    const tabBaru = props.tables.find((table) => table.name === key);
+    // Tabel tab tujuan belum di-query (lihat komentar di tabItems), jadi cek date_filter_column dari config.
+    const grupTujuan = props.page.tables.find((grup) => grup.tab_key === key);
+    const tabBaruPakaiTanggal = grupTujuan?.tables.some((tabel) => (typeof tabel === 'object' ? tabel.date_filter_column : null) !== null) ?? false;
 
     if (search.value) {
         query.q = search.value;
     }
 
-    if (tabBaru?.date_filter && tanggal.value) {
+    if (tabBaruPakaiTanggal && tanggal.value) {
         query.tanggal = tanggal.value;
     }
 
@@ -80,7 +86,7 @@ function pindahTab(key) {
         </Alert>
 
         <Tabs
-            v-if="bertab && tables.length"
+            v-if="tabItems.length"
             :model-value="activeTab"
             :tabs="tabItems"
             @update:model-value="pindahTab"

@@ -110,13 +110,32 @@ Route::middleware(['auth', 'wajib-ganti-password'])->group(function () {
         Route::delete('/{id}', 'destroy')->middleware('hak:role,hapus')->whereNumber('id')->name('destroy');
     });
 
-    // Slug lama menu monitoring harian yang sudah digabung jadi satu halaman bertab; query string ikut diteruskan.
+    // Redirect slug lama menu yang sudah digabung jadi satu halaman bertab; query string ikut diteruskan.
     // Hak dicek di sini juga (sama dengan menu tujuan) supaya pengecekan bolehWeb tidak terlewat di hop redirect ini.
-    foreach (['checkin_pagi', 'sales_tidak_penjualan', 'sales_tidak_absen'] as $tab) {
-        Route::get("/{$tab}", fn (Request $request) => redirect('/monitoring_harian_sales?'.http_build_query(
-            [...$request->query(), 'tab' => $tab]
-        )))->middleware('hak:monitoring_harian_sales');
-    }
+    $redirectSlugLama = function (string $slugBaru, array $tabPerSlugLama) {
+        foreach ($tabPerSlugLama as $slugLama => $tab) {
+            Route::get("/{$slugLama}", fn (Request $request) => redirect("/{$slugBaru}?".http_build_query(
+                [...$request->query(), 'tab' => $tab]
+            )))->middleware("hak:{$slugBaru}");
+        }
+    };
+
+    $redirectSlugLama('monitoring_harian_sales', [
+        'checkin_pagi' => 'checkin_pagi',
+        'sales_tidak_penjualan' => 'sales_tidak_penjualan',
+        'sales_tidak_absen' => 'sales_tidak_absen',
+    ]);
+
+    $redirectSlugLama('rekap_pencapaian_sku', [
+        'rekap_pencapaian_sku_motoris' => 'motoris',
+        'rekap_pencapaian_depo_sku' => 'depo',
+    ]);
+
+    $redirectSlugLama('motoris_report', [
+        'motoris_coverage' => 'coverage',
+        'motoris_performance' => 'performance',
+        'monitor_absensi_motoris' => 'absensi',
+    ]);
 
     Route::get('/{slug}', [MenuController::class, 'show'])
         ->middleware('hak:@slug')

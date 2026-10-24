@@ -24,13 +24,25 @@ onUnmounted(() => document.removeEventListener('click', closeNotifOnOutsideClick
 
 <template>
     <div class="topbar flex justify-between items-center gap-2 mb-3">
-        <Breadcrumb />
+        <div>
+            <h3 class="font-bold">Marketama Canvassing System</h3>
+            <Breadcrumb />
+        </div>
         <div class="flex items-center gap-2">
-            <Tooltip label="Tambah Loading Barang" align="end"><a class="shortcut-btn" href="/loading_barang/add"><Icon name="truck" /></a></Tooltip>
-            <Tooltip label="Tambah Barang Canvassing" align="end"><a class="shortcut-btn" href="/barang_canvassing/add"><Icon name="boxes" /></a></Tooltip>
-            <Tooltip label="Design Polygon Area" align="end"><a class="shortcut-btn" href="/master_area/design_area"><Icon name="shapes" /></a></Tooltip>
+            <Tooltip label="Tambah Loading Barang" align="end"><a class="shortcut-btn" href="/loading_barang/add">
+                    <Icon name="truck" />
+                </a></Tooltip>
+            <Tooltip label="Tambah Barang Canvassing" align="end"><a class="shortcut-btn" href="/barang_canvassing/add">
+                    <Icon name="boxes" />
+                </a></Tooltip>
+            <Tooltip label="Design Polygon Area" align="end"><a class="shortcut-btn" href="/master_area/design_area">
+                    <Icon name="shapes" />
+                </a></Tooltip>
             <div class="relative" ref="notifWrapper">
-                <Tooltip label="Notifikasi Transaksi" align="end"><a class="notif-bell" href="#" aria-label="Notifikasi Transaksi" @click.prevent="notifOpen = !notifOpen"><Icon name="bell" /></a></Tooltip>
+                <Tooltip label="Notifikasi Transaksi" align="end"><a class="notif-bell" href="#"
+                        aria-label="Notifikasi Transaksi" @click.prevent="notifOpen = !notifOpen">
+                        <Icon name="bell" />
+                    </a></Tooltip>
                 <div class="dropdown-menu" :class="{ hidden: !notifOpen }">
                     <Icon name="bell-off" class="me-1" /> Tidak ada notifikasi baru
                 </div>

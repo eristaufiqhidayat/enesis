@@ -39,26 +39,31 @@ class MenuTest extends TestCase
             );
     }
 
-    public function test_monitoring_harian_sales_returns_three_tables_by_name(): void
+    public function test_monitoring_harian_sales_queries_only_the_active_tab_table(): void
     {
+        // Halaman bertab hanya meng-query tabel grup tab aktif; grup lain tidak ikut di-query (hemat COUNT/LIKE).
         $this->get('/monitoring_harian_sales')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Menu/Show')
-                ->has('tables', 3)
+                ->has('tables', 1)
                 ->where('tables.0.name', 'checkin_pagi')
-                ->where('tables.1.name', 'sales_tidak_penjualan')
-                ->where('tables.2.name', 'sales_tidak_absen')
+            );
+
+        $this->get('/monitoring_harian_sales?tab=sales_tidak_penjualan')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('tables', 1)
+                ->where('tables.0.name', 'sales_tidak_penjualan')
             );
     }
 
     public function test_kpi_is_only_filled_for_table_with_kpi_configured(): void
     {
-        $this->get('/monitoring_harian_sales')
+        $this->get('/monitoring_harian_sales?tab=sales_tidak_penjualan')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('tables.1.kpi', null)
-                ->where('tables.2.kpi', null)
+                ->where('tables.0.kpi', null)
             );
     }
 
@@ -71,10 +76,18 @@ class MenuTest extends TestCase
             ['tanggal_data' => '2026-10-22', 'nama_sales' => 'Kemarin'],
         ]);
 
-        $this->get('/monitoring_harian_sales?tanggal=2026-10-22')
+        // Tab sales_tidak_penjualan tidak punya date_filter_column, jadi query tanggal diabaikan total.
+        $this->get('/monitoring_harian_sales?tab=sales_tidak_penjualan&tanggal=2026-10-22')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('tables.1.rows.total', 2)
+                ->where('tables.0.rows.total', 2)
+                ->where('tanggal', null)
+                ->where('hasDateFilter', false)
+            );
+
+        $this->get('/monitoring_harian_sales?tab=checkin_pagi&tanggal=2026-10-22')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
                 ->where('tanggal', '2026-10-22')
                 ->where('hasDateFilter', true)
             );
@@ -104,6 +117,24 @@ class MenuTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->where('activeTab', 'checkin_pagi')
+            );
+    }
+
+    public function test_satu_tab_bisa_berisi_lebih_dari_satu_tabel(): void
+    {
+        // Konfigurasi tab diganti sementara: satu grup berisi dua tabel, grup lain berisi satu tabel.
+        config(['marketama.pages.monitoring_harian_sales.tables' => [
+            ['tab_key' => 'gabungan', 'tab_label' => 'Gabungan', 'tables' => ['checkin_pagi', 'sales_tidak_penjualan']],
+            ['tab_key' => 'lain', 'tab_label' => 'Lain', 'tables' => ['sales_tidak_absen']],
+        ]]);
+
+        $this->get('/monitoring_harian_sales?tab=gabungan')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('activeTab', 'gabungan')
+                ->has('tables', 2)
+                ->where('tables.0.tab_key', 'gabungan')
+                ->where('tables.1.tab_key', 'gabungan')
             );
     }
 
@@ -144,6 +175,133 @@ class MenuTest extends TestCase
         $this->actingAs(User::factory()->make(['id' => 2, 'role_id' => $roleId, 'aktif' => true, 'wajib_ganti_password' => false]));
 
         $this->get('/checkin_pagi')->assertForbidden();
+    }
+
+    public function test_rekap_pencapaian_sku_default_tab_is_motoris(): void
+    {
+        // Hanya tabel tab aktif (motoris) yang di-query; tabel tab depo tidak ikut di-query.
+        $this->get('/rekap_pencapaian_sku')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Menu/Show')
+                ->where('activeTab', 'motoris')
+                ->has('tables', 2)
+                ->where('tables.0.name', 'rekap_pencapaian_sku_motoris_tableachieved')
+                ->where('tables.1.name', 'rekap_pencapaian_sku_motoris_tablenotachieved')
+                ->where('tables.0.tab_key', 'motoris')
+                ->where('tables.1.tab_key', 'motoris')
+            );
+    }
+
+    public function test_rekap_pencapaian_sku_tab_depo_follows_tab_query(): void
+    {
+        $this->get('/rekap_pencapaian_sku?tab=depo')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('activeTab', 'depo')
+                ->has('tables', 2)
+                ->where('tables.0.name', 'rekap_pencapaian_depo_sku_tableachieved')
+                ->where('tables.1.name', 'rekap_pencapaian_depo_sku_tablenotachieved')
+                ->where('tables.0.tab_key', 'depo')
+                ->where('tables.1.tab_key', 'depo')
+            );
+    }
+
+    public function test_slug_lama_rekap_pencapaian_sku_motoris_redirects_to_tab_motoris(): void
+    {
+        $this->get('/rekap_pencapaian_sku_motoris')
+            ->assertRedirect('/rekap_pencapaian_sku?tab=motoris');
+    }
+
+    public function test_slug_lama_rekap_pencapaian_depo_sku_redirects_to_tab_depo(): void
+    {
+        $this->get('/rekap_pencapaian_depo_sku')
+            ->assertRedirect('/rekap_pencapaian_sku?tab=depo');
+    }
+
+    public function test_redirect_slug_lama_rekap_pencapaian_sku_meneruskan_query_string_lain(): void
+    {
+        $this->get('/rekap_pencapaian_depo_sku?q=budi')
+            ->assertRedirect('/rekap_pencapaian_sku?q=budi&tab=depo');
+    }
+
+    public function test_rekap_pencapaian_sku_is_a_single_sidebar_menu(): void
+    {
+        $slugs = collect(config('marketama.menu'))->pluck('items')->flatten(1)->pluck('slug');
+
+        $this->assertSame(['rekap_pencapaian_sku'], $slugs->filter(fn ($slug) => str_starts_with($slug, 'rekap_pencapaian'))->values()->all());
+    }
+
+    public function test_motoris_report_default_tab_is_coverage(): void
+    {
+        // Hanya tabel tab aktif (coverage) yang di-query; tabel tab performance & absensi tidak ikut tampil sekaligus.
+        $this->get('/motoris_report')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Menu/Show')
+                ->where('activeTab', 'coverage')
+                ->has('tables', 1)
+                ->where('tables.0.name', 'motoris_coverage')
+                ->where('tables.0.tab_key', 'coverage')
+            );
+    }
+
+    public function test_motoris_report_tab_performance_follows_tab_query(): void
+    {
+        $this->get('/motoris_report?tab=performance')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('activeTab', 'performance')
+                ->has('tables', 1)
+                ->where('tables.0.name', 'motoris_performance')
+                ->where('tables.0.tab_key', 'performance')
+            );
+    }
+
+    public function test_motoris_report_tab_absensi_follows_tab_query(): void
+    {
+        $this->get('/motoris_report?tab=absensi')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('activeTab', 'absensi')
+                ->has('tables', 1)
+                ->where('tables.0.name', 'monitor_absensi_motoris')
+                ->where('tables.0.tab_key', 'absensi')
+            );
+    }
+
+    public function test_motoris_report_is_a_single_sidebar_menu(): void
+    {
+        $slugs = collect(config('marketama.menu'))->pluck('items')->flatten(1)->pluck('slug');
+
+        $this->assertSame(
+            ['motoris_report'],
+            $slugs->filter(fn ($slug) => in_array($slug, ['motoris_report', 'motoris_coverage', 'motoris_performance', 'monitor_absensi_motoris'], true))->values()->all()
+        );
+    }
+
+    public function test_slug_lama_motoris_coverage_redirects_to_tab_coverage(): void
+    {
+        $this->get('/motoris_coverage')
+            ->assertRedirect('/motoris_report?tab=coverage');
+    }
+
+    public function test_slug_lama_motoris_performance_redirects_to_tab_performance(): void
+    {
+        $this->get('/motoris_performance')
+            ->assertRedirect('/motoris_report?tab=performance');
+    }
+
+    public function test_slug_lama_monitor_absensi_motoris_redirects_to_tab_absensi(): void
+    {
+        $this->get('/monitor_absensi_motoris')
+            ->assertRedirect('/motoris_report?tab=absensi');
+    }
+
+    public function test_redirect_slug_lama_motoris_meneruskan_query_string_lain(): void
+    {
+        $this->get('/motoris_performance?q=budi')
+            ->assertRedirect('/motoris_report?q=budi&tab=performance');
     }
 
     protected function tearDown(): void

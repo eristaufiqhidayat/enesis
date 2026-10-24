@@ -75,8 +75,12 @@ class SidebarSearchTest extends TestCase
                 $jumlahDiharapkan += isset($item['children']) ? count($item['children']) : 1;
             }
         }
-        // monitoring_harian_sales (halaman bertab) menambah satu entri pencarian per tab.
-        $jumlahDiharapkan += count(config('marketama.pages.monitoring_harian_sales.tables'));
+        // Halaman bertab (monitoring_harian_sales, rekap_pencapaian_sku, ...) menambah satu entri pencarian per grup tab.
+        foreach (config('marketama.pages') as $page) {
+            if (($page['tabs'] ?? false) === true) {
+                $jumlahDiharapkan += count($page['tables']);
+            }
+        }
 
         $this->assertCount($jumlahDiharapkan, $menu);
         $this->assertContains(
