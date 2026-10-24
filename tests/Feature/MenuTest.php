@@ -165,6 +165,44 @@ class MenuTest extends TestCase
         $this->get('/checkin_pagi')->assertForbidden();
     }
 
+    public function test_rekap_pencapaian_sku_default_tab_is_motoris(): void
+    {
+        $this->get('/rekap_pencapaian_sku')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Menu/Show')
+                ->where('activeTab', 'motoris')
+                ->has('tables', 4)
+                ->where('tables.0.name', 'rekap_pencapaian_sku_motoris_tableachieved')
+                ->where('tables.1.name', 'rekap_pencapaian_sku_motoris_tablenotachieved')
+                ->where('tables.2.name', 'rekap_pencapaian_depo_sku_tableachieved')
+                ->where('tables.3.name', 'rekap_pencapaian_depo_sku_tablenotachieved')
+                ->where('tables.0.tab_key', 'motoris')
+                ->where('tables.1.tab_key', 'motoris')
+                ->where('tables.2.tab_key', 'depo')
+                ->where('tables.3.tab_key', 'depo')
+            );
+    }
+
+    public function test_rekap_pencapaian_sku_tab_depo_follows_tab_query(): void
+    {
+        $this->get('/rekap_pencapaian_sku?tab=depo')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('activeTab', 'depo')
+                ->has('tables', 4)
+                ->where('tables.2.tab_key', 'depo')
+                ->where('tables.3.tab_key', 'depo')
+            );
+    }
+
+    public function test_rekap_pencapaian_sku_is_a_single_sidebar_menu(): void
+    {
+        $slugs = collect(config('marketama.menu'))->pluck('items')->flatten(1)->pluck('slug');
+
+        $this->assertSame(['rekap_pencapaian_sku'], $slugs->filter(fn ($slug) => str_starts_with($slug, 'rekap_pencapaian'))->values()->all());
+    }
+
     protected function tearDown(): void
     {
         Carbon::setTestNow();

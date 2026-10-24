@@ -19,14 +19,9 @@ return [
                     'icon' => 'clock',
                 ],
                 [
-                    'slug' => 'rekap_pencapaian_sku_motoris',
-                    'title' => 'Rekap Pencapaian SKU per Motoris',
+                    'slug' => 'rekap_pencapaian_sku',
+                    'title' => 'Rekap Pencapaian SKU',
                     'icon' => 'boxes',
-                ],
-                [
-                    'slug' => 'rekap_pencapaian_depo_sku',
-                    'title' => 'Rekap Pencapaian SKU per Depo',
-                    'icon' => 'warehouse',
                 ],
                 [
                     'slug' => 'summary_all_depo',
@@ -771,19 +766,27 @@ return [
             ],
             'same_as' => null,
         ],
-        'rekap_pencapaian_sku_motoris' => [
-            'title' => 'Rekap Pencapaian SKU per Motoris',
+        // Gabungan rekap pencapaian SKU per motoris & per depo. 'tabs' => true: hanya grup tab aktif (query ?tab=) yang ditampilkan.
+        'rekap_pencapaian_sku' => [
+            'title' => 'Rekap Pencapaian SKU',
+            'tabs' => true,
             'tables' => [
-                'rekap_pencapaian_sku_motoris_tableachieved',
-                'rekap_pencapaian_sku_motoris_tablenotachieved',
-            ],
-            'same_as' => null,
-        ],
-        'rekap_pencapaian_depo_sku' => [
-            'title' => 'Rekap Pencapaian SKU per Depo',
-            'tables' => [
-                'rekap_pencapaian_depo_sku_tableachieved',
-                'rekap_pencapaian_depo_sku_tablenotachieved',
+                [
+                    'tab_key' => 'motoris',
+                    'tab_label' => 'Per Motoris',
+                    'tables' => [
+                        'rekap_pencapaian_sku_motoris_tableachieved',
+                        'rekap_pencapaian_sku_motoris_tablenotachieved',
+                    ],
+                ],
+                [
+                    'tab_key' => 'depo',
+                    'tab_label' => 'Per Depo',
+                    'tables' => [
+                        'rekap_pencapaian_depo_sku_tableachieved',
+                        'rekap_pencapaian_depo_sku_tablenotachieved',
+                    ],
+                ],
             ],
             'same_as' => null,
         ],

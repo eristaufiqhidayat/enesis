@@ -8,12 +8,12 @@ Gabungkan `pages.rekap_pencapaian_sku_motoris` dan `pages.rekap_pencapaian_depo_
 
 ## Acceptance criteria
 
-- [ ] `config/marketama.php`: satu entri `menu` baru (`rekap_pencapaian_sku`) menggantikan dua entri lama (`rekap_pencapaian_sku_motoris`, `rekap_pencapaian_depo_sku`).
-- [ ] `config/marketama.php`: entri `pages.rekap_pencapaian_sku` dengan `'tabs' => true` dan dua grup tab (`motoris`, `depo`), masing-masing berisi dua tabel (`...tableachieved`, `...tablenotachieved`) sesuai yang sudah ada.
-- [ ] Entri `pages.rekap_pencapaian_sku_motoris` dan `pages.rekap_pencapaian_depo_sku` lama dihapus.
-- [ ] GET `/rekap_pencapaian_sku` menampilkan tab "Per Motoris" (default) dengan dua tabelnya, dan tab "Per Depo" dengan dua tabelnya saat `?tab=depo`.
-- [ ] Sidebar (`resources/views/components/ui/organisms/sidebar.blade.php` dan `resources/js/Components/ui/organisms/Sidebar.vue`) hanya punya satu item menu untuk halaman gabungan ini.
-- [ ] Feature test di `tests/Feature/MenuTest.php` meng-assert: default tab, isi tabel per tab, dan jumlah tabel yang tampil per tab (2, bukan 4).
+- [x] `config/marketama.php`: satu entri `menu` baru (`rekap_pencapaian_sku`) menggantikan dua entri lama (`rekap_pencapaian_sku_motoris`, `rekap_pencapaian_depo_sku`).
+- [x] `config/marketama.php`: entri `pages.rekap_pencapaian_sku` dengan `'tabs' => true` dan dua grup tab (`motoris`, `depo`), masing-masing berisi dua tabel (`...tableachieved`, `...tablenotachieved`) sesuai yang sudah ada.
+- [x] Entri `pages.rekap_pencapaian_sku_motoris` dan `pages.rekap_pencapaian_depo_sku` lama dihapus.
+- [x] GET `/rekap_pencapaian_sku` menampilkan tab "Per Motoris" (default) dengan dua tabelnya, dan tab "Per Depo" dengan dua tabelnya saat `?tab=depo`.
+- [x] Sidebar (`resources/views/components/ui/organisms/sidebar.blade.php` dan `resources/js/Components/ui/organisms/Sidebar.vue`) hanya punya satu item menu untuk halaman gabungan ini.
+- [x] Feature test di `tests/Feature/MenuTest.php` meng-assert: default tab, isi tabel per tab, dan jumlah tabel yang tampil per tab (2, bukan 4).
 
 ## Blocked by
 
