@@ -164,6 +164,20 @@ php artisan marketama:tarik --status          # progres per menu vs total di sum
   (nama, HP, email): jangan diekspor ke repo.
 - `php artisan db:seed --class=MarketamaSumberSeeder` menjalankan semua bagian sekaligus.
 
+## Login
+
+Semua halaman wajib login (`/login`, username + password; logout dari tombol **Keluar** di topbar).
+Akun dengan password awal dari admin diarahkan ke `/ganti-password` sampai password diganti.
+Lima kali gagal login dari username + IP yang sama dikunci 60 detik.
+
+**Demo masuk cepat**: bila `DEMO_LOGIN=true` (bawaan hanya di `APP_ENV=local`), form login
+menampilkan tombol Super Admin / Koordinator / Sales / Lainnya yang masuk tanpa password sebagai
+akun demo `demo.<peran>` (dibuat otomatis, bukan akun karyawan). Jangan aktifkan di server berisi data asli.
+
+- Lokal/dev: `php artisan migrate --seed` membuat akun `admin` / `password` (`UserSeeder`).
+- Production: akun dari data lama lewat `enesis:sinkron-user` (di bawah), password awal lewat
+  `enesis:atur-password <username>`. `UserSeeder` hanya membuat `admin` bila `SEED_ADMIN_PASSWORD` diisi.
+
 ## Akun login dari data lama (`enesis:sinkron-user`)
 
 Mengisi tabel `users` dari `mk_user` + `mk_karyawan` (hasil `marketama:tarik`). Login memakai
@@ -193,6 +207,30 @@ tidak diubah. Nama sales yang kembar diselesaikan dengan depo transaksi. Jalanka
 php artisan enesis:sambung-transaksi                         # semua tabel (±5–10 menit)
 php artisan enesis:sambung-transaksi --tabel=lap_penjualan_barang
 php artisan enesis:sambung-transaksi --kolom=karyawan_id --kolom=koordinator_id   # hanya kolom tertentu
+```
+
+## API aplikasi mobile (`/api/mobile/v1`)
+
+Tahap 1 untuk **sales motoris**, mengikuti mockup aplikasi (Beranda, Absen, Terima barang, Rute,
+Kunjungan, Order, Outlet baru, Tutup hari). Kontrak lengkap: [`docs/api/mobile-v1.yaml`](docs/api/mobile-v1.yaml)
+(OpenAPI 3.1; buka di editor.swagger.io).
+
+- Login `POST /auth/login` (username + password + `device_id`) → token Bearer per HP. Satu akun satu HP:
+  login di HP lain mencabut token lama (`401 device_replaced`); token menganggur 30 hari dicabut.
+  Akun dengan password awal harus `POST /auth/change-password` dulu.
+- Transaksi disimpan di tabel baru `trx_*` (`trx_absensi`, `trx_checkin_depo`, `trx_canvassing(_item)`,
+  `trx_kunjungan`, `trx_stok_outlet`, `trx_penjualan(_item)`, `trx_outlet_baru`, `trx_tracking`) dengan ID
+  master `mk_*`. Foto di `mobile_uploads` (disk `local`, folder `mobile/<user>/<tahun>/<bulan>`).
+- POST transaksi wajib header `Idempotency-Key` (UUID) sehingga antrian offline aman dikirim ulang.
+- Aturan bisnis (radius depo/outlet/duplikat, jam aktif, batas masuk, minimal transaksi, poin) ada di
+  `config/mobile.php` dan bisa diubah lewat `.env` (`MOBILE_*`). Jam aktif dan libur dibaca dari
+  `waktu_aktif_app` dan `holiday_dates`; koordinat, minimal transaksi, dan target dari data depo.
+
+```bash
+php artisan migrate
+# Muatan canvassing untuk uji (form web staf depo belum ada):
+php artisan enesis:siapkan-canvassing <karyawan_id> --produk=<produk_id>:<qty> --produk=...
+php artisan enesis:bersihkan-mobile   # dijadwalkan tiap 02:00 (perlu cron `schedule:run`)
 ```
 
 ## Peta Tracking History Koordinator Location

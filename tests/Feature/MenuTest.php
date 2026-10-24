@@ -5,11 +5,12 @@ namespace Tests\Feature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
+use Tests\Concerns\LoginOtomatis;
 use Tests\TestCase;
 
 class MenuTest extends TestCase
 {
-    use RefreshDatabase;
+    use LoginOtomatis, RefreshDatabase;
 
     public function test_root_redirects_to_home(): void
     {

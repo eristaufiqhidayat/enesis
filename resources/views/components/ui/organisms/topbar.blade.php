@@ -13,5 +13,15 @@
                 <i class="fas fa-bell-slash me-1"></i> Tidak ada notifikasi baru
             </div>
         </div>
+        @auth
+            <div class="topbar-user">
+                <i class="fas fa-user-circle"></i>
+                <span class="topbar-user-name" title="{{ auth()->user()->username }}">{{ auth()->user()->name }}</span>
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <x-ui.atoms.button type="submit" variant="outline-secondary">Keluar</x-ui.atoms.button>
+                </form>
+            </div>
+        @endauth
     </div>
 </div>

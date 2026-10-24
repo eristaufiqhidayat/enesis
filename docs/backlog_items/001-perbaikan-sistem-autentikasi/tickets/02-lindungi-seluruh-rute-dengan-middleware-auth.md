@@ -8,11 +8,11 @@ Seluruh rute aplikasi yang sudah ada (catch-all menu `/{slug}`, `tracking_koordi
 
 ## Acceptance criteria
 
-- [ ] Semua rute di `routes/web.php` kecuali `/login` dibungkus middleware `auth`.
-- [ ] Request tanpa login ke rute apa pun (misal salah satu menu `/{slug}`, `/tracking_koordinator_history_location`, `/master_area/design_area`) redirect ke `/login`.
-- [ ] Setelah login berhasil, pengguna diarahkan kembali ke URL yang tadinya dituju (`redirect()->intended()`).
-- [ ] Semua feature test yang sudah ada dan menyentuh rute terlindungi (`MenuTest`, test tracking/design-area kalau ada) diupdate memakai `actingAs()` dan tetap lulus.
-- [ ] `php artisan test` lulus penuh.
+- [x] Semua rute di `routes/web.php` kecuali `/login` dibungkus middleware `auth`.
+- [x] Request tanpa login ke rute apa pun (misal salah satu menu `/{slug}`, `/tracking_koordinator_history_location`, `/master_area/design_area`) redirect ke `/login`.
+- [x] Setelah login berhasil, pengguna diarahkan kembali ke URL yang tadinya dituju (`redirect()->intended()`).
+- [x] Semua feature test yang sudah ada dan menyentuh rute terlindungi (`MenuTest`, test tracking/design-area kalau ada) diupdate memakai `actingAs()` dan tetap lulus.
+- [x] `php artisan test` lulus penuh.
 
 ## Blocked by
 

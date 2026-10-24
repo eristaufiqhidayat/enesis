@@ -1,0 +1,1091 @@
+openapi: 3.1.0
+info:
+  title: Enesis Mobile API
+  version: 1.0.0-tahap1
+  description: |
+    API aplikasi mobile Enesis, **tahap 1: sales motoris** (sesuai mockup: Beranda, Absen,
+    Terima barang, Rute, Kunjungan, Order, Outlet baru, Tutup hari). Endpoint koordinator, izin,
+    pengumuman, dan notifikasi menyusul di tahap 2.
+
+    **Konvensi**
+    - Semua permintaan membawa header `X-App-Version` (mis. `1.0.0`). Setiap respons membawa
+      `X-Min-App-Version`; aplikasi lebih lama ditolak `426 upgrade_required`.
+    - Login mengembalikan token Bearer per HP. Satu akun hanya aktif di satu HP; login di HP lain
+      membuat HP lama mendapat `401 device_replaced`. Token tidak dipakai 30 hari dicabut (`token_expired`).
+    - Sukses: `{"data": ..., "meta": {...}}`. Gagal: `{"error": {"code", "message", "fields"}}`.
+      `code` stabil untuk logika aplikasi, `message` bahasa Indonesia siap tampil.
+    - POST transaksi (ditandai **Idempotency-Key**) wajib header `Idempotency-Key` (UUID dibuat HP saat
+      transaksi dicatat). Kiriman ulang dengan kunci sama mendapat respons yang sama, status 200, dan
+      `meta.duplicate: true`. `client_ref` yang kosong diisi dari kunci ini.
+    - `recorded_at` = jam HP saat kejadian (ISO 8601). Server memakai jam server (WIB) untuk aturan
+      jam aktif/terlambat dan menandai `clock_skew` bila selisih > 10 menit.
+    - Rupiah = bilangan bulat; qty = desimal 2 digit; koordinat = derajat desimal.
+    - Batas: 120 permintaan/menit per token; login 10 percobaan/menit per username (`429`, header `Retry-After`).
+
+    **Status HTTP**: 200/201 sukses (hapus dari antrian) · 401 login ulang · 403 tidak berhak ·
+    404 tidak ada / milik orang lain · 409 bentrok status (jangan kirim ulang otomatis) ·
+    422 validasi (tampilkan di form) · 426 perbarui aplikasi · 429 tunggu `Retry-After` · 5xx coba lagi bertahap.
+
+    Nilai bertanda *(konfirmasi)* masih menunggu keputusan product owner; diatur lewat `.env`
+    (`config/mobile.php`): radius depo 100 m, radius outlet 100 m, radius duplikat 20 m, jam aktif
+    06:00–21:00, batas masuk 08:00, minimal transaksi Rp35.000 bila depo tidak punya nilainya, poin = 0.
+servers:
+  - url: https://enesis.lembaharafah.com/api/mobile/v1
+  - url: http://localhost:8000/api/mobile/v1
+security:
+  - bearer: []
+tags:
+  - name: Auth
+  - name: Master
+  - name: Absensi
+  - name: Canvassing
+  - name: Rute & Outlet
+  - name: Kunjungan
+  - name: Penjualan
+  - name: Tracking
+  - name: Kinerja
+
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login dan daftarkan perangkat
+      description: Hanya akun kategori `sales` yang aktif dan terhubung ke karyawan. Token lama milik akun ini dicabut.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password, device_id]
+              properties:
+                username: { type: string, example: andi }
+                password: { type: string, format: password }
+                device_id: { type: string, description: ID unik instalasi aplikasi, example: 3f9a1c0e-hp-andi }
+                device_model: { type: string, example: Redmi 10 }
+                app_version: { type: string, example: 1.0.0 }
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      token: { type: string, example: enm_Q2x0... }
+                      token_type: { type: string, const: Bearer }
+                      must_change_password:
+                        type: boolean
+                        description: true = panggil /auth/change-password dulu; endpoint lain (selain /me, /auth/*) menjawab 403 password_change_required.
+                      user: { $ref: '#/components/schemas/Profil' }
+        '401': { $ref: '#/components/responses/Error', description: invalid_credentials }
+        '403': { $ref: '#/components/responses/Error', description: role_not_supported, no_employee_link, account_under_review }
+        '422': { $ref: '#/components/responses/Validasi' }
+        '429': { $ref: '#/components/responses/Error', description: too_many_attempts }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Cabut token perangkat ini
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+
+  /auth/change-password:
+    post:
+      tags: [Auth]
+      summary: Ganti password
+      description: "`current_password` tidak diminta bila akun masih memakai password awal (must_change_password)."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password, password_confirmation]
+              properties:
+                current_password: { type: string }
+                password: { type: string, minLength: 8, description: Tidak sama dengan username dan password sekarang }
+                password_confirmation: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '422': { $ref: '#/components/responses/Validasi' }
+
+  /me:
+    get:
+      tags: [Auth]
+      summary: Profil, peran, depo, koordinator
+      responses:
+        '200':
+          description: Profil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Profil' }
+
+  /master:
+    get:
+      tags: [Master]
+      summary: Paket data master (produk, produk kompetitor, tipe outlet, alasan tidak beli)
+      parameters:
+        - name: since
+          in: query
+          description: Hanya produk yang berubah sejak waktu ini (pakai meta.server_time dari panggilan sebelumnya).
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          description: Data master
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      products:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id: { type: integer, example: 3 }
+                            code: { type: [string, 'null'], example: '8991001' }
+                            name: { type: string }
+                            brand: { type: [string, 'null'] }
+                            category: { type: [string, 'null'] }
+                            unit: { type: [string, 'null'] }
+                            price: { type: [integer, 'null'], description: Harga jual (Rp); null = belum bisa dijual }
+                            is_focus: { type: boolean }
+                            max_points_per_invoice: { type: [integer, 'null'] }
+                            updated_at: { type: [string, 'null'], format: date-time }
+                      competitor_products:
+                        type: array
+                        items: { type: object, properties: { id: { type: integer }, name: { type: string }, unit: { type: [string, 'null'] } } }
+                      outlet_types: { type: array, items: { type: string } }
+                      no_sale_reasons:
+                        type: array
+                        items: { type: object, properties: { code: { type: string, example: toko_tutup }, label: { type: string } } }
+                  meta:
+                    type: object
+                    properties:
+                      server_time: { type: string, format: date-time }
+                      full: { type: boolean }
+
+  /config:
+    get:
+      tags: [Master]
+      summary: Aturan hari ini (jam aktif, libur, radius, minimal transaksi, target)
+      responses:
+        '200':
+          description: Konfigurasi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      server_time: { type: string, format: date-time }
+                      timezone: { type: string, example: Asia/Jakarta }
+                      today:
+                        type: object
+                        properties:
+                          date: { type: string, format: date }
+                          is_working_day: { type: boolean }
+                          holiday_name: { type: [string, 'null'] }
+                          active_from: { type: string, example: '06:00' }
+                          active_until: { type: string, example: '21:00' }
+                          check_in_deadline: { type: string, example: '08:00' }
+                      depot:
+                        type: [object, 'null']
+                        properties:
+                          id: { type: integer }
+                          name: { type: string }
+                          lat: { type: [number, 'null'] }
+                          lng: { type: [number, 'null'] }
+                          radius_m: { type: integer, example: 100 }
+                      outlet_radius_m: { type: integer, example: 100 }
+                      duplicate_outlet_radius_m: { type: integer, example: 20 }
+                      gps_interval_s: { type: integer, example: 180 }
+                      min_transaction_value: { type: integer, example: 35000 }
+                      daily_targets:
+                        type: object
+                        properties: { call: { type: integer }, ec: { type: integer }, ipt: { type: number }, omset: { type: integer } }
+                      upcoming_holidays:
+                        type: array
+                        items: { type: object, properties: { date: { type: string, format: date }, name: { type: string } } }
+                      min_app_version: { type: string }
+                      upload_max_kb: { type: integer, example: 1024 }
+
+  /uploads:
+    post:
+      tags: [Master]
+      summary: Unggah foto/lampiran, terima upload_id
+      description: JPEG/PNG/PDF maks. 1 MB (kompres di HP, lebar maks. 1280 px). upload_id dipakai di transaksi, jadi transaksi bisa dikirim ulang tanpa unggah ulang.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, type]
+              properties:
+                file: { type: string, format: binary }
+                type: { type: string, enum: [selfie, toko, rak, lampiran] }
+      responses:
+        '201':
+          description: Tersimpan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: object, properties: { upload_id: { type: string, format: uuid }, size: { type: integer } } }
+        '422': { $ref: '#/components/responses/Validasi' }
+
+  /attendances/check-in:
+    post:
+      tags: [Absensi]
+      summary: Absen masuk (selfie + lokasi) — Idempotency-Key
+      description: |
+        Ditolak bila libur / bukan hari kerja (`409 holiday`), di luar jam aktif (`409 outside_active_hours`),
+        sudah absen (`409 already_checked_in`), atau di luar radius depo (`422 outside_depot_radius`, fields
+        `distance_m`, `radius_m`). Lewat batas masuk diterima dengan `is_late: true`.
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/Umum'
+                - $ref: '#/components/schemas/Lokasi'
+                - type: object
+                  required: [photo_id]
+                  properties:
+                    photo_id: { type: string, format: uuid, description: upload_id selfie }
+            example: { client_ref: 7b0c2f7e-2a3d-4c55-9b1b-6f0d7f0e8a11, recorded_at: '2026-10-26T07:52:10+07:00', lat: -6.2001, lng: 106.8001, accuracy_m: 8, is_mock_location: false, photo_id: 0d6f6f1e-91c2-4bb5-8a0c-3b1e2f4d5a66 }
+      responses:
+        '201':
+          description: Tercatat
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      attendance_id: { type: integer }
+                      date: { type: string, format: date }
+                      checked_in_at: { type: string, format: date-time }
+                      is_late: { type: boolean }
+                      distance_to_depot_m: { type: [integer, 'null'] }
+        '200': { $ref: '#/components/responses/Duplikat' }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Validasi' }
+
+  /attendances/check-out:
+    post:
+      tags: [Absensi]
+      summary: Absen pulang — Idempotency-Key
+      description: "409: not_checked_in, already_checked_out, visit_open."
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        content:
+          application/json:
+            schema: { allOf: [{ $ref: '#/components/schemas/Umum' }, { $ref: '#/components/schemas/LokasiOpsional' }] }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '409': { $ref: '#/components/responses/Error' }
+
+  /attendances:
+    get:
+      tags: [Absensi]
+      summary: Riwayat absen sendiri per bulan
+      parameters:
+        - { name: month, in: query, schema: { type: string, example: 2026-10 } }
+      responses:
+        '200':
+          description: Daftar absen
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer }
+                        date: { type: string, format: date }
+                        checked_in_at: { type: [string, 'null'], format: date-time }
+                        checked_out_at: { type: [string, 'null'], format: date-time }
+                        is_late: { type: boolean }
+
+  /depot-visits/check-in:
+    post:
+      tags: [Absensi]
+      summary: Checkin depo (syarat terima barang) — Idempotency-Key
+      description: "Wajib sudah absen (409 not_checked_in); dalam radius depo (422 outside_depot_radius); 409 already_checked_in, no_depot."
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { allOf: [{ $ref: '#/components/schemas/Umum' }, { $ref: '#/components/schemas/Lokasi' }] }
+      responses:
+        '201':
+          description: Tercatat
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: object, properties: { depot_visit_id: { type: integer }, distance_to_depot_m: { type: [integer, 'null'] } } }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Validasi' }
+
+  /depot-visits/check-out:
+    post:
+      tags: [Absensi]
+      summary: Checkout depo (setelah sisa barang diserahkan) — Idempotency-Key
+      description: "409: not_checked_in, already_checked_out, visit_open, return_pending."
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        content:
+          application/json:
+            schema: { allOf: [{ $ref: '#/components/schemas/Umum' }, { $ref: '#/components/schemas/LokasiOpsional' }] }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '409': { $ref: '#/components/responses/Error' }
+
+  /canvassing/today:
+    get:
+      tags: [Canvassing]
+      summary: Muatan hari ini yang disiapkan staf depo
+      description: "`data: null` bila belum ada muatan."
+      responses:
+        '200':
+          description: Muatan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { oneOf: [{ $ref: '#/components/schemas/Canvassing' }, { type: 'null' }] }
+
+  /canvassing/{number}/accept:
+    post:
+      tags: [Canvassing]
+      summary: Terima barang (laporkan selisih per produk) — Idempotency-Key
+      description: |
+        Produk yang tidak dikirim dianggap diterima sesuai jumlah disiapkan. Selisih wajib beralasan.
+        404 bila nomor bukan milik sales ini; 409 not_today, already_accepted, depot_check_in_required.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/NomorCanvassing'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/Umum'
+                - type: object
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        type: object
+                        required: [product_id, qty_received]
+                        properties:
+                          product_id: { type: integer }
+                          qty_received: { type: number }
+                          reason: { type: string, description: Wajib bila qty_received ≠ disiapkan }
+      responses:
+        '200':
+          description: Diterima
+          content:
+            application/json:
+              schema: { type: object, properties: { data: { $ref: '#/components/schemas/Canvassing' } } }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Validasi' }
+
+  /canvassing/{number}/balance:
+    get:
+      tags: [Canvassing]
+      summary: Sisa bawaan per produk (dibawa − terjual)
+      parameters: [{ $ref: '#/components/parameters/NomorCanvassing' }]
+      responses:
+        '200':
+          description: Sisa
+          content:
+            application/json:
+              schema: { type: object, properties: { data: { $ref: '#/components/schemas/Canvassing' } } }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /canvassing/{number}/return:
+    post:
+      tags: [Canvassing]
+      summary: Serahkan sisa barang (Tutup hari) — Idempotency-Key
+      description: |
+        Produk yang tidak dikirim dianggap kembali sesuai sisa. Bila qty_returned ≠ sisa wajib beralasan
+        (`422 return_mismatch`). 409 not_accepted, already_returned, visit_open. Setelah ini kunjungan dan
+        order hari ini ditolak `409 day_closed`.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/NomorCanvassing'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/Umum'
+                - type: object
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        type: object
+                        required: [product_id, qty_returned]
+                        properties:
+                          product_id: { type: integer }
+                          qty_returned: { type: number }
+                          reason: { type: string }
+      responses:
+        '200':
+          description: Diserahkan, menunggu konfirmasi staf depo di web
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    allOf:
+                      - $ref: '#/components/schemas/Canvassing'
+                      - type: object
+                        properties:
+                          cash_to_deposit: { type: integer, description: Total penjualan tidak batal (Rp) }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Validasi' }
+
+  /routes/today:
+    get:
+      tags: [Rute & Outlet]
+      summary: Outlet di area rute sales beserta status kunjungan hari ini
+      parameters:
+        - { name: cursor, in: query, schema: { type: integer }, description: meta.next_cursor dari halaman sebelumnya }
+        - { name: limit, in: query, schema: { type: integer, maximum: 200, default: 200 } }
+        - { name: lat, in: query, schema: { type: number }, description: Posisi HP untuk mengisi distance_m }
+        - { name: lng, in: query, schema: { type: number } }
+      responses:
+        '200':
+          description: Rute
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: '#/components/schemas/Outlet'
+                        - type: object
+                          properties:
+                            visit_status: { type: string, enum: [belum, dikunjungi, beli, tidak_beli] }
+                            visit_id: { type: [integer, 'null'] }
+                  meta:
+                    type: object
+                    properties:
+                      date: { type: string, format: date }
+                      area_ids: { type: array, items: { type: integer } }
+                      total: { type: integer }
+                      visited: { type: integer }
+                      bought: { type: integer }
+                      not_bought: { type: integer }
+                      next_cursor: { type: [integer, 'null'] }
+
+  /outlets/nearby:
+    get:
+      tags: [Rute & Outlet]
+      summary: Outlet terdekat (master + NOO yang belum ditolak), urut jarak
+      parameters:
+        - { name: lat, in: query, required: true, schema: { type: number } }
+        - { name: lng, in: query, required: true, schema: { type: number } }
+        - { name: radius, in: query, schema: { type: integer, default: 300, maximum: 2000 } }
+        - { name: limit, in: query, schema: { type: integer, default: 50, maximum: 100 } }
+      responses:
+        '200':
+          description: Outlet
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: '#/components/schemas/Outlet'
+                        - type: object
+                          properties:
+                            is_new: { type: boolean, description: true = NOO (id = new_outlet_id) }
+
+  /outlets/{id}:
+    get:
+      tags: [Rute & Outlet]
+      summary: Detail outlet, order terakhir, stok terakhir
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200':
+          description: Detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    allOf:
+                      - $ref: '#/components/schemas/Outlet'
+                      - type: object
+                        properties:
+                          province: { type: [string, 'null'] }
+                          city: { type: [string, 'null'] }
+                          district: { type: [string, 'null'] }
+                          village: { type: [string, 'null'] }
+                          last_sale: { type: [object, 'null'] }
+                          last_stock: { type: array, items: { type: object } }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /outlets:
+    post:
+      tags: [Rute & Outlet]
+      summary: Daftarkan outlet baru (NOO) — Idempotency-Key
+      description: |
+        Foto toko wajib. Bila ada outlet lain dalam radius duplikat → `422 possible_duplicate` dengan
+        `fields.candidates`; kirim ulang dengan `confirm_not_duplicate: true` bila memang berbeda.
+        Status awal `menunggu` verifikasi di web; sudah bisa dikunjungi lewat `new_outlet_id`.
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/Umum'
+                - $ref: '#/components/schemas/Lokasi'
+                - type: object
+                  required: [name, photo_store_id]
+                  properties:
+                    name: { type: string, maxLength: 150 }
+                    owner_name: { type: string }
+                    phone: { type: string, example: 0812 3456 7890 }
+                    type: { type: string, description: Salah satu dari /master outlet_types }
+                    address: { type: string }
+                    area_id: { type: integer, description: Bawaan area rute pertama sales }
+                    photo_store_id: { type: string, format: uuid }
+                    photo_shelf_id: { type: string, format: uuid }
+                    confirm_not_duplicate: { type: boolean }
+      responses:
+        '201':
+          description: Terdaftar
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: object, properties: { new_outlet_id: { type: integer }, status: { type: string, example: menunggu } } }
+        '422': { $ref: '#/components/responses/Validasi' }
+
+  /visits:
+    post:
+      tags: [Kunjungan]
+      summary: Checkin outlet — Idempotency-Key
+      description: |
+        Syarat: sudah absen (409 not_checked_in), barang canvassing sudah diterima (409 no_canvassing),
+        hari belum ditutup (409 day_closed), tidak ada kunjungan terbuka (409 visit_open, fields.visit_id),
+        jarak ke titik outlet ≤ radius outlet (422 too_far_from_outlet). Outlet di luar area rute diterima
+        dengan `is_off_route: true`.
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/Umum'
+                - $ref: '#/components/schemas/Lokasi'
+                - type: object
+                  properties:
+                    outlet_id: { type: integer, description: Wajib bila tanpa new_outlet_id }
+                    new_outlet_id: { type: integer, description: NOO milik sales ini }
+                    photo_id: { type: string, format: uuid, description: Foto toko (opsional) }
+            example: { client_ref: 1d2b0f5c-7f4e-4a87-9d2a-5b9f0a3c6e21, recorded_at: '2026-10-26T09:41:02+07:00', outlet_id: 11, lat: -6.20095, lng: 106.801, accuracy_m: 10, is_mock_location: false }
+      responses:
+        '201':
+          description: Tercatat
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      visit_id: { type: integer, example: 552901 }
+                      distance_to_outlet_m: { type: [integer, 'null'], example: 12 }
+                      is_off_route: { type: boolean }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Validasi' }
+
+  /visits/{id}/stocks:
+    post:
+      tags: [Kunjungan]
+      summary: Stok produk sendiri & kompetitor di outlet — Idempotency-Key
+      description: Mengganti isi stok kunjungan ini (aman diulang). 404 kunjungan orang lain; 409 visit_closed.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IdKunjungan'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items: { type: object, required: [product_id, qty], properties: { product_id: { type: integer }, qty: { type: number } } }
+                competitors:
+                  type: array
+                  items: { type: object, required: [name, qty], properties: { name: { type: string }, qty: { type: number } } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+
+  /visits/{id}/no-sale:
+    post:
+      tags: [Kunjungan]
+      summary: Alasan tidak beli — Idempotency-Key
+      description: "`note` wajib bila `reason_code` = lainnya. 409 visit_closed, visit_has_sale."
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IdKunjungan'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason_code]
+              properties:
+                reason_code: { type: string, description: Kode dari /master no_sale_reasons }
+                note: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Validasi' }
+
+  /visits/{id}/check-out:
+    post:
+      tags: [Kunjungan]
+      summary: Checkout outlet, hitung durasi — Idempotency-Key
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IdKunjungan'
+      responses:
+        '200':
+          description: Selesai
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: object, properties: { visit_id: { type: integer }, duration_s: { type: integer }, checked_out_at: { type: string, format: date-time } } }
+        '409': { $ref: '#/components/responses/Error' }
+
+  /sales:
+    post:
+      tags: [Penjualan]
+      summary: Buat transaksi penjualan dari satu kunjungan — Idempotency-Key
+      description: |
+        Server menghitung ulang harga (harga jual master), total, poin, dan EC. Total di bawah minimal
+        value transaksi depo tetap diterima tetapi `is_effective_call: false`. `client_total` hanya untuk
+        mendeteksi harga usang di HP (`price_changed: true` → muat ulang /master).
+        Ditolak: 404 kunjungan orang lain; 409 visit_closed, visit_has_sale, no_canvassing, day_closed;
+        422 exceeds_stock (qty > sisa bawaan) atau product_inactive (produk tanpa harga), dengan fields per baris.
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/Umum'
+                - type: object
+                  required: [visit_id, items]
+                  properties:
+                    visit_id: { type: integer }
+                    client_total: { type: integer }
+                    items:
+                      type: array
+                      minItems: 1
+                      items: { type: object, required: [product_id, qty], properties: { product_id: { type: integer }, qty: { type: number, exclusiveMinimum: 0 } } }
+            example: { client_ref: 9a4e3c1b-0d8f-4f2a-b6c7-1e2d3f4a5b6c, recorded_at: '2026-10-26T09:47:30+07:00', visit_id: 552901, client_total: 75500, items: [{ product_id: 3, qty: 6 }, { product_id: 4, qty: 3 }] }
+      responses:
+        '201':
+          description: Tercatat
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    allOf:
+                      - $ref: '#/components/schemas/Penjualan'
+                      - type: object
+                        properties:
+                          min_transaction_value: { type: integer }
+                          price_changed: { type: boolean }
+        '200': { $ref: '#/components/responses/Duplikat' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Validasi' }
+    get:
+      tags: [Penjualan]
+      summary: Daftar transaksi per tanggal (bawaan hari ini)
+      parameters:
+        - { name: date, in: query, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: Daftar
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Penjualan' } }
+                  meta: { type: object, properties: { date: { type: string, format: date }, total: { type: integer, description: Total tidak batal } } }
+
+  /sales/{id}/void:
+    post:
+      tags: [Penjualan]
+      summary: Batalkan transaksi hari ini (alasan wajib) — Idempotency-Key
+      description: "Stok bawaan kembali. 409 already_voided, void_not_allowed (bukan hari ini), day_closed."
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [reason], properties: { reason: { type: string, minLength: 3 } } }
+      responses:
+        '200':
+          description: Dibatalkan
+          content:
+            application/json:
+              schema: { type: object, properties: { data: { $ref: '#/components/schemas/Penjualan' } } }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+
+  /tracking/batch:
+    post:
+      tags: [Tracking]
+      summary: Kirim kumpulan titik GPS (maks. 500)
+      description: |
+        Tidak memakai Idempotency-Key: titik dengan waktu sama diabaikan, jadi paket boleh dikirim ulang utuh.
+        Lebih dari 500 titik → 422 too_many_points. Titik > 48 jam lalu (`too_old`) atau di masa depan
+        (`future_time`) ditolak per titik. Akurasi > 100 m disimpan dan ditandai.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [points]
+              properties:
+                points:
+                  type: array
+                  maxItems: 500
+                  items:
+                    type: object
+                    required: [recorded_at, lat, lng]
+                    properties:
+                      recorded_at: { type: string, format: date-time }
+                      lat: { type: number }
+                      lng: { type: number }
+                      accuracy_m: { type: number }
+                      is_mock_location: { type: boolean }
+                      battery: { type: integer, minimum: 0, maximum: 100 }
+      responses:
+        '200':
+          description: Diterima
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      accepted: { type: integer }
+                      duplicates: { type: integer }
+                      rejected:
+                        type: array
+                        items: { type: object, properties: { index: { type: integer }, code: { type: string, enum: [too_old, future_time] } } }
+        '422': { $ref: '#/components/responses/Validasi' }
+
+  /me/summary:
+    get:
+      tags: [Kinerja]
+      summary: Beranda — 5 langkah hari ini, KPI vs target, outlet berikutnya
+      parameters:
+        - { name: date, in: query, schema: { type: string, format: date } }
+        - { name: lat, in: query, schema: { type: number }, description: Untuk memilih outlet berikutnya terdekat }
+        - { name: lng, in: query, schema: { type: number } }
+      responses:
+        '200':
+          description: Ringkasan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      date: { type: string, format: date }
+                      steps:
+                        type: array
+                        description: attendance, depot_check_in, accept_goods, visits, close_day
+                        items:
+                          type: object
+                          properties:
+                            key: { type: string }
+                            label: { type: string }
+                            done: { type: boolean }
+                            status: { type: string, enum: [done, current, pending] }
+                            at: { type: [string, 'null'], format: date-time }
+                            count: { type: integer }
+                      kpi:
+                        type: object
+                        description: Call = kunjungan; EC = transaksi ≥ minimal value; IPT = rata-rata SKU per transaksi; poin = 0 sampai aturan poin disepakati.
+                        properties:
+                          call: { $ref: '#/components/schemas/NilaiTarget' }
+                          ec: { $ref: '#/components/schemas/NilaiTarget' }
+                          ipt: { $ref: '#/components/schemas/NilaiTarget' }
+                          sales_amount: { $ref: '#/components/schemas/NilaiTarget' }
+                          points: { type: integer }
+                      next_outlet: { type: [object, 'null'] }
+                      open_visit_id: { type: [integer, 'null'] }
+
+  /me/performance:
+    get:
+      tags: [Kinerja]
+      summary: Rekap bulanan dan perkiraan insentif
+      parameters:
+        - { name: month, in: query, schema: { type: string, example: 2026-10 } }
+      responses:
+        '200':
+          description: Rekap
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      month: { type: string }
+                      days: { type: array, items: { type: object, properties: { date: { type: string }, call: { type: integer }, ec: { type: integer }, sales_amount: { type: integer }, points: { type: integer } } } }
+                      totals: { type: object, properties: { call: { type: integer }, ec: { type: integer }, sales_amount: { type: integer }, points: { type: integer } } }
+                      incentive_estimate:
+                        type: object
+                        properties:
+                          ec_incentive: { type: [integer, 'null'], description: Dari rumus_insentif_sales }
+                          points_value: { type: [integer, 'null'], description: Poin × konversi poin per depo }
+                          note: { type: string }
+
+  /sync/status:
+    get:
+      tags: [Kinerja]
+      summary: Apa yang sudah diterima server hari ini (untuk mencocokkan antrian HP)
+      parameters:
+        - { name: date, in: query, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: Status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      attendance: { type: object, properties: { check_in: { type: [string, 'null'] }, check_out: { type: [string, 'null'] } } }
+                      depot_visit: { type: object, properties: { check_in: { type: [string, 'null'] }, check_out: { type: [string, 'null'] } } }
+                      canvassing: { type: [object, 'null'] }
+                      visits: { type: array, items: { type: string, format: uuid } }
+                      sales: { type: array, items: { type: string, format: uuid } }
+                      new_outlets: { type: array, items: { type: string, format: uuid } }
+                      tracking: { type: object, properties: { points: { type: integer }, last_recorded_at: { type: [string, 'null'], format: date-time } } }
+
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      description: Token dari /auth/login. Simpan di Keystore/Keychain.
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: UUID yang dibuat HP saat transaksi dicatat; sama dengan client_ref.
+      schema: { type: string, format: uuid }
+    NomorCanvassing:
+      name: number
+      in: path
+      required: true
+      schema: { type: string, example: CNV20261026-00012 }
+    IdKunjungan:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer }
+  schemas:
+    Umum:
+      type: object
+      properties:
+        client_ref: { type: string, format: uuid, description: Bawaan = Idempotency-Key }
+        recorded_at: { type: string, format: date-time, description: Jam HP saat kejadian }
+    Lokasi:
+      type: object
+      required: [lat, lng]
+      properties:
+        lat: { type: number, minimum: -90, maximum: 90 }
+        lng: { type: number, minimum: -180, maximum: 180 }
+        accuracy_m: { type: number }
+        is_mock_location: { type: boolean, description: Penanda lokasi palsu Android; disimpan untuk diperiksa }
+    LokasiOpsional:
+      type: object
+      properties:
+        lat: { type: number }
+        lng: { type: number }
+    Profil:
+      type: object
+      properties:
+        id: { type: integer }
+        username: { type: string }
+        name: { type: string }
+        role: { type: string, example: sales }
+        employee_id: { type: [integer, 'null'] }
+        depot: { type: [object, 'null'], properties: { id: { type: integer }, name: { type: string } } }
+        coordinator: { type: [object, 'null'], properties: { id: { type: integer }, name: { type: string } } }
+        must_change_password: { type: boolean }
+        permissions: { type: array, items: { type: string } }
+    Outlet:
+      type: object
+      properties:
+        id: { type: integer }
+        code: { type: [string, 'null'] }
+        name: { type: [string, 'null'] }
+        address: { type: [string, 'null'] }
+        lat: { type: [number, 'null'] }
+        lng: { type: [number, 'null'] }
+        area_id: { type: [integer, 'null'] }
+        distance_m: { type: [integer, 'null'] }
+    Canvassing:
+      type: object
+      properties:
+        number: { type: string }
+        date: { type: string, format: date }
+        status: { type: string, enum: [disiapkan, diterima, dikembalikan, selesai] }
+        accepted_at: { type: [string, 'null'], format: date-time }
+        returned_at: { type: [string, 'null'], format: date-time }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              product_id: { type: integer }
+              code: { type: [string, 'null'] }
+              name: { type: [string, 'null'] }
+              price: { type: [integer, 'null'] }
+              qty_prepared: { type: number }
+              qty_carried: { type: number, description: Diterima (atau disiapkan bila belum diterima) }
+              qty_sold: { type: number }
+              qty_remaining: { type: number }
+    Penjualan:
+      type: object
+      properties:
+        sale_id: { type: integer }
+        code: { type: string, example: MB20261026-0000123 }
+        visit_id: { type: integer }
+        outlet_id: { type: [integer, 'null'] }
+        date: { type: string, format: date }
+        sku_count: { type: integer }
+        total: { type: integer, example: 75500 }
+        points: { type: integer }
+        is_effective_call: { type: boolean }
+        is_void: { type: boolean }
+        void_reason: { type: [string, 'null'] }
+        created_at: { type: string, format: date-time }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              product_id: { type: integer }
+              name: { type: [string, 'null'] }
+              qty: { type: number }
+              price: { type: integer }
+              total: { type: integer }
+              points: { type: integer }
+    NilaiTarget:
+      type: object
+      properties:
+        value: { type: number }
+        target: { type: number }
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, example: outside_depot_radius }
+            message: { type: string, example: Anda 240 m dari depo, batas 100 m. }
+            fields: { type: object, additionalProperties: true }
+  responses:
+    Ok:
+      description: Berhasil
+      content:
+        application/json:
+          schema: { type: object, properties: { data: { type: object }, meta: { type: object } } }
+    Duplikat:
+      description: Kunci idempotensi sama sudah diterima; respons asli dengan meta.duplicate = true
+      content:
+        application/json:
+          schema: { type: object, properties: { data: { type: object }, meta: { type: object, properties: { duplicate: { const: true } } } } }
+    Error:
+      description: Error dengan kode stabil
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Validasi:
+      description: "validation_failed (fields = pesan per field) atau kode aturan bisnis: outside_depot_radius, too_far_from_outlet, exceeds_stock, product_inactive, possible_duplicate, return_mismatch, too_many_points, idempotency_key_required"
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
