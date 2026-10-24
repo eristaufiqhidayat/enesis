@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -30,6 +31,20 @@ class AkunTest extends AdminTestCase
         $this->get('/user_sales?q=balaraja')->assertOk()->assertSee('sinta')->assertDontSee('rudi.h');
         $this->get('/user_sales?depo=46')->assertOk()->assertSee('rudi.h')->assertDontSee('sinta');
         $this->get('/user_koordinator')->assertOk()->assertSee('koor')->assertDontSee('rudi.h');
+    }
+
+    public function test_klik_menu_dari_halaman_inertia_membuka_halaman_blade_penuh(): void
+    {
+        // Tanpa ini Inertia menampilkan halaman Blade di dalam popup.
+        $this->get('/user_sales', ['X-Inertia' => 'true', 'X-Inertia-Version' => ''])
+            ->assertStatus(409)->assertHeader('X-Inertia-Location', url('/user_sales'));
+        $this->get('/role', ['X-Inertia' => 'true'])->assertStatus(409);
+
+        // Halaman Inertia dan permintaan biasa tidak berubah.
+        $versi = (string) app(HandleInertiaRequests::class)->version(request());
+        $this->get('/provinsi', ['X-Inertia' => 'true', 'X-Inertia-Version' => $versi])->assertOk()->assertHeader('X-Inertia', 'true');
+        $this->get('/user_sales')->assertOk();
+        $this->getJson('/user_sales/karyawan?q=ru')->assertOk();
     }
 
     public function test_tambah_akun_password_otomatis_tampil_sekali(): void

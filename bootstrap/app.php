@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\CekHak;
+use App\Http\Middleware\HalamanBladePenuh;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\Mobile\Idempotensi;
 use App\Http\Middleware\Mobile\PeranMobile;
@@ -26,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
             HandleInertiaRequests::class,
+            HalamanBladePenuh::class,
         ]);
         $middleware->alias([
             'wajib-ganti-password' => WajibGantiPassword::class,
