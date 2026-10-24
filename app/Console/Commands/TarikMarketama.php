@@ -11,9 +11,10 @@ use Throwable;
 class TarikMarketama extends Command
 {
     protected $signature = 'marketama:tarik
-                            {bagian?* : master, karyawan, user, outlet, atau mentah:<menu> (default: master karyawan user outlet)}
+                            {bagian?* : master, karyawan, user, outlet, sambung, atau mentah:<menu> (default: master karyawan user outlet sambung)}
                             {--tanpa-detail : Jangan buka form edit per karyawan/user (lebih cepat, relasi dari nama)}
                             {--ulang : Abaikan posisi tersimpan, tarik dari awal}
+                            {--area-dari-menu : Tarik area dari menu Master Area (lambat) walaupun area_polygon sudah berisi}
                             {--batas= : Batasi jumlah baris/form per menu (uji coba)}
                             {--status : Tampilkan progres tarikan saja}';
 
@@ -33,11 +34,12 @@ class TarikMarketama extends Command
             return self::FAILURE;
         }
 
-        $bagian = $this->argument('bagian') ?: ['master', 'karyawan', 'user', 'outlet'];
+        $bagian = $this->argument('bagian') ?: ['master', 'karyawan', 'user', 'outlet', 'sambung'];
         $detail = ! $this->option('tanpa-detail');
         $client = MarketamaClient::dariConfig();
         $penarik = (new Penarik($client, fn (string $pesan) => $this->line($pesan)))
             ->ulang((bool) $this->option('ulang'))
+            ->areaDariMenuSumber((bool) $this->option('area-dari-menu'))
             ->batas($this->option('batas') !== null ? (int) $this->option('batas') : null);
 
         try {
@@ -53,6 +55,7 @@ class TarikMarketama extends Command
                     $b === 'karyawan' => $penarik->karyawan($detail),
                     $b === 'user' => $penarik->user($detail),
                     $b === 'outlet' => $penarik->outlet(),
+                    $b === 'sambung' => $penarik->sambung(),
                     str_starts_with($b, 'mentah:') => $penarik->mentah(substr($b, 7)),
                     default => $this->warn("Bagian tidak dikenal: {$b}"),
                 };

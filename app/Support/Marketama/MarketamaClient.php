@@ -43,7 +43,9 @@ class MarketamaClient
         return Http::withOptions(['cookies' => $this->cookies, 'allow_redirects' => true])
             ->timeout($this->timeout)
             // Ulangi hanya bila koneksi putus atau server sibuk/error (5xx, 429), bukan 404/405.
-            ->retry(3, 2000, fn ($e) => $e instanceof ConnectionException
+            // Ulangi bila koneksi putus atau server error (5xx, 429). Timeout tidak diulang di sini:
+            // Penarik akan mengulang dengan halaman yang lebih kecil.
+            ->retry(3, 2000, fn ($e) => ($e instanceof ConnectionException && ! self::timeout($e))
                 || ($e instanceof RequestException && ($e->response->serverError() || $e->response->status() === 429)), throw: false)
             ->withHeaders(['User-Agent' => 'Enesis-Migrasi/1.0 (baca saja)']);
     }
@@ -58,6 +60,11 @@ class MarketamaClient
         if ($this->jedaMs > 0) {
             usleep($this->jedaMs * 1000);
         }
+    }
+
+    public static function timeout(\Throwable $e): bool
+    {
+        return $e instanceof ConnectionException && (bool) preg_match('/cURL error 28|timed out/i', $e->getMessage());
     }
 
     public static function postDiizinkan(string $path): bool

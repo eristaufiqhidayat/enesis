@@ -144,6 +144,7 @@ php artisan marketama:tarik karyawan          # semua sales (aktif + tidak aktif
 php artisan marketama:tarik user              # user sales/koordinator/lainnya/super admin + id karyawan
 php artisan marketama:tarik outlet            # ±552 ribu outlet (±2 jam)
 php artisan marketama:tarik mentah:penjualan_barang   # menu lain apa adanya ke mk_baris_mentah
+php artisan marketama:tarik sambung           # isi area_id outlet / karyawan_id user dari data tersimpan
 php artisan marketama:tarik --status          # progres per menu vs total di sumber
 ```
 
@@ -162,6 +163,37 @@ php artisan marketama:tarik --status          # progres per menu vs total di sum
 - Gaji/tunjangan di form edit karyawan **tidak** disimpan. Data `mk_*` berisi data pribadi
   (nama, HP, email): jangan diekspor ke repo.
 - `php artisan db:seed --class=MarketamaSumberSeeder` menjalankan semua bagian sekaligus.
+
+## Akun login dari data lama (`enesis:sinkron-user`)
+
+Mengisi tabel `users` dari `mk_user` + `mk_karyawan` (hasil `marketama:tarik`). Login memakai
+**username**; password lama tidak bisa diambil, jadi setiap akun diberi password acak + wajib ganti.
+
+```bash
+php artisan migrate
+php artisan enesis:sinkron-user              # buat/perbarui akun + daftar kasus perlu keputusan admin
+php artisan enesis:sinkron-user --daftar     # tampilkan ulang daftar perlu keputusan
+php artisan enesis:atur-password <username>  # password awal acak (ditampilkan sekali)
+```
+
+Aturan: akun aktif milik karyawan nonaktif → nonaktif; username kembar (tanpa beda huruf besar/kecil)
+→ akun aktif memakai username, lainnya diberi akhiran `_<id>`; karyawan dengan >1 akun aktif atau
+dua akun aktif berusername sama → `perlu_keputusan = true` (tetap aktif sampai admin memilih).
+Aman dijalankan ulang; password yang sudah diatur tidak ditimpa. Halaman login: backlog 001.
+
+## Sambungkan transaksi ke master (`enesis:sambung-transaksi`)
+
+Mengisi kolom `karyawan_id`, `koordinator_id`, `depo_id`, `area_id`, `outlet_id`, `produk_id`,
+`distributor_id` di tabel transaksi `lap_*` (penjualan, effective call, checkin outlet, stok outlet,
+join visit, absensi sales, canvassing, pengembalian, loading) dari master `mk_*`. Teks nama asli
+tidak diubah. Nama sales yang kembar diselesaikan dengan depo transaksi. Jalankan ulang setelah
+`marketama:import` (impor CSV mengosongkan kolom ini).
+
+```bash
+php artisan enesis:sambung-transaksi                         # semua tabel (±5–10 menit)
+php artisan enesis:sambung-transaksi --tabel=lap_penjualan_barang
+php artisan enesis:sambung-transaksi --kolom=karyawan_id --kolom=koordinator_id   # hanya kolom tertentu
+```
 
 ## Peta Tracking History Koordinator Location
 

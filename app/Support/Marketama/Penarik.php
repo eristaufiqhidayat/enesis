@@ -3,7 +3,9 @@
 namespace App\Support\Marketama;
 
 use Closure;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 // Menarik data dari aplikasi lama Marketama ke tabel mk_* (baca saja di sisi sumber).
 // Setiap daftar ditarik per 100 baris; posisi disimpan di mk_tarikan sehingga perintah
@@ -14,6 +16,8 @@ class Penarik
     private Closure $log;
 
     private bool $ulang = false;
+
+    private bool $areaDariMenu = false;
 
     private ?int $batas = null;
 
@@ -29,6 +33,14 @@ class Penarik
     public function ulang(bool $ulang = true): self
     {
         $this->ulang = $ulang;
+
+        return $this;
+    }
+
+    /** Ambil area dari menu Master Area (lambat) walaupun area_polygon tersedia. */
+    public function areaDariMenuSumber(bool $ya = true): self
+    {
+        $this->areaDariMenu = $ya;
 
         return $this;
     }
@@ -104,16 +116,15 @@ class Penarik
     public function area(): void
     {
         $now = now();
-        $this->daftar('master_area', function (array $baris) use ($now) {
-            $this->simpan('mk_area', array_map(fn ($b) => [
-                'id' => $b[0],
-                'kode' => $this->ambil($b[1], ['kode', 'kode_area', 'code']),
-                'nama' => (string) $this->ambil($b[1], ['nama', 'nama_area', 'name', 'area']),
-                'depo_id' => $this->idNama('mk_depo', $this->ambil($b[1], ['depo', 'warehouse', 'depo_warehouse', 'gudang'])),
-                'data' => json_encode($b[1]),
-                'ditarik_pada' => $now,
-            ], $baris), ['id'], ['kode', 'nama', 'depo_id', 'data', 'ditarik_pada']);
-        });
+
+        // area_polygon (hasil tarikan API area sebelumnya) memakai ID area asli Marketama
+        // (source_id), jadi cukup disalin — jauh lebih cepat daripada menu Master Area yang
+        // di server lama bisa >60 detik per halaman.
+        if (! $this->areaDariMenu && Schema::hasTable('area_polygon') && DB::table('area_polygon')->whereNotNull('source_id')->exists()) {
+            $this->areaDariPolygon($now);
+        } else {
+            $this->areaDariMenu($now);
+        }
 
         // Daftar area untuk form sales (ID + nama) sebagai pelengkap.
         $hasil = $this->client->getJson('/karyawan_sales/get_area_list');
@@ -129,6 +140,44 @@ class Penarik
         $this->simpan('mk_area', $baru, ['id'], ['nama', 'ditarik_pada']);
         $this->lupaPeta('mk_area');
         ($this->log)(sprintf('mk_area: %d area (%d dari daftar area sales)', DB::table('mk_area')->count(), count($baru)));
+
+        // Outlet yang ditarik sebelum area lengkap: sambungkan area_id-nya sekarang.
+        $this->sambung();
+    }
+
+    private function areaDariPolygon($now): void
+    {
+        $kolom = ['source_id', 'code', 'name', 'warehouse', 'warehouse_id', 'branch_area', 'branch_area_id', 'province', 'province_id', 'city', 'city_id', 'district', 'district_id', 'village', 'village_id', 'outlet_count', 'salesperson'];
+        $jumlah = 0;
+
+        DB::table('area_polygon')->whereNotNull('source_id')->select($kolom)->orderBy('source_id')
+            ->chunk(1000, function ($rows) use ($now, &$jumlah) {
+                $this->simpan('mk_area', $rows->map(fn ($r) => [
+                    'id' => (int) $r->source_id,
+                    'kode' => $r->code,
+                    'nama' => (string) $r->name,
+                    'depo_id' => $r->warehouse_id ? (int) $r->warehouse_id : $this->idNama('mk_depo', $r->warehouse),
+                    'data' => json_encode(array_diff_key((array) $r, ['source_id' => 1]) + ['sumber' => 'area_polygon']),
+                    'ditarik_pada' => $now,
+                ])->all(), ['id'], ['kode', 'nama', 'depo_id', 'data', 'ditarik_pada']);
+                $jumlah += $rows->count();
+            });
+
+        ($this->log)(sprintf('mk_area: %s area disalin dari area_polygon (ID asli), menu Master Area dilewati', number_format($jumlah, 0, ',', '.')));
+    }
+
+    private function areaDariMenu($now): void
+    {
+        $this->daftar('master_area', function (array $baris) use ($now) {
+            $this->simpan('mk_area', array_map(fn ($b) => [
+                'id' => $b[0],
+                'kode' => $this->ambil($b[1], ['kode', 'kode_area', 'code']),
+                'nama' => (string) $this->ambil($b[1], ['nama', 'nama_area', 'name', 'area']),
+                'depo_id' => $this->idNama('mk_depo', $this->ambil($b[1], ['depo', 'warehouse', 'depo_warehouse', 'gudang'])),
+                'data' => json_encode($b[1]),
+                'ditarik_pada' => $now,
+            ], $baris), ['id'], ['kode', 'nama', 'depo_id', 'data', 'ditarik_pada']);
+        });
     }
 
     public function distributor(): void
@@ -353,6 +402,41 @@ class Penarik
         ($this->log)(sprintf('mk_outlet: %d outlet', DB::table('mk_outlet')->count()));
     }
 
+    /**
+     * Isi relasi yang masih kosong dari data yang sudah tersimpan (tanpa menarik ulang):
+     * mk_outlet.area_id dari nama area, mk_user.karyawan_id dari nama karyawan.
+     * Nama yang kembar tidak dipetakan.
+     */
+    public function sambung(): void
+    {
+        $this->lupaPeta('mk_area');
+        $this->lupaPeta('mk_karyawan');
+        $outlet = 0;
+
+        $namaArea = DB::table('mk_outlet')->whereNull('area_id')->whereNotNull('area')->distinct()->pluck('area');
+
+        foreach ($namaArea as $nama) {
+            if ($id = $this->idNama('mk_area', $nama)) {
+                $outlet += DB::table('mk_outlet')->whereNull('area_id')->where('area', $nama)->update(['area_id' => $id]);
+            }
+        }
+
+        $user = 0;
+
+        foreach (DB::table('mk_user')->whereNull('karyawan_id')->whereNotNull('nama_karyawan')->get(['jenis', 'id', 'nama_karyawan']) as $u) {
+            if ($id = $this->idNama('mk_karyawan', $u->nama_karyawan)) {
+                $user += DB::table('mk_user')->where(['jenis' => $u->jenis, 'id' => $u->id])->update(['karyawan_id' => $id]);
+            }
+        }
+
+        ($this->log)(sprintf(
+            'sambung: %s outlet dapat area_id (sisa tanpa area: %s), %d user dapat karyawan_id',
+            number_format($outlet, 0, ',', '.'),
+            number_format(DB::table('mk_outlet')->whereNull('area_id')->count(), 0, ',', '.'),
+            $user,
+        ));
+    }
+
     // ------------------------------------------------------------------ mentah
 
     /** Simpan baris menu apa pun (mis. penjualan_barang) apa adanya ke mk_baris_mentah. */
@@ -402,7 +486,7 @@ class Penarik
         $total = null;
 
         do {
-            $halaman = $this->client->datatable($info['url'], $info['token'], $start, $per, $extra);
+            $halaman = $this->halamanTahanTimeout($kunci, $info, $start, $per, $extra);
             $total = $halaman['filtered'];
             $baris = [];
 
@@ -432,6 +516,35 @@ class Penarik
 
         $selesai = $start >= $total;
         $this->catat($kunci, ['selesai' => $selesai && $this->batas === null, 'selesai_pada' => $selesai ? now() : null]);
+    }
+
+    /**
+     * Ambil satu halaman DataTables. Bila server lama timeout (mis. master_area yang menghitung
+     * total toko per area), tunggu lalu ulangi dengan halaman lebih kecil: 100 -> 50 -> 25 -> 12 -> 10.
+     * Ukuran yang berhasil dipakai untuk halaman berikutnya ($per diubah lewat referensi).
+     */
+    private function halamanTahanTimeout(string $kunci, array $info, int $start, int &$per, array $extra): array
+    {
+        $gagalDiUkuranMinimum = 0;
+
+        while (true) {
+            try {
+                return $this->client->datatable($info['url'], $info['token'], $start, $per, $extra);
+            } catch (ConnectionException $e) {
+                if (! MarketamaClient::timeout($e) || $gagalDiUkuranMinimum >= 3) {
+                    throw $e;
+                }
+
+                if ($per > 10) {
+                    $per = max(10, intdiv($per, 2));
+                } else {
+                    $gagalDiUkuranMinimum++;
+                }
+
+                ($this->log)(sprintf('%s: timeout di baris %s, coba lagi per %d baris', $kunci, number_format($start, 0, ',', '.'), $per));
+                sleep((int) config('marketama_sumber.jeda_gagal_detik', 10));
+            }
+        }
     }
 
     /**
@@ -555,14 +668,14 @@ class Penarik
             $kembar = [];
 
             foreach ($q->cursor() as $r) {
-                $k = mb_strtolower(trim((string) $r->nama));
+                $k = HalamanParser::kunciNama($r->nama);
                 isset($peta[$k]) ? $kembar[$k] = true : $peta[$k] = (int) $r->id;
             }
 
             $this->petaNama[$kunciPeta] = array_diff_key($peta, $kembar);
         }
 
-        return $this->petaNama[$kunciPeta][mb_strtolower(trim($nama))] ?? null;
+        return $this->petaNama[$kunciPeta][HalamanParser::kunciNama($nama)] ?? null;
     }
 
     private function lupaPeta(string $table): void

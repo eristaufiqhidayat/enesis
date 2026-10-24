@@ -22,6 +22,9 @@ class TarikMarketamaTest extends TestCase
     /** @var list<string> */
     private array $postKe = [];
 
+    /** Simulasi server lambat: halaman master_area > N baris timeout. */
+    private ?int $areaTimeoutDiAtas = null;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -32,6 +35,7 @@ class TarikMarketamaTest extends TestCase
             'marketama_sumber.password' => 'rahasia',
             'marketama_sumber.jeda_ms' => 0,
             'marketama_sumber.per_halaman' => 2,
+            'marketama_sumber.jeda_gagal_detik' => 0,
         ]);
     }
 
@@ -202,6 +206,10 @@ class TarikMarketamaTest extends TestCase
                     $param = $request->data();
                 }
 
+                if ($nama === 'master_area' && $this->areaTimeoutDiAtas !== null && (int) $param['length'] > $this->areaTimeoutDiAtas) {
+                    return Http::failedConnection('cURL error 28: Operation timed out after 60001 milliseconds with 0 bytes received');
+                }
+
                 $baris = $def['baris'];
 
                 if (isset($baris['aktif'])) {
@@ -321,6 +329,69 @@ class TarikMarketamaTest extends TestCase
         $this->assertSame([], array_filter($this->postKe, fn ($p) => str_contains($p, '/datatable')));
     }
 
+    public function test_halaman_timeout_diulang_dengan_ukuran_lebih_kecil(): void
+    {
+        config(['marketama_sumber.per_halaman' => 100]);
+        $this->areaTimeoutDiAtas = 25;
+        $this->pasangServer();
+
+        $this->artisan('marketama:tarik', ['bagian' => ['master']])
+            ->expectsOutputToContain('timeout di baris 0, coba lagi per 50 baris')
+            ->expectsOutputToContain('coba lagi per 25 baris')
+            ->assertSuccessful();
+
+        $this->assertSame(4, DB::table('mk_area')->count());
+        $this->assertTrue((bool) DB::table('mk_tarikan')->where('kunci', 'list:master_area')->value('selesai'));
+    }
+
+    public function test_timeout_terus_menerus_menghentikan_dengan_progres_tersimpan(): void
+    {
+        $this->areaTimeoutDiAtas = 0;
+        $this->pasangServer();
+
+        $this->artisan('marketama:tarik', ['bagian' => ['master']])
+            ->expectsOutputToContain('Progres tersimpan')
+            ->assertFailed();
+
+        $this->assertTrue((bool) DB::table('mk_tarikan')->where('kunci', 'list:master_depo')->value('selesai'));
+        $this->assertFalse((bool) DB::table('mk_tarikan')->where('kunci', 'list:master_area')->value('selesai'));
+    }
+
+    public function test_outlet_sebelum_area_disambung_belakangan(): void
+    {
+        $this->pasangServer();
+
+        // Outlet ditarik lebih dulu: area belum ada, area_id kosong.
+        $this->artisan('marketama:tarik', ['bagian' => ['outlet']])->assertSuccessful();
+        $this->assertNull(DB::table('mk_outlet')->where('id', 11)->value('area_id'));
+
+        // Setelah master (area) ditarik, sambung otomatis mengisi area_id.
+        $this->artisan('marketama:tarik', ['bagian' => ['master']])
+            ->expectsOutputToContain('sambung: 1 outlet dapat area_id')
+            ->assertSuccessful();
+        $this->assertSame(18685, (int) DB::table('mk_outlet')->where('id', 11)->value('area_id'));
+    }
+
+    public function test_area_disalin_dari_area_polygon_tanpa_menu_master_area(): void
+    {
+        DB::table('area_polygon')->insert([
+            ['source_id' => 18685, 'code' => 'A-200', 'name' => 'Area Gresik-200', 'polygon' => '[]', 'warehouse' => 'Sidoarjo', 'warehouse_id' => 46, 'branch_area_id' => 5],
+            ['source_id' => 50001, 'code' => 'P-1', 'name' => 'Area Dari Polygon', 'polygon' => '[]', 'warehouse' => 'Balaraja', 'warehouse_id' => null, 'branch_area_id' => null],
+        ]);
+        $this->areaTimeoutDiAtas = 0; // menu Master Area tidak boleh dipakai
+        $this->pasangServer();
+
+        $this->artisan('marketama:tarik', ['bagian' => ['master']])
+            ->expectsOutputToContain('disalin dari area_polygon')
+            ->assertSuccessful();
+
+        $this->assertSame(46, (int) DB::table('mk_area')->where('id', 18685)->value('depo_id'));
+        $this->assertSame(22, (int) DB::table('mk_area')->where('id', 50001)->value('depo_id'), 'depo dari nama bila warehouse_id kosong');
+        $this->assertSame('P-1', DB::table('mk_area')->where('id', 50001)->value('kode'));
+        $this->assertSame(3, DB::table('mk_area')->count(), '2 dari polygon + 1 dari daftar area sales');
+        $this->assertNull(DB::table('mk_tarikan')->where('kunci', 'list:master_area')->first());
+    }
+
     public function test_parser_halaman(): void
     {
         $html = $this->halaman('tabel_x', ['', '', 'Kode Outlet', 'Kota/Kabupaten'], '/x/datatable_x');
@@ -335,6 +406,7 @@ class TarikMarketamaTest extends TestCase
         $this->assertSame(1152.0, HalamanParser::angka('1.152'));
         $this->assertSame(12500.0, HalamanParser::angka('12500'));
         $this->assertFalse(HalamanParser::aktif('Tidak Aktif'));
+        $this->assertSame('muhammad tamrin daulay', HalamanParser::kunciNama(' Muhammad  Tamrin Daulay '));
         $this->assertNull(HalamanParser::aktif('-'));
     }
 }
