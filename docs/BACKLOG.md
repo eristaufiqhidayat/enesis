@@ -11,7 +11,7 @@
 | 007 | [ ] | Seragamkan tampilan nilai rupiah (mis. "Rp 15.000") | [docs/backlog_items/007-format-tampilan-rupiah/spec.md](backlog_items/007-format-tampilan-rupiah/spec.md) |
 | 008 | [x] | Breadcrumb di topnav (grup > menu aktif) | [docs/backlog_items/008-breadcrumb-topnav/spec.md](backlog_items/008-breadcrumb-topnav/spec.md) |
 | 009 | [x] | Sidebar collapsible (per grup menu & seluruh sidebar) | [docs/backlog_items/009-sidebar-grup-collapsible/spec.md](backlog_items/009-sidebar-grup-collapsible/spec.md) |
-| 010 | [ ] | Tombol toggle collapse/expand semua grup sidebar sekaligus | [docs/backlog_items/010-sidebar-collapse-expand-all/spec.md](backlog_items/010-sidebar-collapse-expand-all/spec.md) |
-| 011 | [ ] | Gabung menu Checkin Outlet Pagi, Sales Tidak Penjualan, Sales Tidak Absen Pagi jadi satu halaman bertab | [docs/backlog_items/011-gabung-menu-monitoring-harian-tab/spec.md](backlog_items/011-gabung-menu-monitoring-harian-tab/spec.md) |
-| 012 | [ ] | Input pencarian menu di top sidebar (border bawah pemisah + dropdown hasil) | [docs/backlog_items/012-pencarian-menu-sidebar/spec.md](backlog_items/012-pencarian-menu-sidebar/spec.md) |
-| 013 | [ ] | Ganti sistem ikon dari Font Awesome solid ke Lucide (outline) | [docs/backlog_items/013-ganti-ikon-lucide/spec.md](backlog_items/013-ganti-ikon-lucide/spec.md) |
+| 010 | [x] | Tombol toggle collapse/expand semua grup sidebar sekaligus | [docs/backlog_items/010-sidebar-collapse-expand-all/spec.md](backlog_items/010-sidebar-collapse-expand-all/spec.md) |
+| 011 | [x] | Gabung menu Checkin Outlet Pagi, Sales Tidak Penjualan, Sales Tidak Absen Pagi jadi satu halaman bertab | [docs/backlog_items/011-gabung-menu-monitoring-harian-tab/spec.md](backlog_items/011-gabung-menu-monitoring-harian-tab/spec.md) |
+| 012 | [x] | Input pencarian menu di top sidebar (border bawah pemisah + dropdown hasil) | [docs/backlog_items/012-pencarian-menu-sidebar/spec.md](backlog_items/012-pencarian-menu-sidebar/spec.md) |
+| 013 | [x] | Ganti sistem ikon dari Font Awesome solid ke Lucide (outline) | [docs/backlog_items/013-ganti-ikon-lucide/spec.md](backlog_items/013-ganti-ikon-lucide/spec.md) |
