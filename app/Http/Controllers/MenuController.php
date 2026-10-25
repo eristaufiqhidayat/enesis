@@ -87,6 +87,10 @@ class MenuController extends Controller
 
             $rows = ($sumber ? $query : $query->orderBy('id'))->paginate(50, ['*'], "page_{$table}")->withQueryString();
 
+            if ($sumber) {
+                $rows->through(fn ($baris) => $sumber->ubahBaris($baris));
+            }
+
             $tables[] = [
                 'name' => $table,
                 'title' => config("marketama.tables.{$table}.title"),
@@ -100,8 +104,10 @@ class MenuController extends Controller
                     'links' => $rows->onEachSide(1)->linkCollection()->toArray(),
                 ],
                 'kpi' => $kpi,
-                // Aksi per baris (mis. 'verifikasi_outlet_baru'), hanya untuk akun yang punya hak ubah menu ini.
-                'aksi' => Akses::bisa($request->user(), $slug, 'ubah') ? config("marketama.tables.{$table}.aksi") : null,
+                // Aksi per baris (mis. 'verifikasi_outlet_baru'), hanya untuk akun yang punya hak 'aksi_hak'
+                // (bawaan: ubah) di menu ini.
+                'aksi' => Akses::bisa($request->user(), $slug, config("marketama.tables.{$table}.aksi_hak", 'ubah'))
+                    ? config("marketama.tables.{$table}.aksi") : null,
             ];
         }
 

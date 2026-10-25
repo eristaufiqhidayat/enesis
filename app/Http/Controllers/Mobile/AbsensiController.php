@@ -77,6 +77,10 @@ class AbsensiController extends MobileController
 
         $hari->tanpaKunjunganTerbuka();
 
+        if ($jv = KoordinatorController::terbuka((int) $hari->karyawanId)) {
+            throw ApiError::konflik('join_visit_open', 'Selesaikan join visit dulu sebelum absen pulang.', ['join_visit_id' => (int) $jv->id]);
+        }
+
         DB::table('trx_absensi')->where('id', $absen->id)->update([
             'pulang_at' => now(),
             'pulang_lat' => $request->lat,
@@ -148,6 +152,10 @@ class AbsensiController extends MobileController
         }
 
         $hari->tanpaKunjunganTerbuka();
+
+        if ($jv = KoordinatorController::terbuka((int) $hari->karyawanId)) {
+            throw ApiError::konflik('join_visit_open', 'Selesaikan join visit dulu sebelum absen pulang.', ['join_visit_id' => (int) $jv->id]);
+        }
         $canvassing = $hari->canvassingDiterima();
 
         if ($canvassing && ! $canvassing->dikembalikan_at) {

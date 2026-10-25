@@ -38,8 +38,8 @@
             <thead>
                 <tr>
                     <th scope="col">Tanggal</th>
-                    <th scope="col">Sales</th>
-                    <th scope="col">Depo · Koordinator</th>
+                    <th scope="col">{{ $labelOrang }}</th>
+                    <th scope="col">{{ $labelOrang === 'Koordinator' ? 'Depo' : 'Depo · Koordinator' }}</th>
                     <th scope="col">Masuk</th>
                     <th scope="col">Pulang</th>
                     <th scope="col">Durasi</th>

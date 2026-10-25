@@ -13,8 +13,9 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
-// Absensi sales dan checkin/checkout depo dari tabel motoris (trx_absensi, trx_checkin_depo):
-// berisi data dari aplikasi motoris dan riwayat aplikasi lama hasil enesis:migrasi-transaksi.
+// Absensi sales / koordinator dan checkin/checkout depo dari tabel motoris (trx_absensi, trx_checkin_depo):
+// berisi data dari aplikasi HP dan riwayat aplikasi lama hasil enesis:migrasi-transaksi.
+// Sales dan koordinator sama-sama absen di trx_absensi; menu Absensi Koordinator hanya menampilkan koordinator.
 class KehadiranController extends Controller
 {
     public const SUMBER = ['semua' => 'Semua sumber', 'motoris' => 'Aplikasi motoris', 'lama' => 'Aplikasi lama'];
@@ -30,7 +31,8 @@ class KehadiranController extends Controller
             ? $request->query('status')
             : ($menu === 'absensi_sales_terlambat' ? 'terlambat' : 'semua');
 
-        $dasar = $this->dasar($request, 'trx_absensi', $filter);
+        $koordinator = $menu === 'absensi_koordinator';
+        $dasar = $this->dasar($request, 'trx_absensi', $filter, $koordinator ? 'koordinator' : 'sales');
         $ringkas = [
             'total' => (clone $dasar)->count(),
             'terlambat' => (clone $dasar)->where('t.terlambat', true)->count(),
@@ -47,6 +49,7 @@ class KehadiranController extends Controller
         return view('kehadiran.absensi', $this->dataView($menu, $filter, $baris) + [
             'status' => $status,
             'ringkas' => $ringkas,
+            'labelOrang' => $koordinator ? 'Koordinator' : 'Sales',
         ]);
     }
 
@@ -75,7 +78,7 @@ class KehadiranController extends Controller
         $foto = DB::table('mobile_uploads as m')->join('users as u', 'u.id', '=', 'm.user_id')
             ->where('m.id', $id)->first(['m.disk', 'm.path', 'm.mime', 'u.karyawan_id']) ?? abort(404);
 
-        $bolehMenu = collect(['absensi_sales', 'lap_absensi_sales', 'absensi_sales_terlambat', 'outlet_all'])
+        $bolehMenu = collect(['absensi_sales', 'lap_absensi_sales', 'absensi_sales_terlambat', 'absensi_koordinator', 'outlet_all', 'join_visit'])
             ->contains(fn ($slug) => Akses::bisa($request->user(), $slug));
         $dalamCakupan = $foto->karyawan_id && Akses::batasiKaryawan(
             DB::table('mk_karyawan as k')->where('k.id', $foto->karyawan_id), $request->user()
@@ -124,8 +127,11 @@ class KehadiranController extends Controller
         ];
     }
 
-    /** Query dasar satu tabel kehadiran + nama sales/depo/koordinator, sudah dibatasi filter & cakupan role. */
-    private function dasar(Request $request, string $tabel, array $f): Builder
+    /**
+     * Query dasar satu tabel kehadiran + nama sales/depo/koordinator, sudah dibatasi filter & cakupan role.
+     * $kategori 'sales' (termasuk karyawan yang tidak dikenali) atau 'koordinator'; null = semua.
+     */
+    private function dasar(Request $request, string $tabel, array $f, ?string $kategori = null): Builder
     {
         $q = DB::table($tabel.' as t')
             ->leftJoin('mk_karyawan as k', 'k.id', '=', 't.karyawan_id')
@@ -133,7 +139,12 @@ class KehadiranController extends Controller
             ->leftJoin('mk_karyawan as ko', 'ko.id', '=', 'k.koordinator_id')
             ->whereBetween('t.tanggal', [$f['dari'], $f['sampai']])
             ->when($f['depo'], fn ($w) => $w->where('t.depo_id', $f['depo']))
-            ->when($f['koordinator'], fn ($w) => $w->where('k.koordinator_id', $f['koordinator']))
+            ->when($kategori === 'koordinator', fn ($w) => $w->where('k.kategori', 'koordinator'))
+            ->when($kategori === 'sales', fn ($w) => $w->where(fn ($k) => $k->whereNull('k.kategori')->orWhere('k.kategori', '<>', 'koordinator')))
+            // Filter koordinator: di menu koordinator = orangnya sendiri, di menu sales = timnya.
+            ->when($f['koordinator'], fn ($w) => $kategori === 'koordinator'
+                ? $w->where('k.id', $f['koordinator'])
+                : $w->where('k.koordinator_id', $f['koordinator']))
             ->when($f['sumber'] !== 'semua', fn ($w) => $w->where('t.sumber', $f['sumber']))
             ->when($f['q'] !== '', fn ($w) => $w->whereRaw('LOWER(k.nama) LIKE ?', ['%'.mb_strtolower($f['q']).'%']))
             ->select(['t.id', 't.tanggal', 't.karyawan_id', 't.sumber', 'k.nama as sales', 'd.nama as depo', 'ko.nama as koordinator']);

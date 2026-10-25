@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Menu\SumberJoinVisit;
 use App\Support\Menu\SumberOutletBaru;
 use App\Support\Menu\SumberOutletMaster;
 
@@ -1241,12 +1242,14 @@ return [
             ],
             'same_as' => null,
         ],
+        // Join visit dari aplikasi HP koordinator + riwayat aplikasi lama yang dipindah (trx_join_visit).
+        // Data laporan lama apa adanya tetap di Lap. Join Visit (lap_join_visit).
         'join_visit' => [
             'title' => 'Join Visit',
             'tables' => [
-                'lap_join_visit',
+                'trx_join_visit',
             ],
-            'same_as' => 'lap_join_visit',
+            'same_as' => null,
         ],
         'lap_outlet_noo' => [
             'title' => 'Lap. Outlet NOO',
@@ -2936,6 +2939,29 @@ return [
                 'outlet_id' => 'ID Master Outlet',
                 'recorded_at' => 'Dicatat di HP',
                 'alasan_tolak' => 'Alasan Tolak',
+            ],
+        ],
+        'trx_join_visit' => [
+            'title' => 'Join Visit',
+            'sumber' => SumberJoinVisit::class,
+            // Tombol Foto (Menu/Show.vue) bila ada foto_id; cukup hak lihat.
+            'aksi' => 'foto',
+            'aksi_hak' => 'lihat',
+            'columns' => [
+                'id' => 'ID',
+                'tanggal' => 'Tanggal',
+                'koordinator' => 'Koordinator',
+                'sales' => 'Sales',
+                'kode_outlet' => 'Kode Outlet',
+                'outlet' => 'Outlet',
+                'area' => 'Area',
+                'depo' => 'Depo',
+                'mulai' => 'Mulai',
+                'selesai' => 'Selesai',
+                'durasi' => 'Durasi',
+                'jarak_m' => 'Jarak ke Outlet (m)',
+                'catatan' => 'Catatan',
+                'sumber' => 'Sumber',
             ],
         ],
         'lap_outlet_all' => [

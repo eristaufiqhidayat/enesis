@@ -34,6 +34,11 @@ class SumberOutletMaster implements SumberTabel
             ->orderBy('o.id');
     }
 
+    public function ubahBaris(object $baris): object
+    {
+        return $baris;
+    }
+
     public function kolomCari(): array
     {
         return ['o.id', 'o.kode', 'o.nama', 'o.alamat', 'o.area', 'a.nama', 'd.nama', 'o.kota_kabupaten', 'o.kecamatan', 'o.kelurahan'];

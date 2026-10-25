@@ -144,6 +144,9 @@ function pindahTab(key) {
                             </template>
                         </div>
                     </template>
+                    <template v-else-if="table.aksi === 'foto'" #aksi="{ row }">
+                        <Button v-if="row.foto_id" tag="a" variant="light" :href="`/foto/${row.foto_id}`" target="_blank" rel="noopener">Foto</Button>
+                    </template>
                 </DataTable>
             </template>
         </template>

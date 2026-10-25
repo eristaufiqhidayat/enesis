@@ -14,10 +14,10 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 // Login aplikasi mobile: username + password + identitas HP => token Bearer per perangkat.
-// Tahap 1 hanya akun sales motoris; akun lain ditolak role_not_supported.
+// Akun sales motoris dan koordinator; akun lain ditolak role_not_supported.
 class AuthController extends MobileController
 {
-    public const PERAN_DIDUKUNG = ['sales'];
+    public const PERAN_DIDUKUNG = ['sales', 'koordinator'];
 
     public function login(Request $request): JsonResponse
     {
@@ -48,7 +48,7 @@ class AuthController extends MobileController
         RateLimiter::clear($kunci);
 
         if (! in_array($user->kategori, self::PERAN_DIDUKUNG, true) || ! Akses::bolehMobile($user)) {
-            throw new ApiError('role_not_supported', 'Aplikasi mobile saat ini baru untuk sales motoris.', 403);
+            throw new ApiError('role_not_supported', 'Aplikasi mobile saat ini untuk sales motoris dan koordinator.', 403);
         }
 
         if ($user->perlu_keputusan) {
