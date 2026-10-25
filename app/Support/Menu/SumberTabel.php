@@ -2,6 +2,7 @@
 
 namespace App\Support\Menu;
 
+use App\Models\User;
 use Illuminate\Database\Query\Builder;
 
 /**
@@ -13,8 +14,11 @@ interface SumberTabel
     /** Tabel utama; halaman dilewati jika tabel ini belum ada (sama seperti tabel biasa). */
     public function tabelUtama(): string;
 
-    /** Query yang sudah memilih kolom dengan alias = key di config columns, dan sudah diurutkan. */
-    public function query(): Builder;
+    /**
+     * Query yang sudah memilih kolom dengan alias = key di config columns, dan sudah diurutkan.
+     * $user dipakai untuk membatasi baris sesuai cakupan role bila perlu.
+     */
+    public function query(?User $user): Builder;
 
     /** Kolom berkualifikasi yang dicari dengan ?q=, mis. ['o.nama', 'd.nama']. */
     public function kolomCari(): array;

@@ -69,13 +69,13 @@ class KehadiranController extends Controller
         return view('kehadiran.checkin-depo', $this->dataView($menu, $filter, $baris) + ['ringkas' => $ringkas]);
     }
 
-    /** Foto unggahan HP (selfie absen), hanya untuk yang boleh melihat absensi sales tersebut. */
+    /** Foto unggahan HP (selfie absen, foto toko/rak outlet baru), hanya untuk yang boleh melihat data sales tersebut. */
     public function foto(Request $request, string $id): StreamedResponse
     {
         $foto = DB::table('mobile_uploads as m')->join('users as u', 'u.id', '=', 'm.user_id')
             ->where('m.id', $id)->first(['m.disk', 'm.path', 'm.mime', 'u.karyawan_id']) ?? abort(404);
 
-        $bolehMenu = collect(['absensi_sales', 'lap_absensi_sales', 'absensi_sales_terlambat'])
+        $bolehMenu = collect(['absensi_sales', 'lap_absensi_sales', 'absensi_sales_terlambat', 'outlet_all'])
             ->contains(fn ($slug) => Akses::bisa($request->user(), $slug));
         $dalamCakupan = $foto->karyawan_id && Akses::batasiKaryawan(
             DB::table('mk_karyawan as k')->where('k.id', $foto->karyawan_id), $request->user()

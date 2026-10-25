@@ -517,7 +517,7 @@ paths:
   /outlets/nearby:
     get:
       tags: [Rute & Outlet]
-      summary: Outlet terdekat (master + NOO yang belum ditolak), urut jarak
+      summary: Outlet terdekat (master + NOO yang masih menunggu; NOO yang disetujui sudah masuk master), urut jarak
       parameters:
         - { name: lat, in: query, required: true, schema: { type: number } }
         - { name: lng, in: query, required: true, schema: { type: number } }
