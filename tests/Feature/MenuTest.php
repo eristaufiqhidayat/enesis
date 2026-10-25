@@ -234,40 +234,28 @@ class MenuTest extends TestCase
 
     public function test_motoris_report_default_tab_is_coverage(): void
     {
-        // Hanya tabel tab aktif (coverage) yang di-query; tabel tab performance & absensi tidak ikut tampil sekaligus.
+        // Halaman sendiri (MotorisReportController) yang menghitung dari tabel motoris, bukan tabel laporan Marketama.
         $this->get('/motoris_report')
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('Menu/Show')
-                ->where('activeTab', 'coverage')
-                ->has('tables', 1)
-                ->where('tables.0.name', 'motoris_coverage')
-                ->where('tables.0.tab_key', 'coverage')
-            );
+            ->assertViewIs('motoris.report')
+            ->assertViewHas('tab', 'coverage')
+            ->assertSee('Quota Motoris');
     }
 
     public function test_motoris_report_tab_performance_follows_tab_query(): void
     {
         $this->get('/motoris_report?tab=performance')
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->where('activeTab', 'performance')
-                ->has('tables', 1)
-                ->where('tables.0.name', 'motoris_performance')
-                ->where('tables.0.tab_key', 'performance')
-            );
+            ->assertViewHas('tab', 'performance')
+            ->assertSee('HK Standar');
     }
 
     public function test_motoris_report_tab_absensi_follows_tab_query(): void
     {
         $this->get('/motoris_report?tab=absensi')
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->where('activeTab', 'absensi')
-                ->has('tables', 1)
-                ->where('tables.0.name', 'monitor_absensi_motoris')
-                ->where('tables.0.tab_key', 'absensi')
-            );
+            ->assertViewHas('tab', 'absensi')
+            ->assertSee('Total Tidak Hadir');
     }
 
     public function test_motoris_report_is_a_single_sidebar_menu(): void

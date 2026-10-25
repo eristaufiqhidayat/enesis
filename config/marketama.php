@@ -622,6 +622,11 @@ return [
                             'icon' => 'building',
                         ],
                         [
+                            'slug' => 'kuota_motoris',
+                            'title' => 'Kuota Motoris',
+                            'icon' => 'users',
+                        ],
+                        [
                             'slug' => 'wilayah_depo',
                             'title' => 'Wilayah Depo',
                             'icon' => 'signpost',
@@ -1452,6 +1457,12 @@ return [
             'tables' => [
                 'master_area',
             ],
+            'same_as' => null,
+        ],
+        // Halaman sendiri (KuotaMotorisController): kuota sales motoris per depo isian admin, untuk Motoris Report.
+        'kuota_motoris' => [
+            'title' => 'Kuota Motoris',
+            'tables' => [],
             'same_as' => null,
         ],
         'master_depo' => [
