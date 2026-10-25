@@ -51,8 +51,11 @@ class MenuController extends Controller
 
         foreach ($konfigTabel as $konfig) {
             $table = $konfig['table'];
+            // Tabel dengan 'sumber' (kelas SumberTabel) di-query lewat kelas itu, mis. butuh join ke master.
+            $kelasSumber = config("marketama.tables.{$table}.sumber");
+            $sumber = $kelasSumber ? app($kelasSumber) : null;
 
-            if (! Schema::hasTable($table)) {
+            if (! Schema::hasTable($sumber?->tabelUtama() ?? $table)) {
                 continue;
             }
 
@@ -62,7 +65,8 @@ class MenuController extends Controller
                 default => null,
             } : null;
             $columns = config("marketama.tables.{$table}.columns", []);
-            $query = DB::table($table);
+            $query = $sumber ? $sumber->query() : DB::table($table);
+            $kolomCari = $sumber ? $sumber->kolomCari() : array_keys($columns);
 
             if ($dateColumn !== null) {
                 $query->where($dateColumn, $tanggal);
@@ -71,8 +75,8 @@ class MenuController extends Controller
             if ($search !== '') {
                 // PostgreSQL: LIKE hanya untuk teks dan peka huruf besar/kecil, jadi pakai CAST + ILIKE.
                 $pgsql = DB::getDriverName() === 'pgsql';
-                $query->where(function ($q) use ($columns, $search, $pgsql) {
-                    foreach (array_keys($columns) as $column) {
+                $query->where(function ($q) use ($kolomCari, $search, $pgsql) {
+                    foreach ($kolomCari as $column) {
                         $pgsql
                             ? $q->orWhereRaw('CAST('.$q->getGrammar()->wrap($column).' AS TEXT) ILIKE ?', ["%{$search}%"])
                             : $q->orWhere($column, 'like', "%{$search}%");
@@ -80,7 +84,7 @@ class MenuController extends Controller
                 });
             }
 
-            $rows = $query->orderBy('id')->paginate(50, ['*'], "page_{$table}")->withQueryString();
+            $rows = ($sumber ? $query : $query->orderBy('id'))->paginate(50, ['*'], "page_{$table}")->withQueryString();
 
             $tables[] = [
                 'name' => $table,
