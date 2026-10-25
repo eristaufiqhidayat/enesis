@@ -13,9 +13,11 @@ const props = defineProps({
     badgeColumns: { type: Array, default: () => [] },
     // Warna badge per nilai, mis. { status: { menunggu: 'warning', ditolak: 'danger' } }. Tanpa peta: terisi = success.
     badgeVariants: { type: Object, default: () => ({}) },
+    emptyText: { type: String, default: 'Tidak ada data.' },
 });
 
 // Kolom "Aksi" muncul bila halaman mengisi slot #aksi="{ row }".
+// Sel kolom tertentu bisa diganti lewat slot #cell-<nama kolom>="{ row }" (mis. tautan, badge ganda).
 const slots = useSlots();
 
 function formatTotal(total) {
@@ -29,7 +31,9 @@ function badgeVariant(column, value) {
 
 <template>
     <Card body-class="overflow-x-auto">
-        <template v-if="title" #header>{{ title }}</template>
+        <template v-if="slots.header || title" #header>
+            <slot name="header">{{ title }}</slot>
+        </template>
 
         <table class="data-table">
             <thead>
@@ -41,7 +45,8 @@ function badgeVariant(column, value) {
             <tbody>
                 <tr v-for="(row, index) in rows" :key="index">
                     <td v-for="column in Object.keys(columns)" :key="column">
-                        <Badge v-if="badgeColumns.includes(column)" :variant="badgeVariant(column, row[column])">{{ row[column] || '-' }}</Badge>
+                        <slot v-if="slots[`cell-${column}`]" :name="`cell-${column}`" :row="row" />
+                        <Badge v-else-if="badgeColumns.includes(column)" :variant="badgeVariant(column, row[column])">{{ row[column] || '-' }}</Badge>
                         <template v-else>{{ row[column] }}</template>
                     </td>
                     <td v-if="slots.aksi" class="whitespace-nowrap">
@@ -49,7 +54,7 @@ function badgeVariant(column, value) {
                     </td>
                 </tr>
                 <tr v-if="!rows.length">
-                    <td :colspan="Object.keys(columns).length + (slots.aksi ? 1 : 0)" class="text-center text-gray-500 py-4">Tidak ada data.</td>
+                    <td :colspan="Object.keys(columns).length + (slots.aksi ? 1 : 0)" class="text-center text-gray-500 py-4">{{ emptyText }}</td>
                 </tr>
             </tbody>
         </table>

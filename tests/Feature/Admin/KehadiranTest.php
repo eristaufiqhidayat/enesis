@@ -38,30 +38,49 @@ class KehadiranTest extends AdminTestCase
 
     public function test_absensi_sales_dari_tabel_motoris(): void
     {
-        $this->get('/absensi_sales')->assertOk()
-            ->assertSee('Rudi Hartono')->assertSee('08:20')->assertSee('Terlambat')
-            ->assertSee('Sinta Wulandari')->assertSee('07:30')->assertSee('9 j 30 m')
-            ->assertSee('Motoris')->assertSee('Aplikasi lama')
-            ->assertDontSee('Tegar Mahendra'); // di luar 7 hari terakhir
+        $props = $this->inertiaProps($this->get('/absensi_sales')->assertOk(), 'Kehadiran/Absensi');
+        $this->assertSame(['Rudi Hartono', 'Sinta Wulandari'], $this->sales($props)); // Tegar di luar 7 hari terakhir
+        $this->assertSame(2, $props['ringkas']['total']);
+        $this->assertSame(['08:20', '07:30'], array_column($props['baris']['data'], 'masuk'));
+        $this->assertTrue($props['baris']['data'][0]['terlambat']);
+        $this->assertSame('9 j 30 m', $props['baris']['data'][1]['durasi']);
+        $this->assertSame(['motoris', 'lama'], array_column($props['baris']['data'], 'sumber'));
 
         // Rentang tanggal, sumber, nama, koordinator.
-        $this->get('/absensi_sales?dari=2026-09-01&sampai=2026-09-30')->assertOk()->assertSee('Tegar Mahendra')->assertDontSee('Rudi Hartono');
-        $this->get('/absensi_sales?sumber=lama')->assertOk()->assertSee('Sinta Wulandari')->assertDontSee('Rudi Hartono');
-        $this->get('/absensi_sales?q=rudi')->assertOk()->assertSee('Rudi Hartono')->assertDontSee('Sinta Wulandari');
-        $this->get('/absensi_sales?koordinator=137')->assertOk()->assertSee('Rudi Hartono')->assertDontSee('Sinta Wulandari');
+        $props = $this->inertiaProps($this->get('/absensi_sales?dari=2026-09-01&sampai=2026-09-30')->assertOk(), 'Kehadiran/Absensi');
+        $this->assertSame(['Tegar Mahendra'], $this->sales($props));
+        $this->assertSame(['Sinta Wulandari'], $this->sales($this->inertiaProps($this->get('/absensi_sales?sumber=lama'), 'Kehadiran/Absensi')));
+        $this->assertSame(['Rudi Hartono'], $this->sales($this->inertiaProps($this->get('/absensi_sales?q=rudi'), 'Kehadiran/Absensi')));
+        $this->assertSame(['Rudi Hartono'], $this->sales($this->inertiaProps($this->get('/absensi_sales?koordinator=137'), 'Kehadiran/Absensi')));
 
         // Menu terlambat = status terlambat.
-        $this->get('/absensi_sales_terlambat')->assertOk()->assertSee('Rudi Hartono')->assertDontSee('Sinta Wulandari');
-        $this->get('/lap_absensi_sales?status=belum_pulang')->assertOk()->assertSee('Rudi Hartono')->assertDontSee('Sinta Wulandari');
+        $props = $this->inertiaProps($this->get('/absensi_sales_terlambat')->assertOk(), 'Kehadiran/Absensi');
+        $this->assertSame('terlambat', $props['status']);
+        $this->assertSame(['Rudi Hartono'], $this->sales($props));
+        $this->assertSame(['Rudi Hartono'], $this->sales($this->inertiaProps($this->get('/lap_absensi_sales?status=belum_pulang'), 'Kehadiran/Absensi')));
+
+        // Tab "Semua" di menu terlambat tidak boleh kembali ke filter terlambat.
+        $props = $this->inertiaProps($this->get('/absensi_sales_terlambat?status=semua')->assertOk(), 'Kehadiran/Absensi');
+        $this->assertSame('semua', $props['status']);
+        $this->assertSame(['Rudi Hartono', 'Sinta Wulandari'], $this->sales($props));
     }
 
     public function test_checkin_depo_dari_tabel_motoris(): void
     {
-        $this->get('/checkin_depo')->assertOk()
-            ->assertSee('Rudi Hartono')->assertSee('07:10')->assertSee('35 m dari depo')
-            ->assertSee('Sinta Wulandari')->assertSee('8 j 55 m');
+        $props = $this->inertiaProps($this->get('/checkin_depo')->assertOk(), 'Kehadiran/CheckinDepo');
+        $this->assertSame(['Rudi Hartono', 'Sinta Wulandari'], $this->sales($props));
+        $this->assertSame(['07:10', '07:05'], array_column($props['baris']['data'], 'masuk'));
+        $this->assertSame(35, $props['baris']['data'][0]['jarak_m']);
+        $this->assertSame('8 j 55 m', $props['baris']['data'][1]['durasi']);
+        $this->assertSame(2, $props['ringkas']['total']);
 
-        $this->get('/lap_checkin_checkout?depo=22')->assertOk()->assertSee('Sinta Wulandari')->assertDontSee('Rudi Hartono');
+        $this->assertSame(['Sinta Wulandari'], $this->sales($this->inertiaProps($this->get('/lap_checkin_checkout?depo=22'), 'Kehadiran/CheckinDepo')));
+    }
+
+    /** Nama sales per baris halaman, dalam urutan tampil. */
+    private function sales(array $props): array
+    {
+        return array_column($props['baris']['data'], 'sales');
     }
 
     public function test_checkin_outlet_dari_tabel_motoris(): void
@@ -103,7 +122,8 @@ class KehadiranTest extends AdminTestCase
             'path' => 'mobile/x/selfie.jpg', 'mime' => 'image/jpeg', 'ukuran' => 10, 'created_at' => now()]);
         DB::table('trx_absensi')->where('karyawan_id', 1)->update(['masuk_foto_id' => $fotoId]);
 
-        $this->get('/absensi_sales')->assertSee(route('kehadiran.foto', $fotoId), false);
+        $props = $this->inertiaProps($this->get('/absensi_sales')->assertOk(), 'Kehadiran/Absensi');
+        $this->assertSame(route('kehadiran.foto', $fotoId), $props['baris']['data'][0]['foto']);
         $this->get('/foto/'.$fotoId)->assertOk()->assertHeader('Content-Type', 'image/jpeg');
 
         // Koordinator (cakupan per downline) hanya melihat sales bawahannya.
@@ -111,7 +131,7 @@ class KehadiranTest extends AdminTestCase
             'role_id' => $this->role('Koor Lihat Absen', 'downline', ['absensi_sales' => ['lihat']]),
         ]);
         $this->actingAs($koor);
-        $this->get('/absensi_sales')->assertOk()->assertSee('Rudi Hartono')->assertDontSee('Sinta Wulandari');
+        $this->assertSame(['Rudi Hartono'], $this->sales($this->inertiaProps($this->get('/absensi_sales')->assertOk(), 'Kehadiran/Absensi')));
         $this->get('/foto/'.$fotoId)->assertOk();
 
         // Role tanpa hak menu absensi: tidak boleh membuka halaman maupun fotonya.
