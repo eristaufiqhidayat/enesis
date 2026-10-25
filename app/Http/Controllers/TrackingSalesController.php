@@ -2,19 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Tracking\TitikGps;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
+// Riwayat lokasi sales: data lama Marketama (tracking_sales_lokasi) digabung dengan
+// titik GPS dari aplikasi HP sales motoris (trx_tracking, karyawan_id = sales_id).
 class TrackingSalesController extends Controller
 {
     public function index(Request $request)
     {
-        $tanggal = $request->query('tanggal')
-            ?? DB::table('tracking_sales_lokasi')->max('tanggal')
-            ?? now()->toDateString();
-
-        $people = DB::table('tracking_sales')->orderBy('nama')
-            ->get(['sales_id as id', 'nama', 'telepon', 'depo', 'koordinator_id as group_id', 'koordinator_nama']);
+        $tanggal = substr((string) ($request->query('tanggal') ?? TitikGps::tanggalTerakhir('tracking_sales_lokasi', 'sales')), 0, 10);
+        $people = $this->daftarSales();
 
         return view('tracking.history', [
             'page' => config('marketama.pages.tracking_sales_history_location'),
@@ -24,7 +24,7 @@ class TrackingSalesController extends Controller
             'groups' => $people->whereNotNull('group_id')->sortBy('koordinator_nama')->pluck('koordinator_nama', 'group_id')->all(),
             'locationsUrl' => route('tracking-sales.locations'),
             'countsUrl' => route('tracking-sales.counts'),
-            'tanggal' => substr((string) $tanggal, 0, 10),
+            'tanggal' => $tanggal,
             'counts' => $this->countsFor($tanggal),
         ]);
     }
@@ -39,17 +39,6 @@ class TrackingSalesController extends Controller
         return response()->json($this->countsFor($data['tanggal']));
     }
 
-    private function countsFor(string $tanggal): array
-    {
-        return DB::table('tracking_sales_lokasi')
-            ->whereDate('tanggal', $tanggal)
-            ->groupBy('sales_id')
-            ->selectRaw('sales_id, count(*) as total')
-            ->pluck('total', 'sales_id')
-            ->map(fn ($total) => (int) $total)
-            ->all();
-    }
-
     public function locations(Request $request)
     {
         $data = $request->validate([
@@ -57,17 +46,21 @@ class TrackingSalesController extends Controller
             'tanggal' => ['required', 'date'],
         ]);
 
-        $sales = DB::table('tracking_sales')->where('sales_id', $data['sales_id'])->first();
+        $id = (int) $data['sales_id'];
+        $sales = DB::table('tracking_sales')->where('sales_id', $id)->first()
+            ?? $this->daftarSales()->firstWhere('id', $id);
 
-        $depo = $sales?->depo_lat
-            ? ['nama' => $sales->depo, 'latitude' => $sales->depo_lat, 'longitude' => $sales->depo_lng]
-            : null;
+        $depo = ($sales->depo_lat ?? null)
+            ? (object) ['nama' => $sales->depo, 'latitude' => $sales->depo_lat, 'longitude' => $sales->depo_lng]
+            : TitikGps::depoMaster($id);
 
-        $locations = DB::table('tracking_sales_lokasi')
-            ->where('sales_id', $data['sales_id'])
+        $lama = DB::table('tracking_sales_lokasi')
+            ->where('sales_id', $id)
             ->whereDate('tanggal', $data['tanggal'])
-            ->orderBy('waktu')
             ->get(['lat', 'lng', 'waktu']);
+
+        $locations = $lama->concat(TitikGps::untuk($id, $data['tanggal']))
+            ->sortBy('waktu')->values();
 
         return response()->json([
             'sales' => $sales,
@@ -75,5 +68,37 @@ class TrackingSalesController extends Controller
             'total' => $locations->count(),
             'locations' => $locations,
         ]);
+    }
+
+    // ------------------------------------------------------------------
+
+    /** Sales dari data lama + master karyawan aktif (yang memakai aplikasi HP), tanpa ganda. */
+    private function daftarSales(): Collection
+    {
+        $lama = DB::table('tracking_sales')
+            ->get(['sales_id as id', 'nama', 'telepon', 'depo', 'koordinator_id as group_id', 'koordinator_nama']);
+        $ada = $lama->pluck('id')->flip();
+
+        $master = DB::table('mk_karyawan as k')
+            ->leftJoin('mk_depo as d', 'd.id', '=', 'k.depo_id')
+            ->leftJoin('mk_karyawan as ko', 'ko.id', '=', 'k.koordinator_id')
+            ->where('k.kategori', 'sales')->where('k.aktif', true)
+            ->get(['k.id', 'k.nama', 'k.no_hp as telepon', 'd.nama as depo', 'k.koordinator_id as group_id', 'ko.nama as koordinator_nama'])
+            ->reject(fn ($k) => isset($ada[$k->id]));
+
+        return $lama->concat($master)->sortBy('nama', SORT_NATURAL | SORT_FLAG_CASE)->values();
+    }
+
+    private function countsFor(string $tanggal): array
+    {
+        $lama = DB::table('tracking_sales_lokasi')
+            ->whereDate('tanggal', $tanggal)
+            ->groupBy('sales_id')
+            ->selectRaw('sales_id, count(*) as total')
+            ->pluck('total', 'sales_id')
+            ->map(fn ($total) => (int) $total)
+            ->all();
+
+        return TitikGps::tambahJumlah($lama, 'sales', $tanggal);
     }
 }
