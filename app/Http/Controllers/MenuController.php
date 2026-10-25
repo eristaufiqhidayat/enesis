@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Akses\Akses;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -65,7 +66,7 @@ class MenuController extends Controller
                 default => null,
             } : null;
             $columns = config("marketama.tables.{$table}.columns", []);
-            $query = $sumber ? $sumber->query() : DB::table($table);
+            $query = $sumber ? $sumber->query($request->user()) : DB::table($table);
             $kolomCari = $sumber ? $sumber->kolomCari() : array_keys($columns);
 
             if ($dateColumn !== null) {
@@ -99,6 +100,8 @@ class MenuController extends Controller
                     'links' => $rows->onEachSide(1)->linkCollection()->toArray(),
                 ],
                 'kpi' => $kpi,
+                // Aksi per baris (mis. 'verifikasi_outlet_baru'), hanya untuk akun yang punya hak ubah menu ini.
+                'aksi' => Akses::bisa($request->user(), $slug, 'ubah') ? config("marketama.tables.{$table}.aksi") : null,
             ];
         }
 

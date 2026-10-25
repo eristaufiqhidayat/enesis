@@ -44,6 +44,11 @@ class HandleInertiaRequests extends Middleware
             'searchMenu' => fn () => Akses::menuPencarian($request->user()),
             'currentSlug' => $request->route('slug') ?? $request->path(),
             'appName' => config('app.name'),
+            // Pesan hasil aksi (redirect ->with('sukses'|'galat')), ditampilkan di atas halaman.
+            'flash' => fn () => [
+                'sukses' => $request->session()->get('sukses'),
+                'galat' => $request->session()->get('galat'),
+            ],
             // Hanya data yang perlu ditampilkan di topbar (bukan seluruh kolom users).
             'auth' => [
                 'user' => fn () => $request->user()?->only(['name', 'username', 'kategori']),

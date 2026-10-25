@@ -2,6 +2,7 @@
 
 namespace App\Support\Menu;
 
+use App\Models\User;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
@@ -16,7 +17,7 @@ class SumberOutletMaster implements SumberTabel
         return 'mk_outlet';
     }
 
-    public function query(): Builder
+    public function query(?User $user): Builder
     {
         return DB::table('mk_outlet as o')
             ->leftJoin('mk_area as a', 'a.id', '=', 'o.area_id')
