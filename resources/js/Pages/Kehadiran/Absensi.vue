@@ -13,7 +13,7 @@ import { angka } from '@/Support/format.js';
 import { bersihkanQuery } from '@/Support/query.js';
 
 const props = defineProps({
-    menu: { type: String, required: true },
+    slug: { type: String, required: true },
     judul: { type: String, required: true },
     filter: { type: Object, required: true },
     status: { type: String, required: true },
@@ -46,13 +46,13 @@ const statusItems = computed(() => [
 
 // Tautan tab status: filter yang sedang aktif ikut dibawa, parameter page dibuang.
 function tautanStatus(kode) {
-    return `/${props.menu}?${new URLSearchParams(bersihkanQuery({ ...props.filter, status: kode }))}`;
+    return `/${props.slug}?${new URLSearchParams(bersihkanQuery({ ...props.filter, status: kode }))}`;
 }
 </script>
 
 <template>
     <Head :title="`${judul} · ${appName}`" />
-    <AppLayout :breadcrumb-slug="menu">
+    <AppLayout :breadcrumb-slug="slug">
         <PageHeader :title="judul" subtitle="Data aplikasi motoris dan riwayat aplikasi lama · jam dalam WIB" />
 
         <div class="flex flex-wrap gap-2 mb-3" role="group" aria-label="Saring status">
@@ -79,7 +79,7 @@ function tautanStatus(kode) {
         >
             <template #header>
                 <FilterKehadiran
-                    :action="`/${menu}`"
+                    :action="`/${slug}`"
                     :filter="filter"
                     :status="status"
                     :label-orang="labelOrang"

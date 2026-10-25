@@ -101,14 +101,33 @@ class KehadiranTest extends AdminTestCase
                 'tidak_beli_kategori' => null, 'tidak_beli_keterangan' => null, 'sumber' => 'lama', 'sumber_id' => 7001, 'foto_url' => 'https://app.lama/f.jpg', 'keterangan_lama' => 'Pemilik pergi'],
         ]);
 
-        $this->get('/checkin_outlet')->assertOk()
-            ->assertSee('Toko Makmur')->assertSee('Rp 125.000')->assertSee('15 m')->assertSee('Di luar rute')
-            ->assertSee('Toko tutup')->assertSee('Pemilik pergi')->assertSee('Foto (aplikasi lama)');
+        $baris = fn (string $url) => $this->inertiaProps($this->get($url)->assertOk(), 'Kehadiran/Kunjungan')['baris']['data'];
+        $outlet = fn (string $url) => array_column($baris($url), 'outlet');
 
-        $this->get('/checkin_outlet?status=beli')->assertOk()->assertSee('Toko Makmur')->assertDontSee('Pemilik pergi');
-        $this->get('/checkin_outlet?status=tidak_beli')->assertOk()->assertSee('Toko tutup')->assertDontSee('Rp 125.000');
-        $this->get('/lap_checkin_outlet?outlet=makmur')->assertOk()->assertSee('Toko Makmur')->assertDontSee('Warung Bu Sri');
-        $this->get('/checkin_outlet?sumber=lama')->assertOk()->assertSee('Sinta Wulandari')->assertDontSee('Rudi Hartono');
+        $semua = collect($baris('/checkin_outlet'));
+        $this->assertEqualsCanonicalizing(['Toko Makmur', 'Warung Bu Sri'], $semua->pluck('outlet')->unique()->all());
+        $makmur = $semua->firstWhere('outlet', 'Toko Makmur');
+        $this->assertEquals(125000, $makmur['total_jual']);
+        $this->assertSame('15 m', $makmur['durasi']);
+        $this->assertTrue($makmur['di_luar_rute']);
+        $this->assertContains('Toko tutup', $semua->pluck('tidak_beli')->all());
+        $this->assertContains('Pemilik pergi', $semua->pluck('keterangan_lama')->all());
+        $this->assertContains('https://app.lama/f.jpg', $semua->pluck('foto_lama')->all());
+
+        $this->assertSame(['Toko Makmur'], $outlet('/checkin_outlet?status=beli'));
+        $this->assertNotContains('Toko Makmur', $outlet('/checkin_outlet?status=tidak_beli'));
+        $this->assertSame(['Toko Makmur'], $outlet('/lap_checkin_outlet?outlet=makmur'));
+        $this->assertSame(['Sinta Wulandari'], array_column($baris('/checkin_outlet?sumber=lama'), 'sales'));
+    }
+
+    public function test_prop_halaman_tidak_menimpa_menu_sidebar(): void
+    {
+        // Sidebar membaca prop bersama `menu` (array); prop halaman bernama sama membuat seluruh halaman kosong.
+        foreach (['absensi_sales' => 'Kehadiran/Absensi', 'checkin_depo' => 'Kehadiran/CheckinDepo', 'checkin_outlet' => 'Kehadiran/Kunjungan'] as $url => $komponen) {
+            $props = $this->inertiaProps($this->get('/'.$url)->assertOk(), $komponen);
+            $this->assertIsArray($props['menu'], $url);
+            $this->assertSame($url, $props['slug']);
+        }
     }
 
     public function test_cakupan_role_dan_foto_selfie(): void

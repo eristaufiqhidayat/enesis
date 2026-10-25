@@ -14,6 +14,8 @@ const props = defineProps({
     filter: { type: Object, required: true },
     // Hanya halaman yang punya tab status (absensi) yang mengisi ini; null = tidak ikut dikirim.
     status: { type: String, default: null },
+    // Hanya halaman kunjungan (checkin outlet) yang mengisi ini; null = tidak ada kolom outlet.
+    cariOutlet: { type: String, default: null },
     labelOrang: { type: String, default: 'Sales' },
     daftarDepo: { type: [Object, Array], default: () => ({}) },
     daftarKoordinator: { type: [Object, Array], default: () => ({}) },
@@ -21,6 +23,7 @@ const props = defineProps({
 });
 
 const form = reactive({});
+const adaOutlet = computed(() => props.cariOutlet !== null);
 
 function isiDariProps(filter) {
     Object.assign(form, {
@@ -30,12 +33,13 @@ function isiDariProps(filter) {
         depo: filter.depo ?? '',
         koordinator: filter.koordinator ?? '',
         sumber: filter.sumber,
+        outlet: props.cariOutlet ?? '',
     });
 }
 
 isiDariProps(props.filter);
 // Halaman dipakai ulang saat navigasi Inertia (mis. tombol tab status atau tombol kembali), jadi form ikut props terbaru.
-watch(() => props.filter, isiDariProps);
+watch(() => [props.filter, props.cariOutlet], () => isiDariProps(props.filter));
 
 const adaKoordinator = computed(() => Object.keys(props.daftarKoordinator).length > 0);
 const labelOrangKecil = computed(() => props.labelOrang.toLowerCase());
@@ -58,6 +62,10 @@ function submit() {
         <div class="grow min-w-48">
             <Label for="q">Nama {{ labelOrangKecil }}</Label>
             <Input id="q" v-model="form.q" type="search" :placeholder="`Cari nama ${labelOrangKecil}…`" />
+        </div>
+        <div v-if="adaOutlet" class="grow min-w-48">
+            <Label for="outlet">Outlet</Label>
+            <Input id="outlet" v-model="form.outlet" type="search" placeholder="Nama atau kode outlet…" />
         </div>
         <div>
             <Label for="depo">Depo</Label>

@@ -11,7 +11,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\View\View;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -107,7 +106,7 @@ class KehadiranController extends Controller
 
     public const STATUS_KUNJUNGAN = ['semua' => 'Semua', 'beli' => 'Beli', 'tidak_beli' => 'Tidak beli', 'di_luar_rute' => 'Di luar rute'];
 
-    public function kunjungan(Request $request): View
+    public function kunjungan(Request $request): Response
     {
         $menu = (string) $request->route('menu');
         $filter = $this->filter($request);
@@ -130,6 +129,7 @@ class KehadiranController extends Controller
             'di_luar_rute' => (clone $dasar)->where('t.di_luar_rute', true)->count(),
         ];
 
+        $zona = Pengaturan::zona();
         $baris = $dasar
             ->when($status === 'beli', fn ($q) => $q->whereExists($beli))
             ->when($status === 'tidak_beli', fn ($q) => $q->whereNotNull('t.tidak_beli_kategori'))
@@ -141,14 +141,38 @@ class KehadiranController extends Controller
             ])
             ->selectSub(DB::table('trx_penjualan as p')->whereColumn('p.kunjungan_id', 't.id')->whereNull('p.dibatalkan_at')->selectRaw('SUM(p.total)'), 'total_jual')
             ->orderByDesc('t.tanggal')->orderByDesc('t.checkin_at')
-            ->paginate(50)->withQueryString();
+            ->paginate(50)->withQueryString()
+            ->through(fn ($b) => [
+                'tanggal' => $this->tanggal($b->tanggal),
+                'sales' => $b->sales ?? 'Karyawan #'.$b->karyawan_id,
+                'depo' => $b->depo ?? '-',
+                'koordinator' => $b->koordinator,
+                'outlet' => $b->outlet ?? '-',
+                'outlet_kode' => $b->outlet_kode,
+                'masuk' => $this->jam($b->masuk_at, $zona),
+                'pulang' => $this->jam($b->pulang_at, $zona),
+                'durasi' => $this->durasiDetik($b->durasi_detik),
+                'total_jual' => $b->total_jual,
+                'tidak_beli' => $b->tidak_beli_kategori
+                    ? (config('mobile.alasan_tidak_beli')[$b->tidak_beli_kategori] ?? $b->tidak_beli_kategori).($b->tidak_beli_keterangan ? ': '.$b->tidak_beli_keterangan : '')
+                    : null,
+                'keterangan_lama' => $b->sumber === 'lama' && ($b->kategori_lama !== null || $b->keterangan_lama)
+                    ? trim(($b->kategori_lama !== null ? 'Kategori '.$b->kategori_lama : '').($b->kategori_lama !== null && $b->keterangan_lama ? ' · ' : '').$b->keterangan_lama)
+                    : null,
+                'peta' => $b->lat && $b->lng ? "https://www.google.com/maps?q={$b->lat},{$b->lng}" : null,
+                'jarak_m' => $b->jarak_m,
+                'foto' => $b->foto_id ? route('kehadiran.foto', $b->foto_id) : null,
+                'foto_lama' => $b->foto_id ? null : $b->foto_url,
+                'di_luar_rute' => (bool) $b->di_luar_rute,
+                'mock_location' => (bool) $b->mock_location,
+                'sumber' => $b->sumber,
+            ]);
 
-        return view('kehadiran.kunjungan', $this->dataView($menu, $filter, $baris) + [
-            'zona' => Pengaturan::zona(),
+        return Inertia::render('Kehadiran/Kunjungan', $this->dataView($menu, $filter, $baris) + [
             'status' => $status,
             'cariOutlet' => $cariOutlet,
             'ringkas' => $ringkas,
-            'alasan' => config('mobile.alasan_tidak_beli'),
+            'daftarStatus' => self::STATUS_KUNJUNGAN,
         ]);
     }
 
@@ -253,10 +277,21 @@ class KehadiranController extends Controller
         return intdiv($menit, 60).' j '.($menit % 60).' m';
     }
 
+    private function durasiDetik(?int $detik): string
+    {
+        if ($detik === null) {
+            return '—';
+        }
+        $menit = intdiv($detik, 60);
+
+        return $menit >= 60 ? intdiv($menit, 60).' j '.($menit % 60).' m' : $menit.' m';
+    }
+
     private function dataView(string $menu, array $filter, $baris): array
     {
         return [
-            'menu' => $menu,
+            // Bukan 'menu': nama itu dipakai prop bersama sidebar (HandleInertiaRequests) dan akan tertimpa.
+            'slug' => $menu,
             'judul' => config("marketama.pages.{$menu}.title") ?? 'Kehadiran',
             'filter' => $filter,
             'baris' => $baris,

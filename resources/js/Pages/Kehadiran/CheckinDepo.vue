@@ -9,7 +9,7 @@ import SumberBadge from './partials/SumberBadge.vue';
 import { angka } from '@/Support/format.js';
 
 defineProps({
-    menu: { type: String, required: true },
+    slug: { type: String, required: true },
     judul: { type: String, required: true },
     filter: { type: Object, required: true },
     ringkas: { type: Object, required: true },
@@ -35,7 +35,7 @@ const columns = {
 
 <template>
     <Head :title="`${judul} · ${appName}`" />
-    <AppLayout :breadcrumb-slug="menu">
+    <AppLayout :breadcrumb-slug="slug">
         <PageHeader :title="judul" subtitle="Data aplikasi motoris dan riwayat aplikasi lama · jam dalam WIB" />
 
         <div class="flex flex-wrap gap-3 mb-3 text-gray-600">
@@ -53,7 +53,7 @@ const columns = {
         >
             <template #header>
                 <FilterKehadiran
-                    :action="`/${menu}`"
+                    :action="`/${slug}`"
                     :filter="filter"
                     :daftar-depo="daftarDepo"
                     :daftar-koordinator="daftarKoordinator"

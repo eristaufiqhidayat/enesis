@@ -8,18 +8,18 @@ Menu kehadiran — Absensi Sales, Absensi Sales Terlambat, Laporan Absensi Sales
 
 ## Acceptance criteria
 
-- [ ] Kelima menu kehadiran tampil dengan filter, tabel, dan pagination yang setara dengan versi Blade.
-- [ ] Mengubah filter memperbarui tabel tanpa full reload; URL tetap memuat query filter (bisa di-bookmark dan di-refresh).
+- [x] Kelima menu kehadiran tampil dengan filter, tabel, dan pagination yang setara dengan versi Blade.
+- [x] Mengubah filter memperbarui tabel tanpa full reload; URL tetap memuat query filter (bisa di-bookmark dan di-refresh).
 - [x] Foto check-in tetap tampil dari rute foto yang sama.
 - [x] Middleware `hak:<slug>` tidak berubah.
-- [ ] View Blade `kehadiran/*` dihapus.
+- [x] View Blade `kehadiran/*` dihapus.
 
 ## Implementation steps
 
 - [x] Ubah `KehadiranController` (`absensi`, `checkinDepo`) ke `Inertia::render('Kehadiran/...')`; data paginasi dikirim dalam bentuk yang dipakai organism `DataTable`.
 - [x] Buat komponen Vue filter kehadiran bersama (padanan partial filter Blade), memakai `router.get` dengan `preserveState`. (Ditaruh di `Pages/Kehadiran/partials/FilterKehadiran.vue`, bukan `Components/ui`, karena khusus kehadiran.)
 - [x] Buat page Vue `Kehadiran/Absensi` dan `Kehadiran/CheckinDepo` dari `DataTable` dan komponen `ui`.
-- [ ] Hapus view Blade `kehadiran/*`. Catatan: `absensi.blade.php` dan `checkin-depo.blade.php` sudah dihapus; `kehadiran/kunjungan.blade.php` dan `kehadiran/_filter.blade.php` belum, karena checkin outlet (`kunjungan`) tidak termasuk tiket ini dan masih memakai `_filter`.
+- [x] Hapus view Blade `kehadiran/*`. Catatan: `kunjungan` (Checkin Outlet) ikut dimigrasi ke `Kehadiran/Kunjungan.vue` karena `_filter.blade.php` dipakainya; `FilterKehadiran.vue` kini mendukung kolom outlet.
 - [x] Ubah `tests/Feature/Admin/KehadiranTest.php`: assertion view/markup diganti pengecekan props Inertia (lewat helper `inertiaProps`, yang memakai `assertInertia` untuk komponen), assertion perilaku dipertahankan. `php artisan test` (199 tes) dan `vendor/bin/pint` hijau.
 
 ## Blocked by
