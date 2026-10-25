@@ -37,7 +37,8 @@ class RekapPencapaianSkuController extends Controller
         $produk = $ids('product_id');
 
         $rekap = new RekapPencapaianSku($dari, $sampai, $depo, $produk, $request->user());
-        $hasil = $tab === 'depo' ? $rekap->perDepo() : $rekap->perMotoris();
+        // Hitungan per motoris/depo paling berat; ditunda supaya halaman tampil dulu (lihat Motoris/RekapSku.vue).
+        $hasil = Inertia::defer(fn () => $tab === 'depo' ? $rekap->perDepo() : $rekap->perMotoris(), 'hasil');
 
         return Inertia::render('Motoris/RekapSku', [
             'slug' => self::MENU,
