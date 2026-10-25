@@ -18,9 +18,11 @@ function hitungPosisi() {
     const rect = wrapper.value?.getBoundingClientRect();
     if (!rect) return;
 
-    const lebarPanel = Math.min(320, window.innerWidth - 16);
-    const cukupKanan = rect.right - lebarPanel >= 8;
-    const cukupKiri = rect.left + lebarPanel <= window.innerWidth - 8;
+    // Batas kiri-kanan mengikuti area konten (<main>), supaya panel tidak tertutup sidebar.
+    const area = wrapper.value?.closest('main')?.getBoundingClientRect() ?? { left: 0, right: window.innerWidth };
+    const lebarPanel = Math.min(320, area.right - area.left - 16);
+    const cukupKanan = rect.right - lebarPanel >= area.left + 8;
+    const cukupKiri = rect.left + lebarPanel <= area.right - 8;
     sisi.value = props.align === 'end'
         ? (cukupKanan ? 'end' : (cukupKiri ? 'start' : 'end'))
         : (cukupKiri ? 'start' : (cukupKanan ? 'end' : 'start'));

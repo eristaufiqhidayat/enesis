@@ -47,8 +47,4 @@ const persen = (nilai) => (nilai === null ? '-' : `${desimal(nilai)}%`);
             </tr>
         </tfoot>
     </table>
-    <p class="m-3 text-xs text-gray-500">
-        Quota = kuota motoris per depo (Master Data › Kuota Motoris). Already Transaction = sales yang punya minimal satu penjualan pada periode.
-        Active End Periode = sales motoris berstatus aktif. Vacant = Quota − Active. Coverage = Active ÷ Quota.
-    </p>
 </template>
