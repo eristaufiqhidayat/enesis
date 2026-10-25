@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, provide, ref, watch } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
 import Icon from '@/Components/ui/atoms/Icon.vue';
+import SidebarUserMenu from './SidebarUserMenu.vue';
 import SidebarNavList from './partials/SidebarNavList.vue';
 import { SIDEBAR_CONTEXT } from './partials/sidebarContext.js';
 
@@ -53,14 +54,19 @@ onMounted(() => {
     });
 });
 
+// Section ber-posisi 'footer' (config marketama.menu) tidak masuk daftar scroll, tapi ke popup menu user di footer.
+const footerSection = computed(() => menu.value.find((section) => section.posisi === 'footer') ?? null);
+
 // Judul grup dan item tanpa grup sama-sama masuk ke satu daftar; judul grup berperan sebagai flyout
 // yang isinya item grup itu (lihat SidebarSubmenu). Grup tanpa label (Dashboard, dst.) tampil langsung.
 const navItems = computed(() =>
-    menu.value.flatMap((section) =>
-        section.label
-            ? [{ id: section.label, title: section.label, icon: section.icon, group: true, children: section.items }]
-            : section.items,
-    ),
+    menu.value
+        .filter((section) => section.posisi !== 'footer')
+        .flatMap((section) =>
+            section.label
+                ? [{ id: section.label, title: section.label, icon: section.icon, group: true, children: section.items }]
+                : section.items,
+        ),
 );
 
 // Pencarian menu: data dari prop searchMenu (menu yang diratakan + entri per tab untuk halaman
@@ -141,6 +147,9 @@ function openActiveResult() {
         <ul class="nav flex flex-col list-none m-0 p-0">
             <SidebarNavList :items="navItems" top-level />
         </ul>
+        </div>
+        <div v-if="footerSection" class="sidebar-footer">
+            <SidebarUserMenu :items="footerSection.items" />
         </div>
     </nav>
 </template>
