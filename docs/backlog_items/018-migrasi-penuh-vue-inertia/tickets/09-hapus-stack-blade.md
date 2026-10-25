@@ -9,7 +9,7 @@ Setelah semua halaman web dirender lewat Inertia, aplikasi hanya punya satu stac
 ## Acceptance criteria
 
 - [x] Tidak ada lagi controller/rute halaman web yang merender view Blade; satu-satunya view halaman adalah root template Inertia. *Diverifikasi: `resources/views/` hanya berisi `app.blade.php`.*
-- [x] Layout Blade aplikasi, organism `sidebar`/`topbar` Blade beserta partial-nya, dan atom/molecule Blade yang tidak lagi direferensikan sudah dihapus.
+- [x] Layout Blade aplikasi, organism `sidebar`/`topbar` Blade beserta partial-nya, dan atom/molecule Blade yang tidak lagi direferensikan sudah dihapus. *Regresi: merge `origin/main` (PR #65-#71) ke branch ini membawa dua halaman Blade baru (Summary All Depo, Rekap Pencapaian SKU) yang ditulis setelah tiket ini selesai, sehingga layout & komponen Blade dipulihkan lagi sementara. Lihat tiket 11.*
 - [x] Penanganan respons non-Inertia dari tiket #45 dihapus dari inisialisasi aplikasi Inertia. *Tidak ada penanganan di `resources/js/app.js` (sudah tidak ada sejak tiket 01); middleware `HalamanBladePenuh` juga dihapus.*
 - [x] Data sidebar (struktur grup, ikon, menu yang terfilter hak akses, data pencarian) tetap tercakup tes otomatis lewat shared props Inertia.
 - [x] `CLAUDE.md`, `docs/TECH.md`, dan `README.md` mendeskripsikan satu stack Vue + Inertia dan satu pustaka komponen. *Sudah diperbarui; sisa penyebutan Blade hanya root template `app.blade.php`.*

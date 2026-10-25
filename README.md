@@ -302,6 +302,21 @@ tampil di daftar (dengan nama koordinatornya), dan lokasi depo diambil dari `mk_
 data lama tidak punya. Logika GPS HP dipakai bersama dengan peta koordinator
 (`App\Support\Tracking\TitikGps`).
 
+## Sales Checkin Outlet Pagi
+
+Tab pertama Monitoring Harian Sales (`/monitoring_harian_sales?tab=checkin_pagi`) mengikuti aturan
+Marketama, tapi dihitung dari `trx_kunjungan` (data HP + riwayat lama hasil migrasi) dan
+`mk_karyawan` (`App\Support\Menu\SumberCheckinPagi`): sales motoris **aktif** yang tidak punya
+checkin outlet dengan jam ≥ `MOBILE_CHECKIN_PAGI_MULAI` dan < `MOBILE_CHECKIN_PAGI_SELESAI`
+(bawaan 09:00 dan 11:00 WIB) pada tanggal terpilih. Kolom Checkin Pertama berisi jam kunjungan
+pertama hari itu (di luar rentang) atau "Belum checkin". Hari Minggu dan libur tetap ditampilkan.
+Filter tanggal (bawaan hari ini WIB), depo, koordinator, dan nama; dibatasi cakupan role.
+KPI: sales aktif, checkin dalam rentang, checkin di luar rentang, belum checkin.
+Tabel lama `checkin_pagi` (salinan Marketama) tidak dipakai lagi.
+
+Sumber lain yang barisnya dihitung per tanggal bisa memakai interface `SumberBertanggal`
+(query per tanggal, KPI, keterangan, dan pilihan filter depo/koordinator di halaman generik).
+
 ## Motoris Report dan Kuota Motoris
 
 Halaman `/motoris_report` (tab Coverage, Performance, Absensi) dihitung dari tabel motoris

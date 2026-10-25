@@ -4,6 +4,7 @@ import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Button from '@/Components/ui/atoms/Button.vue';
 import Input from '@/Components/ui/atoms/Input.vue';
+import Select from '@/Components/ui/atoms/Select.vue';
 import Alert from '@/Components/ui/molecules/Alert.vue';
 import Card from '@/Components/ui/molecules/Card.vue';
 import Tabs from '@/Components/ui/molecules/Tabs.vue';
@@ -17,10 +18,14 @@ const props = defineProps({
     search: { type: String, default: '' },
     tanggal: { type: String, default: null },
     hasDateFilter: { type: Boolean, default: false },
+    // Filter depo / koordinator untuk tabel dengan sumber bertanggal (lihat SumberBertanggal).
+    filter: { type: Object, default: () => ({ depo: null, koordinator: null }) },
 });
 
 const search = ref(props.search);
 const tanggal = ref(props.tanggal);
+const depo = ref(props.filter.depo ?? '');
+const koordinator = ref(props.filter.koordinator ?? '');
 const appName = usePage().props.appName;
 
 // Halaman bertab: backend hanya meng-query tabel grup aktif (lihat MenuController), jadi `tables` di sini
@@ -36,14 +41,30 @@ const formDateFilter = computed(() => bertab.value ? visibleTables.value.some((t
 // Komponen ini dipakai ulang saat navigasi Inertia, jadi nilai input ikut props terbaru.
 watch(() => props.search, (value) => search.value = value);
 watch(() => props.tanggal, (value) => tanggal.value = value);
+watch(() => props.filter, (value) => {
+    depo.value = value.depo ?? '';
+    koordinator.value = value.koordinator ?? '';
+});
 
+// Pilihan dropdown depo/koordinator dari tabel tab aktif yang menyediakannya.
+const pilihanFilter = computed(() => visibleTables.value.find((table) => table.filter_pilihan)?.filter_pilihan ?? null);
+const adaPilihan = (kunci) => Object.keys(pilihanFilter.value?.[kunci] ?? {}).length > 0;
+
+// KPI dari backend: daftar { label, value }.
 function kpiItems(kpi) {
-    return kpi ? [
-        { label: 'Sudah Absen', value: kpi.sudah_absen },
-        { label: 'Belum Absen', value: kpi.belum_absen },
-        { label: 'Terlambat', value: kpi.terlambat },
-    ] : [];
+    return Array.isArray(kpi) ? kpi : [];
 }
+
+const kolomGridKpi = { 1: 'sm:grid-cols-1', 2: 'sm:grid-cols-2', 3: 'sm:grid-cols-3', 4: 'sm:grid-cols-4' };
+
+function formatAngka(nilai) {
+    return typeof nilai === 'number' ? new Intl.NumberFormat('id-ID').format(nilai) : nilai;
+}
+
+// Warna badge per tabel: "Belum checkin" merah, jam checkin di luar rentang kuning.
+const warnaBadge = {
+    checkin_pagi: { checkin_pertama_hari_ini: { 'Belum checkin': 'danger', '*': 'warning' } },
+};
 
 // Tab "Outlet Baru dari HP" (aksi verifikasi_outlet_baru): warna status dan tombol Setujui / Tolak.
 const warnaStatusOutletBaru = { status: { menunggu: 'warning', disetujui: 'success', ditolak: 'danger' } };
@@ -71,6 +92,16 @@ function submitSearch() {
 
     if (formDateFilter.value) {
         query.tanggal = tanggal.value;
+    }
+
+    if (pilihanFilter.value) {
+        if (depo.value) {
+            query.depo = depo.value;
+        }
+
+        if (koordinator.value) {
+            query.koordinator = koordinator.value;
+        }
     }
 
     router.get(`/${props.slug}`, query, { preserveState: true, replace: true });
@@ -111,16 +142,20 @@ function pindahTab(key) {
 
         <form v-if="tables.length" class="flex items-center justify-end gap-2 mb-3" @submit.prevent="submitSearch">
             <Input v-if="formDateFilter" v-model="tanggal" type="date" required aria-label="Tanggal data" class="w-auto" />
+            <Select v-if="adaPilihan('depo')" v-model="depo" :options="pilihanFilter.depo" placeholder="Semua depo" aria-label="Depo" class="w-auto" />
+            <Select v-if="adaPilihan('koordinator')" v-model="koordinator" :options="pilihanFilter.koordinator" placeholder="Semua koordinator" aria-label="Koordinator" class="w-auto max-w-[12rem]" />
             <Input v-model="search" type="search" placeholder="Cari..." class="w-48 min-w-0" />
             <Button type="submit">Cari</Button>
         </form>
 
         <template v-if="tables.length">
             <template v-for="table in visibleTables" :key="table.name">
-                <div v-if="kpiItems(table.kpi).length" class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                <Alert v-if="table.keterangan" variant="warning" class="mb-3">{{ table.keterangan }}</Alert>
+
+                <div v-if="kpiItems(table.kpi).length" :class="['grid grid-cols-1 gap-3 mb-3', kolomGridKpi[kpiItems(table.kpi).length] ?? 'sm:grid-cols-4']">
                     <Card v-for="item in kpiItems(table.kpi)" :key="item.label">
                         <div class="text-xs text-gray-500">{{ item.label }}</div>
-                        <div class="text-2xl font-semibold">{{ item.value }}</div>
+                        <div class="text-2xl font-semibold">{{ formatAngka(item.value) }}</div>
                     </Card>
                 </div>
 
@@ -132,7 +167,7 @@ function pindahTab(key) {
                     :total="table.rows.total"
                     :links="table.rows.links"
                     :badge-columns="table.name === 'checkin_pagi' ? ['checkin_pertama_hari_ini'] : (table.aksi === 'verifikasi_outlet_baru' ? ['status'] : [])"
-                    :badge-variants="table.aksi === 'verifikasi_outlet_baru' ? warnaStatusOutletBaru : {}"
+                    :badge-variants="table.aksi === 'verifikasi_outlet_baru' ? warnaStatusOutletBaru : (warnaBadge[table.name] ?? {})"
                 >
                     <template v-if="table.aksi === 'verifikasi_outlet_baru'" #aksi="{ row }">
                         <div class="flex gap-1">

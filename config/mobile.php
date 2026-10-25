@@ -27,6 +27,11 @@ return [
     'jam_aktif_selesai' => env('MOBILE_JAM_AKTIF_SELESAI', '21:00'),
     'batas_masuk' => env('MOBILE_BATAS_MASUK', '08:00'),
 
+    // Rentang checkin outlet pagi (WIB) untuk menu Monitoring Harian Sales › Sales Checkin Outlet Pagi:
+    // sales aktif tanpa kunjungan dengan jam checkin >= mulai dan < selesai masuk daftar (sama dengan Marketama).
+    'checkin_pagi_mulai' => env('MOBILE_CHECKIN_PAGI_MULAI', '09:00'),
+    'checkin_pagi_selesai' => env('MOBILE_CHECKIN_PAGI_SELESAI', '11:00'),
+
     // Selisih jam HP vs server (menit) sebelum ditandai clock_skew.
     'toleransi_jam_menit' => 10,
 

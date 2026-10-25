@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Support\Akses\Akses;
+use App\Support\Menu\SumberBertanggal;
+use App\Support\Mobile\Pengaturan;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -48,6 +50,8 @@ class MenuController extends Controller
 
         $hasDateFilter = collect($konfigTabel)->contains(fn ($konfig) => $konfig['date_filter_column'] !== null);
         $tanggal = $hasDateFilter ? $this->resolveTanggal($request) : null;
+        // Filter depo / koordinator untuk sumber bertanggal (mis. Sales Checkin Outlet Pagi).
+        $filter = ['depo' => $request->integer('depo') ?: null, 'koordinator' => $request->integer('koordinator') ?: null];
         $tables = [];
 
         foreach ($konfigTabel as $konfig) {
@@ -61,16 +65,20 @@ class MenuController extends Controller
             }
 
             $dateColumn = $konfig['date_filter_column'];
-            $kpi = $dateColumn !== null ? match ($konfig['kpi']) {
-                'checkin_pagi' => $this->kpiCheckinPagi($tanggal),
-                default => null,
-            } : null;
             $columns = config("marketama.tables.{$table}.columns", []);
-            $query = $sumber ? $sumber->query($request->user()) : DB::table($table);
             $kolomCari = $sumber ? $sumber->kolomCari() : array_keys($columns);
+            // Sumber bertanggal: baris dihitung untuk tanggal terpilih (+ filter depo/koordinator), lengkap dengan KPI.
+            $bertanggal = $sumber instanceof SumberBertanggal && $dateColumn !== null;
+            $kpi = $bertanggal ? $sumber->kpi($request->user(), $tanggal, $filter) : null;
 
-            if ($dateColumn !== null) {
-                $query->where($dateColumn, $tanggal);
+            if ($bertanggal) {
+                $query = $sumber->queryTanggal($request->user(), $tanggal, $filter);
+            } else {
+                $query = $sumber ? $sumber->query($request->user()) : DB::table($table);
+
+                if ($dateColumn !== null) {
+                    $query->where($dateColumn, $tanggal);
+                }
             }
 
             if ($search !== '') {
@@ -91,6 +99,17 @@ class MenuController extends Controller
                 $rows->through(fn ($baris) => $sumber->ubahBaris($baris));
             }
 
+            // Kolom "No" yang tidak disimpan di tabel: nomor urut lintas halaman.
+            if (array_key_exists('no', $columns)) {
+                $urut = (int) $rows->firstItem();
+                $rows->through(function ($baris) use (&$urut) {
+                    $baris->no ??= $urut;
+                    $urut++;
+
+                    return $baris;
+                });
+            }
+
             $tables[] = [
                 'name' => $table,
                 'title' => config("marketama.tables.{$table}.title"),
@@ -104,6 +123,8 @@ class MenuController extends Controller
                     'links' => $rows->onEachSide(1)->linkCollection()->toArray(),
                 ],
                 'kpi' => $kpi,
+                'keterangan' => $bertanggal ? $sumber->keterangan() : null,
+                'filter_pilihan' => $bertanggal ? $sumber->pilihanFilter($request->user()) : null,
                 // Aksi per baris (mis. 'verifikasi_outlet_baru'), hanya untuk akun yang punya hak 'aksi_hak'
                 // (bawaan: ubah) di menu ini.
                 'aksi' => Akses::bisa($request->user(), $slug, config("marketama.tables.{$table}.aksi_hak", 'ubah'))
@@ -122,25 +143,8 @@ class MenuController extends Controller
             'search' => $search,
             'tanggal' => $tanggal,
             'hasDateFilter' => $hasDateFilter,
+            'filter' => $filter,
         ]);
-    }
-
-    /**
-     * Rekap KPI check-in pagi untuk satu tanggal. Dihitung dari COUNT, bukan dari baris halaman yang dipaginasi.
-     */
-    private function kpiCheckinPagi(string $tanggal): array
-    {
-        $checkin = DB::table('checkin_pagi')
-            ->where('tanggal_data', $tanggal)
-            ->selectRaw("COUNT(*) AS total, SUM(CASE WHEN checkin_pertama_hari_ini IS NOT NULL AND checkin_pertama_hari_ini <> '' THEN 1 ELSE 0 END) AS sudah_absen")
-            ->first();
-        $sudahAbsen = (int) $checkin->sudah_absen;
-
-        return [
-            'sudah_absen' => $sudahAbsen,
-            'belum_absen' => (int) $checkin->total - $sudahAbsen,
-            'terlambat' => DB::table('absensi_sales_terlambat')->where('tanggal', $tanggal)->count(),
-        ];
     }
 
     /**
@@ -153,6 +157,7 @@ class MenuController extends Controller
         $valid = Carbon::canBeCreatedFromFormat($input, 'Y-m-d')
             && Carbon::createFromFormat('Y-m-d', $input)->format('Y-m-d') === $input;
 
-        return $valid ? $input : Carbon::today()->toDateString();
+        // Hari ini menurut zona waktu operasional (WIB), bukan UTC server.
+        return $valid ? $input : Pengaturan::sekarang()->toDateString();
     }
 }

@@ -35,7 +35,7 @@ class KehadiranController extends Controller
             ? $request->query('status')
             : ($menu === 'absensi_sales_terlambat' ? 'terlambat' : 'semua');
 
-        $koordinator = $menu === 'absensi_koordinator';
+        $koordinator = in_array($menu, ['absensi_koordinator', 'lap_absensi_koordinator'], true);
         $dasar = $this->dasar($request, 'trx_absensi', $filter, $koordinator ? 'koordinator' : 'sales');
         $ringkas = [
             'total' => (clone $dasar)->count(),
@@ -182,7 +182,7 @@ class KehadiranController extends Controller
         $foto = DB::table('mobile_uploads as m')->join('users as u', 'u.id', '=', 'm.user_id')
             ->where('m.id', $id)->first(['m.disk', 'm.path', 'm.mime', 'u.karyawan_id']) ?? abort(404);
 
-        $bolehMenu = collect(['absensi_sales', 'lap_absensi_sales', 'absensi_sales_terlambat', 'absensi_koordinator', 'checkin_outlet', 'lap_checkin_outlet', 'outlet_all', 'join_visit'])
+        $bolehMenu = collect(['absensi_sales', 'lap_absensi_sales', 'absensi_sales_terlambat', 'absensi_koordinator', 'lap_absensi_koordinator', 'checkin_outlet', 'lap_checkin_outlet', 'outlet_all', 'join_visit', 'lap_join_visit'])
             ->contains(fn ($slug) => Akses::bisa($request->user(), $slug));
         $dalamCakupan = $foto->karyawan_id && Akses::batasiKaryawan(
             DB::table('mk_karyawan as k')->where('k.id', $foto->karyawan_id), $request->user()

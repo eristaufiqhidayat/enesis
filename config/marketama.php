@@ -1,5 +1,28 @@
 <?php
 
+use App\Support\Menu\Motoris\SumberBarangHabisTerjual;
+use App\Support\Menu\Motoris\SumberBarangTerbaikBulanan;
+use App\Support\Menu\Motoris\SumberBarangTerbaikHarian;
+use App\Support\Menu\Motoris\SumberBarangTerbaikMingguan;
+use App\Support\Menu\Motoris\SumberCanvassing;
+use App\Support\Menu\Motoris\SumberEffectiveCall;
+use App\Support\Menu\Motoris\SumberEffectiveCallItem;
+use App\Support\Menu\Motoris\SumberInsentifSales;
+use App\Support\Menu\Motoris\SumberLastSeenKoordinator;
+use App\Support\Menu\Motoris\SumberLastSeenSales;
+use App\Support\Menu\Motoris\SumberOutletAc;
+use App\Support\Menu\Motoris\SumberOutletEc;
+use App\Support\Menu\Motoris\SumberOutletNoo;
+use App\Support\Menu\Motoris\SumberOutletOss;
+use App\Support\Menu\Motoris\SumberOutletRo;
+use App\Support\Menu\Motoris\SumberOutletStatus;
+use App\Support\Menu\Motoris\SumberPengembalianBarang;
+use App\Support\Menu\Motoris\SumberPenjualan;
+use App\Support\Menu\Motoris\SumberPenjualanItem;
+use App\Support\Menu\Motoris\SumberSesiLogin;
+use App\Support\Menu\Motoris\SumberStokKompetitor;
+use App\Support\Menu\Motoris\SumberStokOutlet;
+use App\Support\Menu\SumberCheckinPagi;
 use App\Support\Menu\SumberJoinVisit;
 use App\Support\Menu\SumberOutletBaru;
 use App\Support\Menu\SumberOutletMaster;
@@ -8,6 +31,37 @@ use App\Support\Menu\SumberOutletMaster;
 // Dihasilkan dari hasil penarikan data 22 Okt 2026.
 
 return [
+    // Menu yang sudah terhubung ke data aplikasi motoris: membaca/menulis tabel yang sama dengan API HP
+    // (mk_*, trx_*, akun & role) atau tabel referensi yang dipakai aplikasi HP. Menu lain tampil di sidebar
+    // dengan awalan "* " (belum terhubung ke motoris / tidak berhubungan). Tambahkan slug di sini saat menunya
+    // dialihkan ke data motoris.
+    'menu_motoris' => [
+        // Utama
+        'monitoring_harian_sales', 'rekap_pencapaian_sku', 'summary_all_depo', 'motoris_report',
+        // Canvassing
+        'checkin_depo', 'lap_checkin_checkout', 'tracking_sales_history_location', 'tracking_koordinator_history_location',
+        // Aktivitas Canvas
+        'checkin_outlet', 'lap_checkin_outlet',
+        // Absensi
+        'absensi_sales', 'absensi_sales_terlambat', 'absensi_koordinator', 'lap_absensi_sales',
+        // Outlet dan Visit
+        'outlet_all', 'join_visit',
+        // User dan Karyawan (akun login aplikasi HP, role & hak akses)
+        'user_sales', 'user_koordinator', 'role',
+        // Master Data & Pengaturan yang dibaca aplikasi HP / laporan motoris
+        'kuota_motoris', 'master_depo', 'holiday_dates', 'waktu_aktif_app', 'produk_kompetitor', 'tipe_outlet',
+        'rumus_insentif_sales', 'sales_point_conversion_per_warehouse',
+        // Grup A analisa menu (25 Okt 2026): dialihkan ke trx_* / mk_* (riwayat lama lewat enesis:migrasi-transaksi)
+        'barang_canvassing', 'lap_barang_canvassing', 'lap_barang_habis_terjual', 'pengembalian_barang', 'lap_pengembalian_barang',
+        'tracking_sales', 'tracking_koordinator',
+        'penjualan_barang', 'lap_penjualan_barang', 'lap_penjualan_barang_detail', 'lap_effective_call', 'lap_effective_call_barang',
+        'lap_penjualan_barang_terbaik_harian', 'lap_penjualan_barang_terbaik_mingguan', 'lap_penjualan_barang_terbaik_bulanan',
+        'stok_outlet', 'lap_stok_outlet', 'stok_kompetitor', 'lap_stok_kompetitor',
+        'outlet_noo', 'lap_outlet_noo', 'outlet_ac', 'lap_outlet_ac', 'outlet_ec', 'lap_outlet_ec', 'outlet_ro', 'lap_outlet_ro',
+        'outlet_oss', 'lap_outlet_oss', 'lap_outlet_all',
+        'lap_join_visit', 'lap_absensi_koordinator', 'login_session', 'lap_insentif_sales',
+    ],
+
     'menu' => [
         [
             'label' => null,
@@ -745,7 +799,7 @@ return [
                     'tab_key' => 'checkin_pagi',
                     'tab_label' => 'Sales Checkin Outlet Pagi',
                     'tables' => [
-                        ['table' => 'checkin_pagi', 'date_filter_column' => 'tanggal_data', 'kpi' => 'checkin_pagi'],
+                        ['table' => 'checkin_pagi', 'date_filter_column' => 'tanggal_data'],
                     ],
                 ],
                 [
@@ -853,7 +907,9 @@ return [
         ],
         'tracking_sales' => [
             'title' => 'Tracking Last Seen Sales',
-            'tables' => [],
+            'tables' => [
+                'tracking_last_seen_sales',
+            ],
             'same_as' => null,
         ],
         'tracking_sales_history_location' => [
@@ -863,7 +919,9 @@ return [
         ],
         'tracking_koordinator' => [
             'title' => 'Tracking Last Seen Koordinator',
-            'tables' => [],
+            'tables' => [
+                'tracking_last_seen_koordinator',
+            ],
             'same_as' => null,
         ],
         'tracking_koordinator_history_location' => [
@@ -1042,21 +1100,21 @@ return [
         'lap_penjualan_barang_terbaik_harian' => [
             'title' => 'Lap. Barang Terbaik Harian',
             'tables' => [
-                'lap_penjualan_barang_terbaik_harian',
+                ['table' => 'lap_penjualan_barang_terbaik_harian', 'date_filter_column' => 'tanggal_data'],
             ],
             'same_as' => null,
         ],
         'lap_penjualan_barang_terbaik_mingguan' => [
             'title' => 'Lap. Barang Terbaik Mingguan',
             'tables' => [
-                'lap_penjualan_barang_terbaik_mingguan',
+                ['table' => 'lap_penjualan_barang_terbaik_mingguan', 'date_filter_column' => 'tanggal_data'],
             ],
             'same_as' => null,
         ],
         'lap_penjualan_barang_terbaik_bulanan' => [
             'title' => 'Lap. Barang Terbaik Bulanan',
             'tables' => [
-                'lap_penjualan_barang_terbaik_bulanan',
+                ['table' => 'lap_penjualan_barang_terbaik_bulanan', 'date_filter_column' => 'tanggal_data'],
             ],
             'same_as' => null,
         ],
@@ -1161,7 +1219,7 @@ return [
         'lap_insentif_sales' => [
             'title' => 'Lap. Insentif Sales',
             'tables' => [
-                'lap_insentif_sales',
+                ['table' => 'lap_insentif_sales', 'date_filter_column' => 'periode'],
             ],
             'same_as' => null,
         ],
@@ -1308,7 +1366,8 @@ return [
         'lap_join_visit' => [
             'title' => 'Lap. Join Visit',
             'tables' => [
-                'lap_join_visit',
+                // Sama dengan menu Join Visit: data HP koordinator + riwayat lama hasil migrasi.
+                'trx_join_visit',
             ],
             'same_as' => null,
         ],
@@ -1602,6 +1661,39 @@ return [
     ],
 
     'tables' => [
+        'tracking_last_seen_sales' => [
+            'title' => 'Tracking Last Seen Sales',
+            'sumber' => SumberLastSeenSales::class,
+            'columns' => [
+                'nama' => 'Nama',
+                'telepon' => 'Telepon',
+                'depo' => 'Depo',
+                'koordinator' => 'Koordinator',
+                'terakhir_terlihat' => 'Terakhir Terlihat',
+                'sejak' => 'Sejak',
+                'latitude' => 'Latitude',
+                'longitude' => 'Longitude',
+                'baterai' => 'Baterai',
+                'lokasi_palsu' => 'Lokasi Palsu',
+                'sumber' => 'Sumber',
+            ],
+        ],
+        'tracking_last_seen_koordinator' => [
+            'title' => 'Tracking Last Seen Koordinator',
+            'sumber' => SumberLastSeenKoordinator::class,
+            'columns' => [
+                'nama' => 'Nama',
+                'telepon' => 'Telepon',
+                'depo' => 'Depo',
+                'terakhir_terlihat' => 'Terakhir Terlihat',
+                'sejak' => 'Sejak',
+                'latitude' => 'Latitude',
+                'longitude' => 'Longitude',
+                'baterai' => 'Baterai',
+                'lokasi_palsu' => 'Lokasi Palsu',
+                'sumber' => 'Sumber',
+            ],
+        ],
         'pembayaran_pembelian' => [
             'title' => 'Setoran',
             'columns' => [
@@ -1699,6 +1791,7 @@ return [
         ],
         'lap_insentif_sales' => [
             'title' => 'Lap. Insentif Sales',
+            'sumber' => SumberInsentifSales::class,
             'columns' => [
                 'no_payroll' => 'No. Payroll',
                 'periode' => 'Periode',
@@ -1707,6 +1800,9 @@ return [
                 'koordinator' => 'Koordinator',
                 'depo' => 'Depo',
                 'insentif_ec' => 'Insentif EC',
+                'total_ec' => 'Total EC',
+                'total_poin' => 'Total Poin',
+                'insentif_poin' => 'Nilai Poin',
                 'insentif_absensi' => 'Insentif Absensi',
                 'total_insentif' => 'Total Insentif',
             ],
@@ -1768,6 +1864,7 @@ return [
         ],
         'lap_outlet_ro' => [
             'title' => 'Lap. Outlet RO',
+            'sumber' => SumberOutletRo::class,
             'columns' => [
                 'depo' => 'Depo',
                 'koordinator' => 'Koordinator',
@@ -1941,6 +2038,7 @@ return [
         ],
         'lap_penjualan_barang_terbaik_harian' => [
             'title' => 'Lap. Barang Terbaik Harian',
+            'sumber' => SumberBarangTerbaikHarian::class,
             'columns' => [
                 'tanggal_data' => 'Tanggal Data',
                 'product_id' => 'Product ID',
@@ -1957,6 +2055,7 @@ return [
         ],
         'lap_penjualan_barang_terbaik_mingguan' => [
             'title' => 'Lap. Barang Terbaik Mingguan',
+            'sumber' => SumberBarangTerbaikMingguan::class,
             'columns' => [
                 'product_id' => 'Product ID',
                 'product_name' => 'Product Name',
@@ -1982,6 +2081,7 @@ return [
         ],
         'lap_penjualan_barang_terbaik_bulanan' => [
             'title' => 'Lap. Barang Terbaik Bulanan',
+            'sumber' => SumberBarangTerbaikBulanan::class,
             'columns' => [
                 'product_id' => 'Product ID',
                 'product_name' => 'Product Name',
@@ -2157,7 +2257,9 @@ return [
             ],
         ],
         'checkin_pagi' => [
-            'title' => 'checkin_pagi',
+            'title' => 'Sales Checkin Outlet Pagi',
+            // Dihitung dari trx_kunjungan + mk_karyawan untuk tanggal terpilih (tabel checkin_pagi = salinan lama Marketama).
+            'sumber' => SumberCheckinPagi::class,
             'columns' => [
                 'no' => 'No',
                 'depo' => 'Depo',
@@ -2341,6 +2443,7 @@ return [
         ],
         'lap_outlet_noo' => [
             'title' => 'Lap. Outlet NOO',
+            'sumber' => SumberOutletNoo::class,
             'columns' => [
                 'source_id' => 'ID',
                 'outlet_code' => 'Outlet Code',
@@ -2362,6 +2465,7 @@ return [
                 'created_at' => 'Created At',
                 'warehouse_name' => 'Warehouse Name',
                 'koordinator_name' => 'Koordinator Name',
+                'status' => 'Status Verifikasi',
             ],
         ],
         'outlet_duplikat' => [
@@ -2401,6 +2505,7 @@ return [
         ],
         'lap_stok_kompetitor' => [
             'title' => 'Lap. Stok Kompetitor',
+            'sumber' => SumberStokKompetitor::class,
             'columns' => [
                 'source_id' => 'ID',
                 'quantity' => 'Quantity',
@@ -2416,6 +2521,7 @@ return [
                 'outlet_address' => 'Outlet Address',
                 'area_name' => 'Area Name',
                 'product_name' => 'Product Name',
+                'sumber' => 'Sumber',
             ],
         ],
         'retur_barang' => [
@@ -2575,6 +2681,7 @@ return [
         ],
         'login_session' => [
             'title' => 'Sesi Login',
+            'sumber' => SumberSesiLogin::class,
             'columns' => [
                 'username_nickname' => 'Username / Nickname',
                 'kategori' => 'Kategori',
@@ -2608,6 +2715,7 @@ return [
         ],
         'lap_barang_habis_terjual' => [
             'title' => 'Lap. Barang Habis Terjual',
+            'sumber' => SumberBarangHabisTerjual::class,
             'columns' => [
                 'source_id' => 'ID',
                 'canvassing_no' => 'Canvassing No',
@@ -2627,10 +2735,12 @@ return [
                 'sisa_qty' => 'Sisa Qty',
                 'status_terjual' => 'Status Terjual',
                 'pct_terjual' => 'Pct Terjual',
+                'sumber' => 'Sumber',
             ],
         ],
         'lap_pengembalian_barang' => [
             'title' => 'Lap. Pengembalian Barang',
+            'sumber' => SumberPengembalianBarang::class,
             'columns' => [
                 'source_id' => 'ID',
                 'canvas_return_no' => 'Canvas Return No',
@@ -2649,10 +2759,12 @@ return [
                 'total_qty' => 'Total Qty',
                 'sale_qty' => 'Sale Qty',
                 'return_qty' => 'Return Qty',
+                'sumber' => 'Sumber',
             ],
         ],
         'lap_barang_canvassing' => [
             'title' => 'Lap. Barang Canvassing',
+            'sumber' => SumberCanvassing::class,
             'columns' => [
                 'source_id' => 'ID',
                 'canvassing_no' => 'Canvassing No',
@@ -2672,6 +2784,7 @@ return [
                 'sale_qty' => 'Sale Qty',
                 'return_qty' => 'Return Qty',
                 'returned' => 'Returned',
+                'sumber' => 'Sumber',
             ],
         ],
         'kelurahan' => [
@@ -2687,6 +2800,7 @@ return [
         ],
         'lap_outlet_oss' => [
             'title' => 'Lap. Outlet OSS',
+            'sumber' => SumberOutletOss::class,
             'columns' => [
                 'source_id' => 'ID',
                 'outlet_code' => 'Outlet Code',
@@ -2712,6 +2826,7 @@ return [
         ],
         'lap_effective_call' => [
             'title' => 'Lap. Efective Call',
+            'sumber' => SumberEffectiveCall::class,
             'columns' => [
                 'source_id' => 'ID',
                 'trans_code' => 'Trans Code',
@@ -2736,10 +2851,12 @@ return [
                 'sales_latitude' => 'Sales Latitude',
                 'created_by_name' => 'Created By Name',
                 'created_at' => 'Created At',
+                'sumber' => 'Sumber',
             ],
         ],
         'lap_penjualan_barang' => [
             'title' => 'Lap. Penjualan Barang',
+            'sumber' => SumberPenjualan::class,
             'columns' => [
                 'source_id' => 'ID',
                 'trans_code' => 'Trans Code',
@@ -2765,10 +2882,12 @@ return [
                 'sales_latitude' => 'Sales Latitude',
                 'created_by_name' => 'Created By Name',
                 'created_at' => 'Created At',
+                'sumber' => 'Sumber',
             ],
         ],
         'lap_outlet_ac' => [
             'title' => 'Lap. Outlet AC',
+            'sumber' => SumberOutletAc::class,
             'columns' => [
                 'source_id' => 'ID',
                 'outlet_code' => 'Outlet Code',
@@ -2818,6 +2937,7 @@ return [
         ],
         'lap_outlet_ec' => [
             'title' => 'Lap. Outlet EC',
+            'sumber' => SumberOutletEc::class,
             'columns' => [
                 'source_id' => 'ID',
                 'outlet_code' => 'Outlet Code',
@@ -2843,6 +2963,7 @@ return [
         ],
         'lap_effective_call_barang' => [
             'title' => 'Lap. Efective Call Detail',
+            'sumber' => SumberEffectiveCallItem::class,
             'columns' => [
                 'source_id' => 'ID',
                 'trans_code' => 'Trans Code',
@@ -2871,10 +2992,12 @@ return [
                 'checkin_duration' => 'Checkin Duration',
                 'sales_longitude' => 'Sales Longitude',
                 'sales_latitude' => 'Sales Latitude',
+                'sumber' => 'Sumber',
             ],
         ],
         'lap_penjualan_barang_detail' => [
             'title' => 'Lap. Penjualan Barang Detail',
+            'sumber' => SumberPenjualanItem::class,
             'columns' => [
                 'source_id' => 'ID',
                 'trans_code' => 'Trans Code',
@@ -2904,6 +3027,7 @@ return [
                 'checkin_duration' => 'Checkin Duration',
                 'sales_longitude' => 'Sales Longitude',
                 'sales_latitude' => 'Sales Latitude',
+                'sumber' => 'Sumber',
             ],
         ],
         // 'sumber': kelas App\Support\Menu\SumberTabel yang membuat query (join ke master area/depo/karyawan).
@@ -2977,6 +3101,7 @@ return [
         ],
         'lap_outlet_all' => [
             'title' => 'Lap. Outlet All',
+            'sumber' => SumberOutletStatus::class,
             'columns' => [
                 'source_id' => 'ID',
                 'outlet_code' => 'Outlet Code',
@@ -3002,6 +3127,7 @@ return [
         ],
         'lap_stok_outlet' => [
             'title' => 'Lap. Stok Outlet',
+            'sumber' => SumberStokOutlet::class,
             'columns' => [
                 'source_id' => 'ID',
                 'quantity' => 'Quantity',
@@ -3023,6 +3149,7 @@ return [
                 'product_name' => 'Product Name',
                 'category_name' => 'Category Name',
                 'brand_name' => 'Brand Name',
+                'sumber' => 'Sumber',
             ],
         ],
         'rekap_pencapaian_sku_motoris_tableachieved' => [
