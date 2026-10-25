@@ -61,8 +61,4 @@ const kolomKota = computed(() => (props.total.kota === 'TOTAL 0 CITY' ? 'City' :
             </tr>
         </tfoot>
     </table>
-    <p class="m-3 text-xs text-gray-500">
-        HK Standar = hari kerja sales sampai hari ini (Waktu Aktif App, tanpa hari libur). Act HK = rata-rata hari hadir per motoris yang absen.
-        Target = target call per hari depo (sama dengan aplikasi HP) × HK Standar × motoris aktif. EC = transaksi effective call. IPT = rata-rata SKU per transaksi. Value = total penjualan (tidak termasuk yang dibatalkan).
-    </p>
 </template>

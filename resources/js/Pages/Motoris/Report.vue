@@ -7,6 +7,7 @@ import Input from '@/Components/ui/atoms/Input.vue';
 import Label from '@/Components/ui/atoms/Label.vue';
 import Select from '@/Components/ui/atoms/Select.vue';
 import Card from '@/Components/ui/molecules/Card.vue';
+import InfoPopover from '@/Components/ui/molecules/InfoPopover.vue';
 import PageHeader from '@/Components/ui/molecules/PageHeader.vue';
 import TableSkeleton from '@/Components/ui/molecules/TableSkeleton.vue';
 import Tabs from '@/Components/ui/molecules/Tabs.vue';
@@ -120,5 +121,27 @@ function saring() {
                 <Absensi v-else :baris="laporan.baris" />
             </Deferred>
         </Card>
+
+        <!-- Di luar Card: body Card memakai overflow-x-auto, yang memotong popover di dalamnya. -->
+        <div v-if="tab !== 'absensi'" class="mt-3 flex items-center gap-1 text-xs text-gray-500">
+            <span>Keterangan cara hitung</span>
+            <InfoPopover title="Cara Hitung">
+                <ul v-if="tab === 'coverage'" class="list-disc ps-4 space-y-1">
+                    <li><strong>Quota</strong> = kuota motoris per depo (Master Data › Kuota Motoris).</li>
+                    <li><strong>Already Transaction</strong> = sales yang punya minimal satu penjualan pada periode.</li>
+                    <li><strong>Active End Periode</strong> = sales motoris berstatus aktif.</li>
+                    <li><strong>Vacant</strong> = Quota − Active.</li>
+                    <li><strong>Coverage</strong> = Active ÷ Quota.</li>
+                </ul>
+                <ul v-else class="list-disc ps-4 space-y-1">
+                    <li><strong>HK Standar</strong> = hari kerja sales sampai hari ini (Waktu Aktif App, tanpa hari libur).</li>
+                    <li><strong>Act HK</strong> = rata-rata hari hadir per motoris yang absen.</li>
+                    <li><strong>Target</strong> = target call per hari depo (sama dengan aplikasi HP) × HK Standar × motoris aktif.</li>
+                    <li><strong>EC</strong> = transaksi effective call.</li>
+                    <li><strong>IPT</strong> = rata-rata SKU per transaksi.</li>
+                    <li><strong>Value</strong> = total penjualan (tidak termasuk yang dibatalkan).</li>
+                </ul>
+            </InfoPopover>
+        </div>
     </AppLayout>
 </template>
