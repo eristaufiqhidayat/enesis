@@ -1,5 +1,8 @@
 <?php
 
+use App\Support\Menu\SumberOutletBaru;
+use App\Support\Menu\SumberOutletMaster;
+
 // Struktur menu sidebar disamakan dengan Marketama Canvassing System.
 // Dihasilkan dari hasil penarikan data 22 Okt 2026.
 
@@ -1184,12 +1187,24 @@ return [
             ],
             'same_as' => 'lap_outlet_noo',
         ],
+        // Sama dengan API mobile sales motoris: master mk_outlet, plus outlet baru dari HP (trx_outlet_baru).
+        // Data laporan lama tetap ada di menu Lap. Outlet All (lap_outlet_all).
         'outlet_all' => [
             'title' => 'All Outlet',
+            'tabs' => true,
             'tables' => [
-                'lap_outlet_all',
+                [
+                    'tab_key' => 'master',
+                    'tab_label' => 'Master Outlet',
+                    'tables' => ['mk_outlet'],
+                ],
+                [
+                    'tab_key' => 'baru',
+                    'tab_label' => 'Outlet Baru dari HP',
+                    'tables' => ['trx_outlet_baru'],
+                ],
             ],
-            'same_as' => 'lap_outlet_all',
+            'same_as' => null,
         ],
         'outlet_ac' => [
             'title' => 'Actual Call',
@@ -2875,6 +2890,49 @@ return [
                 'checkin_duration' => 'Checkin Duration',
                 'sales_longitude' => 'Sales Longitude',
                 'sales_latitude' => 'Sales Latitude',
+            ],
+        ],
+        // 'sumber': kelas App\Support\Menu\SumberTabel yang membuat query (join ke master area/depo/karyawan).
+        'mk_outlet' => [
+            'title' => 'Master Outlet',
+            'sumber' => SumberOutletMaster::class,
+            'columns' => [
+                'id' => 'ID',
+                'kode' => 'Kode Outlet',
+                'nama' => 'Nama Outlet',
+                'alamat' => 'Alamat',
+                'area' => 'Area',
+                'depo' => 'Depo',
+                'provinsi' => 'Provinsi',
+                'kota_kabupaten' => 'Kota/Kabupaten',
+                'kecamatan' => 'Kecamatan',
+                'kelurahan' => 'Kelurahan',
+                'latitude' => 'Latitude',
+                'longitude' => 'Longitude',
+                'verifikasi' => 'Verifikasi',
+                'status_fiktif' => 'Status Fiktif',
+                'dibuat_oleh' => 'Dibuat Oleh',
+                'dibuat_pada' => 'Dibuat Pada',
+            ],
+        ],
+        'trx_outlet_baru' => [
+            'title' => 'Outlet Baru dari HP',
+            'sumber' => SumberOutletBaru::class,
+            'columns' => [
+                'id' => 'ID',
+                'status' => 'Status',
+                'nama' => 'Nama Outlet',
+                'pemilik' => 'Pemilik',
+                'no_hp' => 'No. HP',
+                'tipe' => 'Tipe',
+                'alamat' => 'Alamat',
+                'sales' => 'Sales',
+                'depo' => 'Depo',
+                'area' => 'Area',
+                'lat' => 'Latitude',
+                'lng' => 'Longitude',
+                'outlet_id' => 'ID Master Outlet',
+                'recorded_at' => 'Dicatat di HP',
             ],
         ],
         'lap_outlet_all' => [
