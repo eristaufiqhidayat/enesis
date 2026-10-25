@@ -1,19 +1,21 @@
 <script setup>
 import { computed } from 'vue';
-import { Head, Link, usePage } from '@inertiajs/vue3';
+import { Deferred, Head, Link, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Badge from '@/Components/ui/atoms/Badge.vue';
 import Button from '@/Components/ui/atoms/Button.vue';
 import Card from '@/Components/ui/molecules/Card.vue';
 import PageHeader from '@/Components/ui/molecules/PageHeader.vue';
+import TableSkeleton from '@/Components/ui/molecules/TableSkeleton.vue';
 import { angka, angkaRingkas } from '@/Support/format.js';
 
+// total dan tim kosong saat masih ditunda (lihat <Deferred> di bawah).
 const props = defineProps({
     slug: { type: String, required: true },
     judul: { type: String, required: true },
     depo: { type: Object, required: true },
-    total: { type: Object, required: true },
-    tim: { type: Array, required: true },
+    total: { type: Object, default: () => ({}) },
+    tim: { type: Array, default: () => [] },
     periode: { type: Object, required: true },
     filter: { type: Object, required: true },
 });
@@ -34,6 +36,11 @@ const rupiah = (n) => `Rp ${angka(n)}`;
 
         <Card>
             <div class="text-xs text-gray-500 mb-2">Periode: <b class="text-gray-700">{{ periodeText }}</b></div>
+
+            <Deferred :data="['total', 'tim']">
+            <template #fallback>
+                <TableSkeleton />
+            </template>
 
             <div class="rounded-md border border-blue-100 bg-blue-50/60 px-3 py-2 mb-3 text-xs">
                 <div class="font-semibold text-blue-700 uppercase tracking-wide mb-1 border-l-2 border-blue-600 ps-2">Total keseluruhan depo</div>
@@ -123,6 +130,7 @@ const rupiah = (n) => `Rp ${angka(n)}`;
                 </div>
             </section>
             <p v-if="!tim.length" class="text-gray-500">Belum ada sales motoris di depo ini.</p>
+            </Deferred>
         </Card>
     </AppLayout>
 </template>

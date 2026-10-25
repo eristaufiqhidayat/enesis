@@ -129,13 +129,7 @@ class SummaryDepo
      */
     public function detail(int $depoId): ?array
     {
-        $cakupan = $this->depoCakupan();
-
-        if ($cakupan !== null && ! in_array($depoId, $cakupan, true)) {
-            return null;
-        }
-
-        $depo = DB::table('mk_depo')->where('id', $depoId)->first(['id', 'nama']);
+        $depo = $this->depo($depoId);
 
         if (! $depo) {
             return null;
@@ -159,10 +153,24 @@ class SummaryDepo
             ->sortBy(fn ($t) => [$t->koordinator_id === null ? 1 : 0, $t->nama])->values();
 
         return [
-            'depo' => (object) ['id' => (int) $depo->id, 'nama' => $depo->nama, 'distributor' => $this->distributor()[$depo->id] ?? null],
+            'depo' => $depo,
             'total' => $this->ringkas($sales),
             'tim' => $tim,
         ];
+    }
+
+    /** Identitas satu depo dalam cakupan akun (ringan, tanpa query motoris); null jika di luar cakupan atau tidak ada. */
+    public function depo(int $depoId): ?object
+    {
+        $cakupan = $this->depoCakupan();
+
+        if ($cakupan !== null && ! in_array($depoId, $cakupan, true)) {
+            return null;
+        }
+
+        $depo = DB::table('mk_depo')->where('id', $depoId)->first(['id', 'nama']);
+
+        return $depo ? (object) ['id' => (int) $depo->id, 'nama' => $depo->nama, 'distributor' => $this->distributor()[$depo->id] ?? null] : null;
     }
 
     /**
