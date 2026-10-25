@@ -20,3 +20,4 @@
 | 016 | [ ] | Gabung menu Motoris Coverage, Motoris Performance, Monitor Absensi Motoris jadi satu halaman bertab | [docs/backlog_items/016-gabung-menu-motoris-tab/spec.md](backlog_items/016-gabung-menu-motoris-tab/spec.md) |
 | 017 | [ ] | Tampilkan ikon menu Beranda, Monitoring Harian Sales, Rekap Pencapaian SKU, Summary All Depo, Motoris Report di sidebar | [docs/backlog_items/017-ikon-menu-grup-tanpa-label/spec.md](backlog_items/017-ikon-menu-grup-tanpa-label/spec.md) |
 | 018 | [ ] | Lanjutkan migrasi frontend ke Vue 3 + Inertia untuk semua halaman, lalu hapus stack Blade (sidebar/topbar/layout ganda) | [docs/backlog_items/018-migrasi-penuh-vue-inertia/spec.md](backlog_items/018-migrasi-penuh-vue-inertia/spec.md) |
+| 019 | [ ] | Perbaikan eskalasi hak akses lewat menu Role (matriks hak & pindah anggota ke Super Admin) | [docs/backlog_items/019-perbaikan-eskalasi-hak-role/spec.md](backlog_items/019-perbaikan-eskalasi-hak-role/spec.md) |
