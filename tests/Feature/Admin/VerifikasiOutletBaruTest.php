@@ -106,7 +106,7 @@ class VerifikasiOutletBaruTest extends AdminTestCase
 
         $this->post('/outlet_all/baru/5/setujui')->assertForbidden();
         $this->get('/outlet_all?tab=baru')->assertOk()
-            ->assertInertia(fn (Assert $page) => $page->where('tables.0.aksi', null));
+            ->assertInertia(fn (Assert $page) => $page->loadDeferredProps(fn (Assert $page) => $page->where('tables.0.aksi', null)));
 
         $this->assertSame('menunggu', DB::table('trx_outlet_baru')->where('id', 5)->value('status'));
     }
@@ -120,9 +120,11 @@ class VerifikasiOutletBaruTest extends AdminTestCase
 
         $this->get('/outlet_all?tab=baru')->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('tables.0.aksi', 'verifikasi_outlet_baru')
-                ->where('tables.0.rows.total', 1)
-                ->where('tables.0.rows.data.0.id', 5)
+                ->loadDeferredProps(fn (Assert $page) => $page
+                    ->where('tables.0.aksi', 'verifikasi_outlet_baru')
+                    ->where('tables.0.rows.total', 1)
+                    ->where('tables.0.rows.data.0.id', 5)
+                )
             );
 
         $this->post('/outlet_all/baru/6/setujui')->assertForbidden();

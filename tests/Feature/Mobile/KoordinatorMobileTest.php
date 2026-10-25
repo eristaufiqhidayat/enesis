@@ -149,13 +149,15 @@ class KoordinatorMobileTest extends MobileApiTestCase
 
         $this->get('/join_visit')->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('tables.0.rows.total', 1)
-                ->where('tables.0.rows.data.0.koordinator', 'Koor Satu')
-                ->where('tables.0.rows.data.0.sales', 'Andi Motoris')
-                ->where('tables.0.rows.data.0.outlet', 'Toko Sebelas')
-                ->where('tables.0.rows.data.0.mulai', '09:00')
-                ->where('tables.0.rows.data.0.catatan', 'Sales sopan, stok cukup.')
-                ->where('tables.0.rows.data.0.foto_id', $foto)
+                ->loadDeferredProps(fn (Assert $page) => $page
+                    ->where('tables.0.rows.total', 1)
+                    ->where('tables.0.rows.data.0.koordinator', 'Koor Satu')
+                    ->where('tables.0.rows.data.0.sales', 'Andi Motoris')
+                    ->where('tables.0.rows.data.0.outlet', 'Toko Sebelas')
+                    ->where('tables.0.rows.data.0.mulai', '09:00')
+                    ->where('tables.0.rows.data.0.catatan', 'Sales sopan, stok cukup.')
+                    ->where('tables.0.rows.data.0.foto_id', $foto)
+                )
             );
         $this->get("/foto/{$foto}")->assertOk();
         $this->get('/absensi_koordinator?dari=2026-10-26&sampai=2026-10-26')->assertOk()->assertSee('Koor Satu');

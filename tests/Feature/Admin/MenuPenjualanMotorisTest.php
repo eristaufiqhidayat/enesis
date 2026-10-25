@@ -39,56 +39,70 @@ class MenuPenjualanMotorisTest extends AdminTestCase
     public function test_penjualan_barang_dari_trx_penjualan(): void
     {
         $this->get('/penjualan_barang')->assertOk()->assertInertia(fn (Assert $p) => $p
-            ->where('tables.0.name', 'lap_penjualan_barang')
-            ->where('tables.0.rows.total', 4) // yang dibatalkan tidak tampil
-            ->where('tables.0.rows.data.0.trans_code', 'HP-5') // terbaru dulu
-            ->where('tables.0.rows.data.2.trans_code', 'SLS-1')
-            ->where('tables.0.rows.data.2.salesperson_name', 'Rudi Hartono')
-            ->where('tables.0.rows.data.2.koordinator_name', 'Koor Satu')
-            ->where('tables.0.rows.data.2.datetime_trans', '09:05:00')
-            ->where('tables.0.rows.data.2.datetime_checkin', '09:00:00')
-            ->where('tables.0.rows.data.2.effective_call_status', 'Ya')
-            ->where('tables.0.rows.data.2.grand_total', '7.000')
-            ->where('tables.0.rows.data.2.outlet_code', 'OUT-1')
-            ->where('tables.0.rows.data.2.warehouse_name', 'Sidoarjo')
-            ->where('tables.0.rows.data.2.sumber', 'Aplikasi lama')
-            ->where('tables.0.rows.data.1.sumber', 'Aplikasi HP')
+            ->loadDeferredProps(fn (Assert $p) => $p
+                ->where('tables.0.name', 'lap_penjualan_barang')
+                ->where('tables.0.rows.total', 4) // yang dibatalkan tidak tampil
+                ->where('tables.0.rows.data.0.trans_code', 'HP-5') // terbaru dulu
+                ->where('tables.0.rows.data.2.trans_code', 'SLS-1')
+                ->where('tables.0.rows.data.2.salesperson_name', 'Rudi Hartono')
+                ->where('tables.0.rows.data.2.koordinator_name', 'Koor Satu')
+                ->where('tables.0.rows.data.2.datetime_trans', '09:05:00')
+                ->where('tables.0.rows.data.2.datetime_checkin', '09:00:00')
+                ->where('tables.0.rows.data.2.effective_call_status', 'Ya')
+                ->where('tables.0.rows.data.2.grand_total', '7.000')
+                ->where('tables.0.rows.data.2.outlet_code', 'OUT-1')
+                ->where('tables.0.rows.data.2.warehouse_name', 'Sidoarjo')
+                ->where('tables.0.rows.data.2.sumber', 'Aplikasi lama')
+                ->where('tables.0.rows.data.1.sumber', 'Aplikasi HP')
+            )
         );
 
         $this->get('/lap_effective_call?q=OUT-1')->assertOk()->assertInertia(fn (Assert $p) => $p
-            ->where('tables.0.rows.total', 3)); // HP-2 bukan EC
+            ->loadDeferredProps(fn (Assert $p) => $p
+                ->where('tables.0.rows.total', 3) // HP-2 bukan EC
+            ));
     }
 
     public function test_detail_produk_dan_ec_detail(): void
     {
         $this->get('/lap_penjualan_barang_detail?q=SLS-1')->assertOk()->assertInertia(fn (Assert $p) => $p
-            ->where('tables.0.rows.total', 2)
-            ->where('tables.0.rows.data.0.product_sku', 'SKU-3')
-            ->where('tables.0.rows.data.0.category_name', 'Minuman')
-            ->where('tables.0.rows.data.0.unit_name', 'Botol')
-            ->where('tables.0.rows.data.0.quantity', '5')
-            ->where('tables.0.rows.data.0.total', '5.000'));
+            ->loadDeferredProps(fn (Assert $p) => $p
+                ->where('tables.0.rows.total', 2)
+                ->where('tables.0.rows.data.0.product_sku', 'SKU-3')
+                ->where('tables.0.rows.data.0.category_name', 'Minuman')
+                ->where('tables.0.rows.data.0.unit_name', 'Botol')
+                ->where('tables.0.rows.data.0.quantity', '5')
+                ->where('tables.0.rows.data.0.total', '5.000')
+            ));
 
         $this->get('/lap_effective_call_barang?q=Plossa')->assertOk()->assertInertia(fn (Assert $p) => $p
-            ->where('tables.0.rows.total', 1)); // Plossa di HP-2 bukan EC
+            ->loadDeferredProps(fn (Assert $p) => $p
+                ->where('tables.0.rows.total', 1) // Plossa di HP-2 bukan EC
+            ));
     }
 
     public function test_barang_terbaik_per_periode(): void
     {
         $this->get('/lap_penjualan_barang_terbaik_harian?tanggal=2026-10-06')->assertOk()->assertInertia(fn (Assert $p) => $p
-            ->where('tables.0.rows.total', 2)
-            ->where('tables.0.rows.data.0.product_name', 'Adem Sari')
-            ->where('tables.0.rows.data.0.total_qty', '7') // 5 (Rudi) + 2 (Sinta)
-            ->where('tables.0.rows.data.0.total_transaksi', 2)
-            ->where('tables.0.rows.data.0.tanggal_data', '2026-10-06')
-            ->where('tables.0.kpi.1.value', 2));
+            ->loadDeferredProps(fn (Assert $p) => $p
+                ->where('tables.0.rows.total', 2)
+                ->where('tables.0.rows.data.0.product_name', 'Adem Sari')
+                ->where('tables.0.rows.data.0.total_qty', '7') // 5 (Rudi) + 2 (Sinta)
+                ->where('tables.0.rows.data.0.total_transaksi', 2)
+                ->where('tables.0.rows.data.0.tanggal_data', '2026-10-06')
+                ->where('tables.0.kpi.1.value', 2)
+            ));
 
         // Minggu 5–11 Okt memuat 5 & 6 Okt.
         $this->get('/lap_penjualan_barang_terbaik_mingguan?tanggal=2026-10-07')->assertOk()->assertInertia(fn (Assert $p) => $p
-            ->where('tables.0.rows.data.0.total_qty', '10'));
+            ->loadDeferredProps(fn (Assert $p) => $p
+                ->where('tables.0.rows.data.0.total_qty', '10')
+            ));
         $this->get('/lap_penjualan_barang_terbaik_bulanan?tanggal=2026-10-20&depo=22')->assertOk()->assertInertia(fn (Assert $p) => $p
-            ->where('tables.0.rows.total', 1)
-            ->where('tables.0.rows.data.0.total_qty', '2'));
+            ->loadDeferredProps(fn (Assert $p) => $p
+                ->where('tables.0.rows.total', 1)
+                ->where('tables.0.rows.data.0.total_qty', '2')
+            ));
     }
 
     public function test_cakupan_role_depo(): void
@@ -97,7 +111,9 @@ class MenuPenjualanMotorisTest extends AdminTestCase
         $this->actingAs($staf);
 
         $this->get('/penjualan_barang')->assertOk()->assertInertia(fn (Assert $p) => $p
-            ->where('tables.0.rows.total', 1)
-            ->where('tables.0.rows.data.0.trans_code', 'HP-5'));
+            ->loadDeferredProps(fn (Assert $p) => $p
+                ->where('tables.0.rows.total', 1)
+                ->where('tables.0.rows.data.0.trans_code', 'HP-5')
+            ));
     }
 }

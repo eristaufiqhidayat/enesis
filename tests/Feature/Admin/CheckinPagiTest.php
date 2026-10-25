@@ -39,38 +39,49 @@ class CheckinPagiTest extends AdminTestCase
     public function test_daftar_sales_belum_checkin_pagi_dan_kpi(): void
     {
         $this->get(self::URL)->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('tables.0.rows.total', 3)
-            // Urut depo lalu nama; nomor urut diisi.
-            ->where('tables.0.rows.data.0.no', 1)
-            ->where('tables.0.rows.data.0.depo', 'Balaraja')
-            ->where('tables.0.rows.data.0.nama_sales', 'Sinta Wulandari')
-            ->where('tables.0.rows.data.0.checkin_pertama_hari_ini', 'Belum checkin')
-            ->where('tables.0.rows.data.1.nama_sales', 'Tegar Mahendra')
-            ->where('tables.0.rows.data.1.koordinator', 'Koor Satu')
-            ->where('tables.0.rows.data.1.checkin_pertama_hari_ini', '08:44 (di luar rentang waktu)')
-            ->where('tables.0.rows.data.2.nama_sales', 'Wati Lestari')
-            ->where('tables.0.rows.data.2.checkin_pertama_hari_ini', '11:00 (di luar rentang waktu)')
-            ->where('tables.0.kpi', [
-                ['label' => 'Sales aktif', 'value' => 5],
-                ['label' => 'Checkin 09:00–11:00', 'value' => 2],
-                ['label' => 'Checkin di luar rentang', 'value' => 2],
-                ['label' => 'Belum checkin', 'value' => 1],
-            ])
-            ->where('tables.0.keterangan', fn ($teks) => str_contains($teks, 'antara jam 09:00 dan 11:00'))
-            ->where('tables.0.filter_pilihan.depo', ['22' => 'Balaraja', '46' => 'Sidoarjo'])
-            ->where('tables.0.filter_pilihan.koordinator', ['137' => 'Koor Satu'])
+            ->loadDeferredProps(fn (Assert $page) => $page
+                ->where('tables.0.rows.total', 3)
+                // Urut depo lalu nama; nomor urut diisi.
+                ->where('tables.0.rows.data.0.no', 1)
+                ->where('tables.0.rows.data.0.depo', 'Balaraja')
+                ->where('tables.0.rows.data.0.nama_sales', 'Sinta Wulandari')
+                ->where('tables.0.rows.data.0.checkin_pertama_hari_ini', 'Belum checkin')
+                ->where('tables.0.rows.data.1.nama_sales', 'Tegar Mahendra')
+                ->where('tables.0.rows.data.1.koordinator', 'Koor Satu')
+                ->where('tables.0.rows.data.1.checkin_pertama_hari_ini', '08:44 (di luar rentang waktu)')
+                ->where('tables.0.rows.data.2.nama_sales', 'Wati Lestari')
+                ->where('tables.0.rows.data.2.checkin_pertama_hari_ini', '11:00 (di luar rentang waktu)')
+                ->where('tables.0.kpi', [
+                    ['label' => 'Sales aktif', 'value' => 5],
+                    ['label' => 'Checkin 09:00–11:00', 'value' => 2],
+                    ['label' => 'Checkin di luar rentang', 'value' => 2],
+                    ['label' => 'Belum checkin', 'value' => 1],
+                ])
+                ->where('tables.0.keterangan', fn ($teks) => str_contains($teks, 'antara jam 09:00 dan 11:00'))
+                ->where('tables.0.filter_pilihan.depo', ['22' => 'Balaraja', '46' => 'Sidoarjo'])
+                ->where('tables.0.filter_pilihan.koordinator', ['137' => 'Koor Satu'])
+            )
         );
     }
 
     public function test_filter_depo_koordinator_dan_pencarian(): void
     {
         $this->get(self::URL.'&depo=46')->assertInertia(fn (Assert $page) => $page
-            ->where('tables.0.rows.total', 2)->where('filter.depo', 46)
-            ->where('tables.0.kpi.0.value', 3)); // Rudi, Tegar, Wati
+            ->where('filter.depo', 46)
+            ->loadDeferredProps(fn (Assert $page) => $page
+                ->where('tables.0.rows.total', 2)
+                ->where('tables.0.kpi.0.value', 3) // Rudi, Tegar, Wati
+            ));
         $this->get(self::URL.'&koordinator=137')->assertInertia(fn (Assert $page) => $page
-            ->where('tables.0.rows.total', 2)->where('tables.0.rows.data.0.nama_sales', 'Tegar Mahendra'));
+            ->loadDeferredProps(fn (Assert $page) => $page
+                ->where('tables.0.rows.total', 2)
+                ->where('tables.0.rows.data.0.nama_sales', 'Tegar Mahendra')
+            ));
         $this->get(self::URL.'&q=wati')->assertInertia(fn (Assert $page) => $page
-            ->where('tables.0.rows.total', 1)->where('tables.0.rows.data.0.nama_sales', 'Wati Lestari'));
+            ->loadDeferredProps(fn (Assert $page) => $page
+                ->where('tables.0.rows.total', 1)
+                ->where('tables.0.rows.data.0.nama_sales', 'Wati Lestari')
+            ));
     }
 
     public function test_rentang_jam_diatur_lewat_config(): void
@@ -79,10 +90,12 @@ class CheckinPagiTest extends AdminTestCase
 
         // 08:00–<09:00: hanya Tegar (08:44) yang dalam rentang; Fajar (tepat 09:00) sekarang di luar.
         $this->get(self::URL)->assertInertia(fn (Assert $page) => $page
-            ->where('tables.0.rows.total', 4)
-            ->where('tables.0.kpi.1', ['label' => 'Checkin 08:00–09:00', 'value' => 1])
-            ->where('tables.0.rows.data.0.nama_sales', 'Fajar Nugroho')
-            ->where('tables.0.rows.data.0.checkin_pertama_hari_ini', '09:00 (di luar rentang waktu)'));
+            ->loadDeferredProps(fn (Assert $page) => $page
+                ->where('tables.0.rows.total', 4)
+                ->where('tables.0.kpi.1', ['label' => 'Checkin 08:00–09:00', 'value' => 1])
+                ->where('tables.0.rows.data.0.nama_sales', 'Fajar Nugroho')
+                ->where('tables.0.rows.data.0.checkin_pertama_hari_ini', '09:00 (di luar rentang waktu)')
+            ));
     }
 
     public function test_tanggal_bawaan_hari_ini_wib_dan_minggu_tetap_tampil(): void
@@ -92,8 +105,10 @@ class CheckinPagiTest extends AdminTestCase
 
         $this->get('/monitoring_harian_sales')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('tanggal', '2026-10-25')
-            ->where('tables.0.rows.total', 5)
-            ->where('tables.0.kpi.3.value', 5));
+            ->loadDeferredProps(fn (Assert $page) => $page
+                ->where('tables.0.rows.total', 5)
+                ->where('tables.0.kpi.3.value', 5)
+            ));
     }
 
     public function test_cakupan_role_koordinator(): void
@@ -104,9 +119,11 @@ class CheckinPagiTest extends AdminTestCase
         $this->actingAs($koor);
 
         $this->get(self::URL)->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('tables.0.rows.total', 2)
-            ->where('tables.0.kpi.0.value', 3)
-            ->where('tables.0.filter_pilihan.depo', ['46' => 'Sidoarjo']));
+            ->loadDeferredProps(fn (Assert $page) => $page
+                ->where('tables.0.rows.total', 2)
+                ->where('tables.0.kpi.0.value', 3)
+                ->where('tables.0.filter_pilihan.depo', ['46' => 'Sidoarjo'])
+            ));
     }
 
     public function test_tab_lain_tanpa_sumber_bertanggal_tidak_terpengaruh(): void
@@ -114,10 +131,12 @@ class CheckinPagiTest extends AdminTestCase
         DB::table('provinsi')->insert(['kode' => '32', 'nama_provinsi' => 'Jawa Barat']);
 
         $this->get('/provinsi?tanggal=2026-10-22&depo=46')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('tables.0.rows.total', 1)
-            ->where('tables.0.kpi', null)
-            ->where('tables.0.filter_pilihan', null)
             ->where('tanggal', null)
-            ->where('hasDateFilter', false));
+            ->where('hasDateFilter', false)
+            ->loadDeferredProps(fn (Assert $page) => $page
+                ->where('tables.0.rows.total', 1)
+                ->where('tables.0.kpi', null)
+                ->where('tables.0.filter_pilihan', null)
+            ));
     }
 }

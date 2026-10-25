@@ -27,7 +27,7 @@ class AlurOutletBaruWebTest extends MobileApiTestCase
 
         // Web dan HP sama-sama membaca mk_outlet: 3 outlet master, 2 di antaranya di area rute sales.
         $this->web('GET', '/outlet_all')->assertOk()
-            ->assertInertia(fn (Assert $page) => $page->where('tables.0.name', 'mk_outlet')->where('tables.0.rows.total', 3));
+            ->assertInertia(fn (Assert $page) => $page->loadDeferredProps(fn (Assert $page) => $page->where('tables.0.name', 'mk_outlet')->where('tables.0.rows.total', 3)));
         $this->assertSame([11, 12], array_column($this->api('GET', 'routes/today')->assertOk()->json('data'), 'id'));
 
         // 1. Sales menambah outlet dari HP.
@@ -39,12 +39,14 @@ class AlurOutletBaruWebTest extends MobileApiTestCase
         // 2. Langsung tampil di web, tab Outlet Baru dari HP, status menunggu; belum masuk master & rute HP.
         $this->web('GET', '/outlet_all?tab=baru')->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('tables.0.rows.total', 1)
-                ->where('tables.0.rows.data.0.id', $baru)
-                ->where('tables.0.rows.data.0.nama', 'Warung Bu Sri')
-                ->where('tables.0.rows.data.0.status', 'menunggu')
-                ->where('tables.0.rows.data.0.sales', 'Andi Motoris')
-                ->where('tables.0.rows.data.0.foto_toko_id', $foto)
+                ->loadDeferredProps(fn (Assert $page) => $page
+                    ->where('tables.0.rows.total', 1)
+                    ->where('tables.0.rows.data.0.id', $baru)
+                    ->where('tables.0.rows.data.0.nama', 'Warung Bu Sri')
+                    ->where('tables.0.rows.data.0.status', 'menunggu')
+                    ->where('tables.0.rows.data.0.sales', 'Andi Motoris')
+                    ->where('tables.0.rows.data.0.foto_toko_id', $foto)
+                )
             );
         $this->assertSame(3, DB::table('mk_outlet')->count());
 
@@ -55,9 +57,11 @@ class AlurOutletBaruWebTest extends MobileApiTestCase
         // 4. Masuk Master Outlet di web dan rute HP sales (area rute sama).
         $this->web('GET', '/outlet_all?q=Bu+Sri')->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('tables.0.rows.total', 1)
-                ->where('tables.0.rows.data.0.id', $outletId)
-                ->where('tables.0.rows.data.0.area', 'Area Rute')
+                ->loadDeferredProps(fn (Assert $page) => $page
+                    ->where('tables.0.rows.total', 1)
+                    ->where('tables.0.rows.data.0.id', $outletId)
+                    ->where('tables.0.rows.data.0.area', 'Area Rute')
+                )
             );
         $rute = $this->api('GET', 'routes/today')->assertOk()->json('data');
         $this->assertSame([11, 12, $outletId], array_column($rute, 'id'));

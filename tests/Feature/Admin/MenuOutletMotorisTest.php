@@ -35,7 +35,9 @@ class MenuOutletMotorisTest extends AdminTestCase
     {
         $hasil = [];
         $this->get($url)->assertOk()->assertInertia(function (Assert $p) use (&$hasil) {
-            $hasil = collect($p->toArray()['props']['tables'][0]['rows']['data'])->pluck('outlet_code')->sort()->values()->all();
+            $p->loadDeferredProps(function (Assert $p) use (&$hasil) {
+                $hasil = collect($p->toArray()['props']['tables'][0]['rows']['data'])->pluck('outlet_code')->sort()->values()->all();
+            });
         });
 
         return $hasil;
@@ -50,7 +52,9 @@ class MenuOutletMotorisTest extends AdminTestCase
 
         $ro = [];
         $this->get('/outlet_ro')->assertOk()->assertInertia(function (Assert $p) use (&$ro) {
-            $ro = $p->toArray()['props']['tables'][0]['rows']['data'];
+            $p->loadDeferredProps(function (Assert $p) use (&$ro) {
+                $ro = $p->toArray()['props']['tables'][0]['rows']['data'];
+            });
         });
         $this->assertSame(['OUT-1'], array_column($ro, 'kode_outlet'));
         $this->assertSame('Sidoarjo', $ro[0]['depo']);
@@ -66,13 +70,15 @@ class MenuOutletMotorisTest extends AdminTestCase
         ]);
 
         $this->get('/outlet_noo')->assertOk()->assertInertia(fn (Assert $p) => $p
-            ->where('tables.0.rows.total', 2)
-            ->where('tables.0.rows.data.0.outlet_name', 'Warung Menunggu')
-            ->where('tables.0.rows.data.0.status', 'Menunggu verifikasi')
-            ->where('tables.0.rows.data.1.outlet_code', 'OUT-2')
-            ->where('tables.0.rows.data.1.contact_person1', 'Bu Siti')
-            ->where('tables.0.rows.data.1.created_at', '2026-10-06 09:00:00')
-            ->where('tables.0.rows.data.1.koordinator_name', 'Koor Satu'));
+            ->loadDeferredProps(fn (Assert $p) => $p
+                ->where('tables.0.rows.total', 2)
+                ->where('tables.0.rows.data.0.outlet_name', 'Warung Menunggu')
+                ->where('tables.0.rows.data.0.status', 'Menunggu verifikasi')
+                ->where('tables.0.rows.data.1.outlet_code', 'OUT-2')
+                ->where('tables.0.rows.data.1.contact_person1', 'Bu Siti')
+                ->where('tables.0.rows.data.1.created_at', '2026-10-06 09:00:00')
+                ->where('tables.0.rows.data.1.koordinator_name', 'Koor Satu')
+            ));
     }
 
     public function test_cakupan_depo(): void

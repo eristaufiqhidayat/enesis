@@ -35,24 +35,28 @@ class KoordinatorWebTest extends AdminTestCase
         $this->get('/join_visit')->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->where('page.same_as', null)
-                ->where('tables.0.name', 'trx_join_visit')
-                ->where('tables.0.aksi', 'foto')
-                ->where('tables.0.rows.total', 2)
-                ->where('tables.0.rows.data.0.koordinator', 'Koor Satu')
-                ->where('tables.0.rows.data.0.sales', 'Rudi Hartono')
-                ->where('tables.0.rows.data.0.outlet', 'Toko Sebelas')
-                ->where('tables.0.rows.data.0.area', 'Sidoarjo Kota 01')
-                ->where('tables.0.rows.data.0.mulai', '10:00')
-                ->where('tables.0.rows.data.0.selesai', '10:15')
-                ->where('tables.0.rows.data.0.durasi', '15 menit')
-                ->where('tables.0.rows.data.0.sumber', 'Aplikasi HP')
-                ->where('tables.0.rows.data.1.selesai', 'Berlangsung')
-                ->where('tables.0.rows.data.1.sumber', 'Aplikasi lama')
+                ->loadDeferredProps(fn (Assert $page) => $page
+                    ->where('tables.0.name', 'trx_join_visit')
+                    ->where('tables.0.aksi', 'foto')
+                    ->where('tables.0.rows.total', 2)
+                    ->where('tables.0.rows.data.0.koordinator', 'Koor Satu')
+                    ->where('tables.0.rows.data.0.sales', 'Rudi Hartono')
+                    ->where('tables.0.rows.data.0.outlet', 'Toko Sebelas')
+                    ->where('tables.0.rows.data.0.area', 'Sidoarjo Kota 01')
+                    ->where('tables.0.rows.data.0.mulai', '10:00')
+                    ->where('tables.0.rows.data.0.selesai', '10:15')
+                    ->where('tables.0.rows.data.0.durasi', '15 menit')
+                    ->where('tables.0.rows.data.0.sumber', 'Aplikasi HP')
+                    ->where('tables.0.rows.data.1.selesai', 'Berlangsung')
+                    ->where('tables.0.rows.data.1.sumber', 'Aplikasi lama')
+                )
             );
 
         // Lap. Join Visit memakai data yang sama (HP + riwayat lama hasil migrasi).
         $this->get('/lap_join_visit')->assertOk()
-            ->assertInertia(fn (Assert $page) => $page->where('tables.0.name', 'trx_join_visit'));
+            ->assertInertia(fn (Assert $page) => $page
+                ->loadDeferredProps(fn (Assert $page) => $page->where('tables.0.name', 'trx_join_visit'))
+            );
     }
 
     public function test_koordinator_hanya_melihat_join_visit_miliknya(): void
@@ -63,8 +67,10 @@ class KoordinatorWebTest extends AdminTestCase
 
         $this->get('/join_visit')->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('tables.0.rows.total', 1)
-                ->where('tables.0.rows.data.0.id', 1)
+                ->loadDeferredProps(fn (Assert $page) => $page
+                    ->where('tables.0.rows.total', 1)
+                    ->where('tables.0.rows.data.0.id', 1)
+                )
             );
     }
 

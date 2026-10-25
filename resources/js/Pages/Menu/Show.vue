@@ -1,12 +1,13 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { Deferred, Head, Link, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Button from '@/Components/ui/atoms/Button.vue';
 import Input from '@/Components/ui/atoms/Input.vue';
 import Select from '@/Components/ui/atoms/Select.vue';
 import Alert from '@/Components/ui/molecules/Alert.vue';
 import Card from '@/Components/ui/molecules/Card.vue';
+import TableSkeleton from '@/Components/ui/molecules/TableSkeleton.vue';
 import Tabs from '@/Components/ui/molecules/Tabs.vue';
 import DataTable from '@/Components/ui/organisms/DataTable.vue';
 
@@ -32,11 +33,23 @@ const appName = usePage().props.appName;
 // sudah berisi tabel tab aktif saja. Daftar tab (termasuk tab yang tidak aktif) diambil dari config
 // `page.tables` yang statis, bukan dari hasil query, supaya tombol tab lain tetap muncul.
 const bertab = computed(() => props.page.tabs === true);
+// `tables` ditunda (Inertia defer), jadi form dan tab dihitung dari config, bukan dari hasil query.
 const visibleTables = computed(() => props.tables);
 const tabItems = computed(() => bertab.value
     ? props.page.tables.map((grup) => ({ key: grup.tab_key, label: grup.tab_label }))
     : []);
-const formDateFilter = computed(() => bertab.value ? visibleTables.value.some((table) => table.date_filter) : props.hasDateFilter);
+const grupAktif = computed(() => bertab.value ? props.page.tables.find((grup) => grup.tab_key === props.activeTab) : null);
+const adaTabelKonfig = computed(() => (bertab.value ? (grupAktif.value?.tables.length ?? 0) : props.page.tables.length) > 0);
+const formDateFilter = computed(() => bertab.value ? (grupAktif.value?.tables ?? []).some(tabelPakaiTanggal) : props.hasDateFilter);
+
+// Kunjungan partial (Cari, pindah tab, pagination) mengambil ulang `tables` dalam satu request,
+// sehingga tidak memunculkan skeleton. Daftar prop ini harus memuat semua prop yang bisa berubah.
+const PROPS_MENU = ['tables', 'activeTab', 'search', 'tanggal', 'hasDateFilter', 'filter'];
+const PROPS_TABEL = ['tables'];
+
+function tabelPakaiTanggal(tabel) {
+    return typeof tabel === 'object' && Boolean(tabel.date_filter_column);
+}
 
 // Komponen ini dipakai ulang saat navigasi Inertia, jadi nilai input ikut props terbaru.
 watch(() => props.search, (value) => search.value = value);
@@ -104,14 +117,14 @@ function submitSearch() {
         }
     }
 
-    router.get(`/${props.slug}`, query, { preserveState: true, replace: true });
+    router.get(`/${props.slug}`, query, { preserveState: true, replace: true, only: PROPS_MENU });
 }
 
 function pindahTab(key) {
     const query = { tab: key };
     // Tabel tab tujuan belum di-query (lihat komentar di tabItems), jadi cek date_filter_column dari config.
     const grupTujuan = props.page.tables.find((grup) => grup.tab_key === key);
-    const tabBaruPakaiTanggal = grupTujuan?.tables.some((tabel) => (typeof tabel === 'object' ? tabel.date_filter_column : null) !== null) ?? false;
+    const tabBaruPakaiTanggal = (grupTujuan?.tables ?? []).some(tabelPakaiTanggal);
 
     if (search.value) {
         query.q = search.value;
@@ -121,7 +134,7 @@ function pindahTab(key) {
         query.tanggal = tanggal.value;
     }
 
-    router.get(`/${props.slug}`, query, { preserveScroll: true });
+    router.get(`/${props.slug}`, query, { preserveScroll: true, only: PROPS_MENU });
 }
 </script>
 
@@ -140,7 +153,7 @@ function pindahTab(key) {
             @update:model-value="pindahTab"
         />
 
-        <form v-if="tables.length" class="flex items-center justify-end gap-2 mb-3" @submit.prevent="submitSearch">
+        <form v-if="adaTabelKonfig" class="flex items-center justify-end gap-2 mb-3" @submit.prevent="submitSearch">
             <Input v-if="formDateFilter" v-model="tanggal" type="date" required aria-label="Tanggal data" class="w-auto" />
             <Select v-if="adaPilihan('depo')" v-model="depo" :options="pilihanFilter.depo" placeholder="Semua depo" aria-label="Depo" class="w-auto" />
             <Select v-if="adaPilihan('koordinator')" v-model="koordinator" :options="pilihanFilter.koordinator" placeholder="Semua koordinator" aria-label="Koordinator" class="w-auto max-w-[12rem]" />
@@ -148,47 +161,57 @@ function pindahTab(key) {
             <Button type="submit">Cari</Button>
         </form>
 
-        <template v-if="tables.length">
-            <template v-for="table in visibleTables" :key="table.name">
-                <Alert v-if="table.keterangan" variant="warning" class="mb-3">{{ table.keterangan }}</Alert>
-
-                <div v-if="kpiItems(table.kpi).length" :class="['grid grid-cols-1 gap-3 mb-3', kolomGridKpi[kpiItems(table.kpi).length] ?? 'sm:grid-cols-4']">
-                    <Card v-for="item in kpiItems(table.kpi)" :key="item.label">
-                        <div class="text-xs text-gray-500">{{ item.label }}</div>
-                        <div class="text-2xl font-semibold">{{ formatAngka(item.value) }}</div>
-                    </Card>
-                </div>
-
-                <DataTable
-                    class="mb-3"
-                    :title="visibleTables.length > 1 ? table.title : null"
-                    :columns="table.columns"
-                    :rows="table.rows.data"
-                    :total="table.rows.total"
-                    :links="table.rows.links"
-                    :badge-columns="table.name === 'checkin_pagi' ? ['checkin_pertama_hari_ini'] : (table.aksi === 'verifikasi_outlet_baru' ? ['status'] : [])"
-                    :badge-variants="table.aksi === 'verifikasi_outlet_baru' ? warnaStatusOutletBaru : (warnaBadge[table.name] ?? {})"
-                >
-                    <template v-if="table.aksi === 'verifikasi_outlet_baru'" #aksi="{ row }">
-                        <div class="flex gap-1">
-                            <Button v-if="row.foto_toko_id" tag="a" variant="light" :href="`/foto/${row.foto_toko_id}`" target="_blank" rel="noopener">Foto toko</Button>
-                            <Button v-if="row.foto_rak_id" tag="a" variant="light" :href="`/foto/${row.foto_rak_id}`" target="_blank" rel="noopener">Foto rak</Button>
-                            <template v-if="row.status === 'menunggu'">
-                                <Button variant="success" @click="setujuiOutletBaru(row)">Setujui</Button>
-                                <Button variant="outline-danger" @click="tolakOutletBaru(row)">Tolak</Button>
-                            </template>
-                        </div>
-                    </template>
-                    <template v-else-if="table.aksi === 'foto'" #aksi="{ row }">
-                        <Button v-if="row.foto_id" tag="a" variant="light" :href="`/foto/${row.foto_id}`" target="_blank" rel="noopener">Foto</Button>
-                    </template>
-                </DataTable>
+        <Deferred v-if="adaTabelKonfig" data="tables">
+            <template #fallback>
+                <Card body-class="overflow-x-auto">
+                    <TableSkeleton />
+                </Card>
             </template>
-        </template>
-        <div v-else-if="!page.same_as" class="card">
-            <div class="card-body text-gray-500">
+
+            <template v-if="tables.length">
+                <template v-for="table in visibleTables" :key="table.name">
+                    <Alert v-if="table.keterangan" variant="warning" class="mb-3">{{ table.keterangan }}</Alert>
+
+                    <div v-if="kpiItems(table.kpi).length" :class="['grid grid-cols-1 gap-3 mb-3', kolomGridKpi[kpiItems(table.kpi).length] ?? 'sm:grid-cols-4']">
+                        <Card v-for="item in kpiItems(table.kpi)" :key="item.label">
+                            <div class="text-xs text-gray-500">{{ item.label }}</div>
+                            <div class="text-2xl font-semibold">{{ formatAngka(item.value) }}</div>
+                        </Card>
+                    </div>
+
+                    <DataTable
+                        class="mb-3"
+                        :title="visibleTables.length > 1 ? table.title : null"
+                        :columns="table.columns"
+                        :rows="table.rows.data"
+                        :total="table.rows.total"
+                        :links="table.rows.links"
+                        :pagination-only="PROPS_TABEL"
+                        :badge-columns="table.name === 'checkin_pagi' ? ['checkin_pertama_hari_ini'] : (table.aksi === 'verifikasi_outlet_baru' ? ['status'] : [])"
+                        :badge-variants="table.aksi === 'verifikasi_outlet_baru' ? warnaStatusOutletBaru : (warnaBadge[table.name] ?? {})"
+                    >
+                        <template v-if="table.aksi === 'verifikasi_outlet_baru'" #aksi="{ row }">
+                            <div class="flex gap-1">
+                                <Button v-if="row.foto_toko_id" tag="a" variant="light" :href="`/foto/${row.foto_toko_id}`" target="_blank" rel="noopener">Foto toko</Button>
+                                <Button v-if="row.foto_rak_id" tag="a" variant="light" :href="`/foto/${row.foto_rak_id}`" target="_blank" rel="noopener">Foto rak</Button>
+                                <template v-if="row.status === 'menunggu'">
+                                    <Button variant="success" @click="setujuiOutletBaru(row)">Setujui</Button>
+                                    <Button variant="outline-danger" @click="tolakOutletBaru(row)">Tolak</Button>
+                                </template>
+                            </div>
+                        </template>
+                        <template v-else-if="table.aksi === 'foto'" #aksi="{ row }">
+                            <Button v-if="row.foto_id" tag="a" variant="light" :href="`/foto/${row.foto_id}`" target="_blank" rel="noopener">Foto</Button>
+                        </template>
+                    </DataTable>
+                </template>
+            </template>
+            <Card v-else-if="!page.same_as" body-class="card-body text-gray-500">
                 Halaman ini di Marketama berupa peta atau grafik, jadi tidak ada tabel data yang ditarik.
-            </div>
-        </div>
+            </Card>
+        </Deferred>
+        <Card v-else-if="!page.same_as" body-class="card-body text-gray-500">
+            Halaman ini di Marketama berupa peta atau grafik, jadi tidak ada tabel data yang ditarik.
+        </Card>
     </AppLayout>
 </template>
