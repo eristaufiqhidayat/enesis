@@ -7,6 +7,12 @@ use App\Support\Menu\Motoris\SumberBarangTerbaikMingguan;
 use App\Support\Menu\Motoris\SumberCanvassing;
 use App\Support\Menu\Motoris\SumberEffectiveCall;
 use App\Support\Menu\Motoris\SumberEffectiveCallItem;
+use App\Support\Menu\Motoris\SumberOutletAc;
+use App\Support\Menu\Motoris\SumberOutletEc;
+use App\Support\Menu\Motoris\SumberOutletNoo;
+use App\Support\Menu\Motoris\SumberOutletOss;
+use App\Support\Menu\Motoris\SumberOutletRo;
+use App\Support\Menu\Motoris\SumberOutletStatus;
 use App\Support\Menu\Motoris\SumberPengembalianBarang;
 use App\Support\Menu\Motoris\SumberPenjualan;
 use App\Support\Menu\Motoris\SumberPenjualanItem;
@@ -1803,6 +1809,7 @@ return [
         ],
         'lap_outlet_ro' => [
             'title' => 'Lap. Outlet RO',
+            'sumber' => SumberOutletRo::class,
             'columns' => [
                 'depo' => 'Depo',
                 'koordinator' => 'Koordinator',
@@ -2381,6 +2388,7 @@ return [
         ],
         'lap_outlet_noo' => [
             'title' => 'Lap. Outlet NOO',
+            'sumber' => SumberOutletNoo::class,
             'columns' => [
                 'source_id' => 'ID',
                 'outlet_code' => 'Outlet Code',
@@ -2402,6 +2410,7 @@ return [
                 'created_at' => 'Created At',
                 'warehouse_name' => 'Warehouse Name',
                 'koordinator_name' => 'Koordinator Name',
+                'status' => 'Status Verifikasi',
             ],
         ],
         'outlet_duplikat' => [
@@ -2735,6 +2744,7 @@ return [
         ],
         'lap_outlet_oss' => [
             'title' => 'Lap. Outlet OSS',
+            'sumber' => SumberOutletOss::class,
             'columns' => [
                 'source_id' => 'ID',
                 'outlet_code' => 'Outlet Code',
@@ -2821,6 +2831,7 @@ return [
         ],
         'lap_outlet_ac' => [
             'title' => 'Lap. Outlet AC',
+            'sumber' => SumberOutletAc::class,
             'columns' => [
                 'source_id' => 'ID',
                 'outlet_code' => 'Outlet Code',
@@ -2870,6 +2881,7 @@ return [
         ],
         'lap_outlet_ec' => [
             'title' => 'Lap. Outlet EC',
+            'sumber' => SumberOutletEc::class,
             'columns' => [
                 'source_id' => 'ID',
                 'outlet_code' => 'Outlet Code',
@@ -3033,6 +3045,7 @@ return [
         ],
         'lap_outlet_all' => [
             'title' => 'Lap. Outlet All',
+            'sumber' => SumberOutletStatus::class,
             'columns' => [
                 'source_id' => 'ID',
                 'outlet_code' => 'Outlet Code',
