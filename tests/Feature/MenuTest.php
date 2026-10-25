@@ -179,32 +179,20 @@ class MenuTest extends TestCase
 
     public function test_rekap_pencapaian_sku_default_tab_is_motoris(): void
     {
-        // Hanya tabel tab aktif (motoris) yang di-query; tabel tab depo tidak ikut di-query.
+        // Halaman sendiri (RekapPencapaianSkuController) yang menghitung dari penjualan aplikasi motoris, bukan tabel laporan Marketama.
         $this->get('/rekap_pencapaian_sku')
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('Menu/Show')
-                ->where('activeTab', 'motoris')
-                ->has('tables', 2)
-                ->where('tables.0.name', 'rekap_pencapaian_sku_motoris_tableachieved')
-                ->where('tables.1.name', 'rekap_pencapaian_sku_motoris_tablenotachieved')
-                ->where('tables.0.tab_key', 'motoris')
-                ->where('tables.1.tab_key', 'motoris')
-            );
+            ->assertViewIs('motoris.rekap-sku')
+            ->assertViewHas('tab', 'motoris')
+            ->assertSee('Avg/Day');
     }
 
     public function test_rekap_pencapaian_sku_tab_depo_follows_tab_query(): void
     {
         $this->get('/rekap_pencapaian_sku?tab=depo')
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->where('activeTab', 'depo')
-                ->has('tables', 2)
-                ->where('tables.0.name', 'rekap_pencapaian_depo_sku_tableachieved')
-                ->where('tables.1.name', 'rekap_pencapaian_depo_sku_tablenotachieved')
-                ->where('tables.0.tab_key', 'depo')
-                ->where('tables.1.tab_key', 'depo')
-            );
+            ->assertViewHas('tab', 'depo')
+            ->assertSee('Avg/Day/Motoris');
     }
 
     public function test_slug_lama_rekap_pencapaian_sku_motoris_redirects_to_tab_motoris(): void
