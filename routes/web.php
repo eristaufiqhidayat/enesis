@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AkunController;
 use App\Http\Controllers\Admin\KehadiranController;
 use App\Http\Controllers\Admin\KuotaMotorisController;
 use App\Http\Controllers\Admin\MotorisReportController;
+use App\Http\Controllers\Admin\RekapPencapaianSkuController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Auth\DemoLoginController;
 use App\Http\Controllers\Auth\GantiPasswordController;
@@ -107,6 +108,10 @@ Route::middleware(['auth', 'wajib-ganti-password'])->group(function () {
     Route::get('/motoris_report', [MotorisReportController::class, 'index'])->middleware('hak:motoris_report')->name('motoris-report');
     Route::get('/kuota_motoris', [KuotaMotorisController::class, 'index'])->middleware('hak:kuota_motoris')->name('kuota-motoris.index');
     Route::post('/kuota_motoris', [KuotaMotorisController::class, 'simpan'])->middleware('hak:kuota_motoris,ubah')->name('kuota-motoris.simpan');
+
+    // Rekap Pencapaian SKU (Per Motoris & Per Depo) dihitung dari penjualan aplikasi motoris + target global.
+    Route::get('/rekap_pencapaian_sku', [RekapPencapaianSkuController::class, 'index'])->middleware('hak:rekap_pencapaian_sku')->name('rekap-sku');
+    Route::post('/rekap_pencapaian_sku/target', [RekapPencapaianSkuController::class, 'simpanTarget'])->middleware('hak:rekap_pencapaian_sku,ubah')->name('rekap-sku.target');
 
     // Verifikasi outlet baru dari HP (menu All Outlet, tab Outlet Baru dari HP).
     Route::prefix('outlet_all/baru/{id}')->name('outlet-baru.')->whereNumber('id')->controller(OutletBaruController::class)->group(function () {
