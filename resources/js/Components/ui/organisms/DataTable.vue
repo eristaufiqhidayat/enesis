@@ -26,7 +26,7 @@ function formatTotal(total) {
 function badgeVariant(column, value) {
     const peta = props.badgeVariants[column];
 
-    return peta?.[value] ?? (value && peta?.['*']) ?? (value ? 'success' : 'secondary');
+    return peta?.[value] ?? (value ? peta?.['*'] : undefined) ?? (value ? 'success' : 'secondary');
 }
 </script>
 
