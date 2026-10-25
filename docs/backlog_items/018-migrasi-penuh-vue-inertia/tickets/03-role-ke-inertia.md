@@ -8,7 +8,7 @@ Menu Role & hak akses (daftar role, tambah, edit matriks hak, lihat & pindah ang
 
 ## Acceptance criteria
 
-- [ ] Semua aksi `role.*` berjalan seperti sebelumnya lewat halaman Vue: list, tambah, edit matriks hak, lihat anggota, pindah anggota, hapus.
+- [x] Semua aksi `role.*` berjalan seperti sebelumnya lewat halaman Vue: list, tambah, edit matriks hak, lihat anggota, pindah anggota, hapus.
 - [x] Error validasi tampil per field; pesan sukses/gagal (flash) tampil setelah redirect.
 - [x] Konfirmasi hapus memakai modal Vue, bukan `confirm()` browser.
 - [x] Tombol tambah/ubah/hapus mengikuti hak user (ditentukan server, diteruskan sebagai props); middleware `hak:role,*` tidak berubah.
@@ -22,7 +22,7 @@ Menu Role & hak akses (daftar role, tambah, edit matriks hak, lihat & pindah ang
 - [x] Ubah `RoleController` (index, create/edit, anggota) dari `view(...)` ke `Inertia::render('Role/...')`, termasuk props hak user untuk tombol aksi; logika query & validasi tidak diubah.
 - [x] Buat page Vue `Role/Index`, `Role/Form`, `Role/Anggota` dari komponen `ui`, memakai `useForm` untuk store/update/pindah dan `router.delete` + `Modal` untuk hapus.
 - [x] Hapus view Blade `role/*`.
-- [ ] Ubah `tests/Feature/Admin/RoleTest.php`: assertion view/markup diganti `assertInertia`; assertion perilaku (redirect, isi database, 403) dipertahankan. Jalankan `php artisan test` dan `vendor/bin/pint`.
+- [x] Ubah `tests/Feature/Admin/RoleTest.php`: assertion view/markup diganti `assertInertia`; assertion perilaku (redirect, isi database, 403) dipertahankan. Jalankan `php artisan test` dan `vendor/bin/pint`.
 
 ## Blocked by
 

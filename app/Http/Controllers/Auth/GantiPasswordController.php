@@ -7,14 +7,15 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response;
 
 // Ganti password. Wajib setelah login pertama dengan password awal dari admin.
 class GantiPasswordController extends Controller
 {
-    public function edit(Request $request): View
+    public function edit(Request $request): Response
     {
-        return view('auth.ganti-password', ['wajib' => (bool) $request->user()->wajib_ganti_password]);
+        return Inertia::render('Auth/GantiPassword', ['wajib' => (bool) $request->user()->wajib_ganti_password]);
     }
 
     public function update(Request $request): RedirectResponse

@@ -12,16 +12,20 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response;
 
 // Login session berbasis username (akun hasil migrasi Marketama umumnya tanpa email).
 class LoginController extends Controller
 {
     private const MAKS_PERCOBAAN = 5;
 
-    public function create(): View
+    public function create(): Response
     {
-        return view('auth.login');
+        return Inertia::render('Auth/Login', [
+            // Tombol demo hanya dikirim bila fitur demo aktif (config auth.demo_login).
+            'demoPeran' => config('auth.demo_login') ? config('auth.demo_peran') : null,
+        ]);
     }
 
     public function store(Request $request): RedirectResponse

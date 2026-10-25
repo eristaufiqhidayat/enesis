@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { Link, usePage } from '@inertiajs/vue3';
+import { Link, router, usePage } from '@inertiajs/vue3';
 import Breadcrumb from '@/Components/ui/molecules/Breadcrumb.vue';
 import Button from '@/Components/ui/atoms/Button.vue';
 import Icon from '@/Components/ui/atoms/Icon.vue';
@@ -10,8 +10,10 @@ defineProps({ breadcrumbSlug: { type: String, default: null } });
 
 const page = usePage();
 const user = computed(() => page.props.auth?.user ?? null);
-// Logout lewat form biasa (bukan kunjungan Inertia) karena halaman login adalah Blade.
-const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+
+function keluar() {
+    router.post('/logout');
+}
 
 const notifOpen = ref(false);
 const notifWrapper = ref(null);
@@ -52,10 +54,7 @@ onUnmounted(() => document.removeEventListener('click', closeNotifOnOutsideClick
             <div v-if="user" class="topbar-user">
                 <Icon name="circle-user" />
                 <span class="topbar-user-name" :title="user.username">{{ user.name }}</span>
-                <form method="POST" action="/logout">
-                    <input type="hidden" name="_token" :value="csrfToken">
-                    <Button type="submit" variant="outline-secondary">Keluar</Button>
-                </form>
+                <Button variant="outline-secondary" @click="keluar">Keluar</Button>
             </div>
         </div>
     </div>

@@ -26,7 +26,7 @@ class LoginTest extends TestCase
 
     public function test_halaman_login_tampil_dan_tamu_diarahkan_ke_login(): void
     {
-        $this->get('/login')->assertOk()->assertSee('name="username"', false)->assertSee('Masuk');
+        $this->get('/login')->assertOk()->assertInertia(fn (Assert $page) => $page->component('Auth/Login'));
 
         foreach (['/home', '/provinsi', '/tracking_koordinator_history_location', '/master_area/design_area', '/loading_barang/add'] as $url) {
             $this->get($url)->assertRedirect('/login');
@@ -98,7 +98,8 @@ class LoginTest extends TestCase
 
         $this->post('/login', ['username' => 'andi', 'password' => 'rahasia123'])->assertRedirect('/home');
         $this->get('/home')->assertRedirect('/ganti-password');
-        $this->get('/ganti-password')->assertOk()->assertSee('password awal')->assertDontSee('name="password_lama"', false);
+        $this->get('/ganti-password')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Auth/GantiPassword')->where('wajib', true));
 
         $this->put('/ganti-password', ['password' => 'pendek', 'password_confirmation' => 'pendek'])->assertSessionHasErrors('password');
         $this->put('/ganti-password', ['password' => 'Andi', 'password_confirmation' => 'Andi'])->assertSessionHasErrors('password');
@@ -109,7 +110,8 @@ class LoginTest extends TestCase
         $this->get('/home')->assertOk();
 
         // Ganti password biasa (bukan wajib) meminta password lama.
-        $this->get('/ganti-password')->assertSee('name="password_lama"', false);
+        $this->get('/ganti-password')->assertInertia(fn (Assert $page) => $page
+            ->component('Auth/GantiPassword')->where('wajib', false));
         $this->put('/ganti-password', ['password_lama' => 'salah', 'password' => 'lain-12345', 'password_confirmation' => 'lain-12345'])
             ->assertSessionHasErrors('password_lama');
     }
@@ -118,8 +120,7 @@ class LoginTest extends TestCase
     {
         $this->actingAs(User::factory()->create(['name' => 'Andi Saputra', 'username' => 'andi']));
 
-        $this->get('/tracking_koordinator_history_location')->assertOk()
-            ->assertSee('Andi Saputra')->assertSee('action="'.route('logout').'"', false);
+        $this->get('/tracking_koordinator_history_location')->assertOk()->assertSee('Andi Saputra');
 
         $this->get('/provinsi')->assertInertia(fn (Assert $page) => $page
             ->where('auth.user.name', 'Andi Saputra')
@@ -129,7 +130,8 @@ class LoginTest extends TestCase
 
     public function test_demo_masuk_cepat_mati_secara_bawaan(): void
     {
-        $this->get('/login')->assertOk()->assertDontSee('Demo masuk cepat');
+        $this->get('/login')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Auth/Login')->where('demoPeran', null));
         $this->post('/login/demo/super_admin')->assertNotFound();
         $this->assertGuest();
         $this->assertDatabaseMissing('users', ['username' => 'demo.super_admin']);
@@ -139,10 +141,8 @@ class LoginTest extends TestCase
     {
         config(['auth.demo_login' => true]);
 
-        $this->get('/login')->assertOk()
-            ->assertSee('Demo masuk cepat')
-            ->assertSee('Super Admin')->assertSee('Koordinator')->assertSee('Sales')
-            ->assertSee('action="'.route('login.demo', 'sales').'"', false);
+        $this->get('/login')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Auth/Login')->where('demoPeran', config('auth.demo_peran')));
 
         $this->post('/login/demo/koordinator')->assertRedirect('/home');
         $user = auth()->user();
@@ -158,14 +158,6 @@ class LoginTest extends TestCase
         $this->assertSame(1, User::where('username', 'demo.koordinator')->count());
     }
 
-    public function test_form_login_punya_tampil_password_dan_ingat_saya(): void
-    {
-        $this->get('/login')->assertOk()
-            ->assertSee('data-password-toggle="password"', false)
-            ->assertSee('name="ingat"', false)
-            ->assertSee('Lupa password? Hubungi admin.');
-    }
-
     public function test_seeder_admin_lokal_bisa_dipakai_login(): void
     {
         $this->seed(UserSeeder::class);
@@ -179,7 +171,8 @@ class LoginTest extends TestCase
         $this->app['env'] = 'production';
         config(['auth.seed_admin_password' => null]);
 
-        $this->seed(UserSeeder::class);
+        // Langsung run(): $this->seed() lewat db:seed meminta konfirmasi di production.
+        (new UserSeeder)->run();
 
         $this->assertDatabaseMissing('users', ['username' => 'admin']);
     }
