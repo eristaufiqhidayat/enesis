@@ -9,6 +9,28 @@ use App\Support\Menu\SumberOutletMaster;
 // Dihasilkan dari hasil penarikan data 22 Okt 2026.
 
 return [
+    // Menu yang sudah terhubung ke data aplikasi motoris: membaca/menulis tabel yang sama dengan API HP
+    // (mk_*, trx_*, akun & role) atau tabel referensi yang dipakai aplikasi HP. Menu lain tampil di sidebar
+    // dengan awalan "* " (belum terhubung ke motoris / tidak berhubungan). Tambahkan slug di sini saat menunya
+    // dialihkan ke data motoris.
+    'menu_motoris' => [
+        // Utama
+        'monitoring_harian_sales', 'rekap_pencapaian_sku', 'summary_all_depo', 'motoris_report',
+        // Canvassing
+        'checkin_depo', 'lap_checkin_checkout', 'tracking_sales_history_location', 'tracking_koordinator_history_location',
+        // Aktivitas Canvas
+        'checkin_outlet', 'lap_checkin_outlet',
+        // Absensi
+        'absensi_sales', 'absensi_sales_terlambat', 'absensi_koordinator', 'lap_absensi_sales',
+        // Outlet dan Visit
+        'outlet_all', 'join_visit',
+        // User dan Karyawan (akun login aplikasi HP, role & hak akses)
+        'user_sales', 'user_koordinator', 'role',
+        // Master Data & Pengaturan yang dibaca aplikasi HP / laporan motoris
+        'kuota_motoris', 'master_depo', 'holiday_dates', 'waktu_aktif_app', 'produk_kompetitor', 'tipe_outlet',
+        'rumus_insentif_sales', 'sales_point_conversion_per_warehouse',
+    ],
+
     'menu' => [
         [
             'label' => null,

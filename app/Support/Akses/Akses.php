@@ -156,7 +156,7 @@ class Akses
     {
         // Sidebar hanya tampil setelah login; tanpa user (mis. render komponen di tes) tampil utuh.
         if (! $user) {
-            return config('marketama.menu');
+            return self::tandaiMotoris(config('marketama.menu'));
         }
 
         $hasil = [];
@@ -181,7 +181,29 @@ class Akses
             }
         }
 
-        return $hasil;
+        return self::tandaiMotoris($hasil);
+    }
+
+    /** Menu sudah terhubung ke data aplikasi motoris (config marketama.menu_motoris)? */
+    public static function terhubungMotoris(string $slug): bool
+    {
+        return in_array($slug, config('marketama.menu_motoris', []), true);
+    }
+
+    /** Beri awalan "* " pada judul menu (bukan grup) yang belum terhubung ke data motoris. */
+    private static function tandaiMotoris(array $menu): array
+    {
+        $tandai = function (array $item) use (&$tandai) {
+            if (isset($item['children'])) {
+                $item['children'] = array_map($tandai, $item['children']);
+            } elseif (! self::terhubungMotoris($item['slug'])) {
+                $item['title'] = '* '.$item['title'];
+            }
+
+            return $item;
+        };
+
+        return array_map(fn ($grup) => ['items' => array_map($tandai, $grup['items'])] + $grup, $menu);
     }
 
     /**
