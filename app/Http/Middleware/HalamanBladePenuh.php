@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
 
-// Ada dua jenis halaman: Inertia (Vue) dan Blade (kelola akun, role, tracking, design area).
+// Ada dua jenis halaman: Inertia (Vue) dan Blade (saat ini hanya design area).
 // Klik menu dari halaman Inertia mengirim permintaan Inertia; bila jawabannya halaman Blade,
 // Inertia menampilkannya di popup. Di sini permintaan itu diubah menjadi kunjungan halaman penuh.
 class HalamanBladePenuh

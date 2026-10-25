@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Concerns\LoginOtomatis;
 use Tests\TestCase;
 
@@ -30,10 +31,14 @@ class TrackingSalesTest extends TestCase
 
         $this->get('/tracking_sales_history_location')
             ->assertOk()
-            ->assertSee('id="tracking_map"', false)
-            ->assertSee('id="group_filter"', false)
-            ->assertSee('Rina')
-            ->assertSee('Eko');
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Tracking/History')
+                ->where('slug', 'tracking_sales_history_location')
+                ->where('label', 'Sales')
+                ->where('idParam', 'sales_id')
+                ->where('groups', ['7' => 'Dian', '8' => 'Eko'])
+                ->has('people', 2)
+            );
     }
 
     public function test_locations_endpoint_returns_route_in_time_order_with_depo(): void
@@ -122,6 +127,6 @@ class TrackingSalesTest extends TestCase
 
         $this->get('/tracking_sales_history_location')
             ->assertOk()
-            ->assertSee('value="2026-10-22"', false);
+            ->assertInertia(fn (Assert $page) => $page->where('tanggal', '2026-10-22'));
     }
 }

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Blade;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Concerns\LoginOtomatis;
 use Tests\TestCase;
 
@@ -51,18 +52,17 @@ class BreadcrumbTest extends TestCase
 
     public function test_tracking_koordinator_menampilkan_breadcrumb_yang_benar(): void
     {
+        // Breadcrumb dirender Topbar Vue dari prop slug, jadi yang diuji adalah slug halaman.
         $this->get('/tracking_koordinator_history_location')
             ->assertOk()
-            ->assertSee('breadcrumb-item">Canvassing</span>', false)
-            ->assertSee('breadcrumb-item">Tracking History Koordinator Location</span>', false);
+            ->assertInertia(fn (Assert $page) => $page->where('slug', 'tracking_koordinator_history_location'));
     }
 
     public function test_tracking_sales_menampilkan_breadcrumb_yang_benar(): void
     {
         $this->get('/tracking_sales_history_location')
             ->assertOk()
-            ->assertSee('breadcrumb-item">Canvassing</span>', false)
-            ->assertSee('breadcrumb-item">Tracking History Sales Location</span>', false);
+            ->assertInertia(fn (Assert $page) => $page->where('slug', 'tracking_sales_history_location'));
     }
 
     public function test_design_area_menampilkan_breadcrumb_master_area(): void
