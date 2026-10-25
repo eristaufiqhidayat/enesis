@@ -39,9 +39,9 @@ onUnmounted(() => document.removeEventListener('click', closeNotifOnOutsideClick
             <Tooltip label="Tambah Barang Canvassing" align="end"><Link class="shortcut-btn" href="/barang_canvassing/add">
                     <Icon name="boxes" />
                 </Link></Tooltip>
-            <Tooltip label="Design Polygon Area" align="end"><a class="shortcut-btn" href="/master_area/design_area">
+            <Tooltip label="Design Polygon Area" align="end"><Link class="shortcut-btn" href="/master_area/design_area">
                     <Icon name="shapes" />
-                </a></Tooltip>
+                </Link></Tooltip>
             <div class="relative" ref="notifWrapper">
                 <Tooltip label="Notifikasi Transaksi" align="end"><a class="notif-bell" href="#"
                         aria-label="Notifikasi Transaksi" @click.prevent="notifOpen = !notifOpen">

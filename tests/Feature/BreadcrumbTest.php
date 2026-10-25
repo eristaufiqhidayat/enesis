@@ -67,10 +67,9 @@ class BreadcrumbTest extends TestCase
 
     public function test_design_area_menampilkan_breadcrumb_master_area(): void
     {
+        // Breadcrumb dirender Topbar Vue dari prop slug, jadi yang diuji adalah slug halaman.
         $this->get('/master_area/design_area')
             ->assertOk()
-            ->assertSee('breadcrumb-item">Master Data &amp; Pengaturan</span>', false)
-            ->assertSee('breadcrumb-item">Konfirgurasi</span>', false)
-            ->assertSee('breadcrumb-item">Master Area</span>', false);
+            ->assertInertia(fn (Assert $page) => $page->where('slug', 'master_area'));
     }
 }
