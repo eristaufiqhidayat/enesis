@@ -9,8 +9,10 @@ use App\Support\Motoris\KuotaMotoris;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response;
 
 // Master Data › Kuota Motoris: admin mengisi kuota sales motoris per depo, berlaku mulai bulan tertentu.
 // Dipakai tab Coverage dan Performance di Motoris Report.
@@ -18,7 +20,7 @@ class KuotaMotorisController extends Controller
 {
     public const MENU = 'kuota_motoris';
 
-    public function index(Request $request): View
+    public function index(Request $request): Response
     {
         $bulan = self::bulan($request);
         $depo = KuotaMotoris::untukBulan($bulan, self::depoCakupan($request));
@@ -30,14 +32,32 @@ class KuotaMotorisController extends Controller
             ->orderByDesc('m.updated_at')->limit(20)
             ->get(['m.berlaku_mulai', 'm.kuota', 'm.updated_at', 'd.nama as depo', 'u.username as oleh']);
 
-        return view('motoris.kuota', [
-            'menu' => self::MENU,
+        $zona = Pengaturan::zona();
+
+        return Inertia::render('Motoris/Kuota', [
+            'slug' => self::MENU,
             'judul' => config('marketama.pages.'.self::MENU.'.title') ?? 'Kuota Motoris',
             'bulan' => $bulan,
-            'depo' => $depo,
-            'riwayat' => $riwayat,
+            'namaBulan' => self::namaBulan($bulan),
+            'depo' => $depo->map(fn ($d) => [
+                'id' => $d->id,
+                'kota' => $d->kota,
+                'nama' => $d->nama,
+                'aktif' => (bool) $d->aktif,
+                'kuota' => $d->kuota,
+                'kuota_marketama' => $d->kuota_marketama,
+                'sumber' => $d->sumber,
+                // Isian admin yang berlaku dari bulan sebelumnya: tampilkan sejak kapan.
+                'sejak' => $d->sumber === 'enesis' && $d->berlaku_mulai !== $bulan ? self::namaBulan($d->berlaku_mulai) : null,
+            ])->values(),
+            'riwayat' => $riwayat->map(fn ($r) => [
+                'depo' => $r->depo,
+                'berlaku' => self::namaBulan($r->berlaku_mulai),
+                'kuota' => $r->kuota,
+                'diubah' => ($r->updated_at ? Carbon::parse($r->updated_at)->timezone($zona)->format('d M Y H:i') : '-')
+                    .($r->oleh ? ' · '.$r->oleh : ''),
+            ])->values(),
             'bolehUbah' => Akses::bisa($request->user(), self::MENU, 'ubah'),
-            'zona' => Pengaturan::zona(),
         ]);
     }
 
