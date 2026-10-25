@@ -7,6 +7,9 @@ use App\Support\Menu\Motoris\SumberBarangTerbaikMingguan;
 use App\Support\Menu\Motoris\SumberCanvassing;
 use App\Support\Menu\Motoris\SumberEffectiveCall;
 use App\Support\Menu\Motoris\SumberEffectiveCallItem;
+use App\Support\Menu\Motoris\SumberInsentifSales;
+use App\Support\Menu\Motoris\SumberLastSeenKoordinator;
+use App\Support\Menu\Motoris\SumberLastSeenSales;
 use App\Support\Menu\Motoris\SumberOutletAc;
 use App\Support\Menu\Motoris\SumberOutletEc;
 use App\Support\Menu\Motoris\SumberOutletNoo;
@@ -16,6 +19,7 @@ use App\Support\Menu\Motoris\SumberOutletStatus;
 use App\Support\Menu\Motoris\SumberPengembalianBarang;
 use App\Support\Menu\Motoris\SumberPenjualan;
 use App\Support\Menu\Motoris\SumberPenjualanItem;
+use App\Support\Menu\Motoris\SumberSesiLogin;
 use App\Support\Menu\Motoris\SumberStokKompetitor;
 use App\Support\Menu\Motoris\SumberStokOutlet;
 use App\Support\Menu\SumberCheckinPagi;
@@ -47,6 +51,15 @@ return [
         // Master Data & Pengaturan yang dibaca aplikasi HP / laporan motoris
         'kuota_motoris', 'master_depo', 'holiday_dates', 'waktu_aktif_app', 'produk_kompetitor', 'tipe_outlet',
         'rumus_insentif_sales', 'sales_point_conversion_per_warehouse',
+        // Grup A analisa menu (25 Okt 2026): dialihkan ke trx_* / mk_* (riwayat lama lewat enesis:migrasi-transaksi)
+        'barang_canvassing', 'lap_barang_canvassing', 'lap_barang_habis_terjual', 'pengembalian_barang', 'lap_pengembalian_barang',
+        'tracking_sales', 'tracking_koordinator',
+        'penjualan_barang', 'lap_penjualan_barang', 'lap_penjualan_barang_detail', 'lap_effective_call', 'lap_effective_call_barang',
+        'lap_penjualan_barang_terbaik_harian', 'lap_penjualan_barang_terbaik_mingguan', 'lap_penjualan_barang_terbaik_bulanan',
+        'stok_outlet', 'lap_stok_outlet', 'stok_kompetitor', 'lap_stok_kompetitor',
+        'outlet_noo', 'lap_outlet_noo', 'outlet_ac', 'lap_outlet_ac', 'outlet_ec', 'lap_outlet_ec', 'outlet_ro', 'lap_outlet_ro',
+        'outlet_oss', 'lap_outlet_oss', 'lap_outlet_all',
+        'lap_join_visit', 'lap_absensi_koordinator', 'login_session', 'lap_insentif_sales',
     ],
 
     'menu' => [
@@ -894,7 +907,9 @@ return [
         ],
         'tracking_sales' => [
             'title' => 'Tracking Last Seen Sales',
-            'tables' => [],
+            'tables' => [
+                'tracking_last_seen_sales',
+            ],
             'same_as' => null,
         ],
         'tracking_sales_history_location' => [
@@ -904,7 +919,9 @@ return [
         ],
         'tracking_koordinator' => [
             'title' => 'Tracking Last Seen Koordinator',
-            'tables' => [],
+            'tables' => [
+                'tracking_last_seen_koordinator',
+            ],
             'same_as' => null,
         ],
         'tracking_koordinator_history_location' => [
@@ -1202,7 +1219,7 @@ return [
         'lap_insentif_sales' => [
             'title' => 'Lap. Insentif Sales',
             'tables' => [
-                'lap_insentif_sales',
+                ['table' => 'lap_insentif_sales', 'date_filter_column' => 'periode'],
             ],
             'same_as' => null,
         ],
@@ -1349,7 +1366,8 @@ return [
         'lap_join_visit' => [
             'title' => 'Lap. Join Visit',
             'tables' => [
-                'lap_join_visit',
+                // Sama dengan menu Join Visit: data HP koordinator + riwayat lama hasil migrasi.
+                'trx_join_visit',
             ],
             'same_as' => null,
         ],
@@ -1643,6 +1661,39 @@ return [
     ],
 
     'tables' => [
+        'tracking_last_seen_sales' => [
+            'title' => 'Tracking Last Seen Sales',
+            'sumber' => SumberLastSeenSales::class,
+            'columns' => [
+                'nama' => 'Nama',
+                'telepon' => 'Telepon',
+                'depo' => 'Depo',
+                'koordinator' => 'Koordinator',
+                'terakhir_terlihat' => 'Terakhir Terlihat',
+                'sejak' => 'Sejak',
+                'latitude' => 'Latitude',
+                'longitude' => 'Longitude',
+                'baterai' => 'Baterai',
+                'lokasi_palsu' => 'Lokasi Palsu',
+                'sumber' => 'Sumber',
+            ],
+        ],
+        'tracking_last_seen_koordinator' => [
+            'title' => 'Tracking Last Seen Koordinator',
+            'sumber' => SumberLastSeenKoordinator::class,
+            'columns' => [
+                'nama' => 'Nama',
+                'telepon' => 'Telepon',
+                'depo' => 'Depo',
+                'terakhir_terlihat' => 'Terakhir Terlihat',
+                'sejak' => 'Sejak',
+                'latitude' => 'Latitude',
+                'longitude' => 'Longitude',
+                'baterai' => 'Baterai',
+                'lokasi_palsu' => 'Lokasi Palsu',
+                'sumber' => 'Sumber',
+            ],
+        ],
         'pembayaran_pembelian' => [
             'title' => 'Setoran',
             'columns' => [
@@ -1740,6 +1791,7 @@ return [
         ],
         'lap_insentif_sales' => [
             'title' => 'Lap. Insentif Sales',
+            'sumber' => SumberInsentifSales::class,
             'columns' => [
                 'no_payroll' => 'No. Payroll',
                 'periode' => 'Periode',
@@ -1748,6 +1800,9 @@ return [
                 'koordinator' => 'Koordinator',
                 'depo' => 'Depo',
                 'insentif_ec' => 'Insentif EC',
+                'total_ec' => 'Total EC',
+                'total_poin' => 'Total Poin',
+                'insentif_poin' => 'Nilai Poin',
                 'insentif_absensi' => 'Insentif Absensi',
                 'total_insentif' => 'Total Insentif',
             ],
@@ -2626,6 +2681,7 @@ return [
         ],
         'login_session' => [
             'title' => 'Sesi Login',
+            'sumber' => SumberSesiLogin::class,
             'columns' => [
                 'username_nickname' => 'Username / Nickname',
                 'kategori' => 'Kategori',

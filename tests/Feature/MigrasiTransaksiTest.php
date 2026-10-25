@@ -159,6 +159,6 @@ class MigrasiTransaksiTest extends TestCase
 
     public function test_jenis_tidak_dikenal_ditolak(): void
     {
-        $this->artisan('enesis:migrasi-transaksi penjualan')->assertFailed();
+        $this->artisan('enesis:migrasi-transaksi pembelian')->assertFailed();
     }
 }

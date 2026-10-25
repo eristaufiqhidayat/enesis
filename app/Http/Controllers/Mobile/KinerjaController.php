@@ -2,15 +2,14 @@
 
 namespace App\Http\Controllers\Mobile;
 
-use App\Support\Marketama\HalamanParser;
 use App\Support\Mobile\HariKerja;
 use App\Support\Mobile\Lokasi;
 use App\Support\Mobile\Pengaturan;
+use App\Support\Motoris\Insentif;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 // Ringkasan hari ini (layar Beranda: 5 langkah, KPI vs target, outlet berikutnya), rekap
 // bulanan + perkiraan insentif, dan status sinkron untuk mencocokkan antrian di HP.
@@ -163,33 +162,11 @@ class KinerjaController extends MobileController
 
     private function insentifEc(int $ec): ?int
     {
-        if (! Schema::hasTable('rumus_insentif_sales')) {
-            return null;
-        }
-
-        foreach (DB::table('rumus_insentif_sales')->get() as $r) {
-            $bawah = HalamanParser::angka((string) $r->tot_ec_lower_bound) ?? 0;
-            $atas = HalamanParser::angka((string) $r->tot_ec_upper_bound) ?? PHP_INT_MAX;
-
-            if ($ec >= $bawah && $ec <= $atas) {
-                return (int) (HalamanParser::angka((string) $r->total_insentif) ?? 0);
-            }
-        }
-
-        return 0;
+        return Insentif::ec($ec);
     }
 
     private function nilaiPoin(?int $depoId, int $poin): ?int
     {
-        $depo = $depoId ? DB::table('mk_depo')->where('id', $depoId)->value('nama') : null;
-
-        if (! $depo || ! Schema::hasTable('sales_point_conversion_per_warehouse')) {
-            return null;
-        }
-
-        $rp = DB::table('sales_point_conversion_per_warehouse')->get()
-            ->first(fn ($r) => HalamanParser::kunciNama($r->depo) === HalamanParser::kunciNama($depo))?->poin_insentif_rp;
-
-        return $rp === null ? null : (int) $rp * $poin;
+        return Insentif::nilaiPoin($depoId ? DB::table('mk_depo')->where('id', $depoId)->value('nama') : null, $poin);
     }
 }
