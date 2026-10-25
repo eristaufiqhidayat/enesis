@@ -59,6 +59,12 @@ class MenuController extends Controller
                 ...$page,
                 'same_as_title' => $page['same_as'] ? config("marketama.pages.{$page['same_as']}.title") : null,
             ],
+            // Keterangan singkat di PageHeader: sumber data menu ini (lihat STYLE_GUIDE.md § PageHeader).
+            'subtitle' => $page['same_as']
+                ? 'Sama dengan menu '.config("marketama.pages.{$page['same_as']}.title").'.'
+                : (Akses::terhubungMotoris($slug)
+                    ? 'Data diambil langsung dari tabel aplikasi motoris.'
+                    : 'Belum terhubung ke data aplikasi motoris — menu placeholder struktur sidebar Marketama.'),
             // Query tabel yang berat ditunda ke request susulan (lihat Menu/Show.vue), supaya halaman langsung tampil.
             'tables' => Inertia::defer(fn () => $this->muatTabel($request, $slug, $konfigTabel, $search, $tanggal, $filter), 'tables'),
             'activeTab' => $activeTab,

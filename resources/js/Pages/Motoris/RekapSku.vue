@@ -7,6 +7,7 @@ import FieldError from '@/Components/ui/atoms/FieldError.vue';
 import Input from '@/Components/ui/atoms/Input.vue';
 import Label from '@/Components/ui/atoms/Label.vue';
 import Card from '@/Components/ui/molecules/Card.vue';
+import Combobox from '@/Components/ui/molecules/Combobox.vue';
 import PageHeader from '@/Components/ui/molecules/PageHeader.vue';
 import TableSkeleton from '@/Components/ui/molecules/TableSkeleton.vue';
 import Tabs from '@/Components/ui/molecules/Tabs.vue';
@@ -93,15 +94,11 @@ function simpanTarget() {
                 </div>
                 <div class="min-w-48">
                     <Label for="warehouse_id">Depo <span class="text-gray-500">(kosong = semua)</span></Label>
-                    <select id="warehouse_id" v-model="filterDepo" multiple size="4" class="form-control form-control-sm">
-                        <option v-for="(nama, id) in daftarDepo" :key="id" :value="String(id)">{{ nama }}</option>
-                    </select>
+                    <Combobox id="warehouse_id" v-model="filterDepo" multiple :options="daftarDepo" placeholder="Cari depo..." />
                 </div>
                 <div class="min-w-56">
                     <Label for="product_id">Produk <span class="text-gray-500">(kosong = semua)</span></Label>
-                    <select id="product_id" v-model="filterProduk" multiple size="4" class="form-control form-control-sm">
-                        <option v-for="(nama, id) in daftarProduk" :key="id" :value="String(id)">{{ nama }}</option>
-                    </select>
+                    <Combobox id="product_id" v-model="filterProduk" multiple :options="daftarProduk" placeholder="Cari produk..." />
                 </div>
                 <Button type="submit">Tampilkan</Button>
                 <Button :tag="Link" variant="outline-secondary" :href="`/rekap_pencapaian_sku?tab=${tab}`">Reset Filter</Button>

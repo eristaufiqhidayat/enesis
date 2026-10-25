@@ -48,15 +48,14 @@ Warna lain (abu badge, info, warning) pakai palet Tailwind bawaan (`bg-gray-100`
 
 - **Struktur fixed**: `.sidebar` (260px, fixed, full height) + `main` (`margin-left: 260px`). Di bawah 991px, sidebar jadi statis dan stack di atas konten (lihat media query di `app.css`).
 - **Topbar**: baris ikon di kanan atas, kiri kosong — tidak ada breadcrumb/logo kedua. Diisi tombol shortcut dan dropdown notifikasi, bukan judul halaman (judul ada di `@section('content')` masing-masing halaman).
-- **Konten halaman**: header baris (judul + aksi kanan seperti search/filter) lalu satu atau lebih `.card`. Pola umum:
+- **Konten halaman**: `<PageHeader>` (judul + subtitle deskripsi singkat, lihat [Komponen → PageHeader](#pageheader--wajib-di-setiap-halaman)) lalu satu atau lebih `.card`/`<Card>`. Pola umum (Vue/Inertia):
 
-```blade
-<div class="flex flex-wrap items-center justify-between mb-3 gap-2">
-    <h5 class="mb-0 font-semibold">Judul Halaman</h5>
-    {{-- form filter/search di kanan --}}
-</div>
-<div class="card mb-3"> ... </div>
+```vue
+<PageHeader :title="judul" :subtitle="deskripsiSingkat" />
+<Card class="mb-3"> ... </Card>
 ```
+
+Halaman Blade lama boleh tetap pakai markup `<h5>` manual sampai dimigrasikan.
 
 - **Grid filter + peta/daftar**: dua kolom pakai `grid grid-cols-1 lg:grid-cols-12 gap-2`/`gap-3` dengan `lg:col-span-*` (contoh: filter 5/7 di design area, filter 4/konten 8 di tracking).
 
@@ -83,6 +82,11 @@ Wadah utama setiap blok konten. Header pakai `card-header card-header-compact bg
 - Field wajib ditandai `<span class="text-red-600">*</span>` setelah label, bukan atribut `required` tanpa indikator visual.
 - Tombol aksi sekunder: `btn-outline-secondary`/`btn-outline-danger`/`btn-outline-warning`. Aksi utama: `btn-primary`. Aksi konstruktif ("mulai", "tambah"): `btn-success`.
 - Ikon tombol selalu di depan teks dengan jarak `me-1` (contoh: `<x-ui.atoms.icon name="search" class="me-1" />Tampilkan`).
+
+### PageHeader — wajib di setiap halaman
+Setiap halaman Inertia (termasuk `Menu/Show.vue`) wajib dibuka dengan `<PageHeader :title="..." :subtitle="...">` ([resources/js/Components/ui/molecules/PageHeader.vue](../resources/js/Components/ui/molecules/PageHeader.vue)), bukan `<h5>` lepas. `title` adalah judul halaman (biasanya `page.title`/`judul` dari controller), `subtitle` adalah deskripsi singkat satu baris yang menjelaskan isi/cara hitung data halaman tersebut (lihat contoh `subtitle` di [resources/js/Pages/Motoris/RekapSku.vue](../resources/js/Pages/Motoris/RekapSku.vue): "Dihitung dari penjualan aplikasi motoris · ..."). Tombol aksi kanan (Tambah, Export, dll.) masuk lewat slot `#actions`, bukan markup `flex justify-between` manual. Halaman yang belum punya deskripsi singkat yang jelas tetap wajib isi `subtitle` — ringkas sumber data/periode/cara hitungnya, jangan dikosongkan.
+
+**Ikon**: `PageHeader` selalu menampilkan ikon di kiri judul. Secara default ikonnya dicari otomatis lewat `cariIkonMenu()` ([resources/js/Support/menu.js](../resources/js/Support/menu.js)) — yaitu ikon menu sidebar yang sama di `config/marketama.php` (`menu.*.items[].icon`, item anak tanpa ikon mewarisi ikon induknya). Slug yang dipakai untuk pencarian ini adalah `breadcrumbSlug` yang sudah dikirim ke `<AppLayout :breadcrumb-slug="...">` (atau `currentSlug` kalau `breadcrumbSlug` tidak diisi) — `AppLayout` menyediakannya lewat `provide`/`inject` (`PAGE_HEADER_SLUG`, [resources/js/Layouts/pageHeaderContext.js](../resources/js/Layouts/pageHeaderContext.js)), jadi **tidak perlu** mengirim prop `icon` manual di hampir semua halaman — termasuk halaman yang slug URL-nya tidak sama dengan slug menu (form tambah/edit, halaman detail, dsb.), selama `breadcrumb-slug`-nya sudah benar. Cukup pastikan entri menunya di `config/marketama.php` punya `icon` yang relevan (nama file Lucide di `public/vendor/lucide/`). Kirim prop `icon` eksplisit (`<PageHeader icon="...">`) hanya untuk halaman yang benar-benar tidak punya slug menu yang representatif.
 
 ### Badge
 `badge badge-secondary` untuk status netral, `badge badge-danger` untuk mode aktif/peringatan, `badge badge-primary` untuk hitungan (jumlah titik GPS dsb., sudah bulat penuh/pill lewat `rounded-full`).
