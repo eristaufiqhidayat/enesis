@@ -4,6 +4,7 @@ namespace Tests\Feature\Admin;
 
 use App\Support\Motoris\SummaryDepo;
 use Illuminate\Support\Facades\DB;
+use Inertia\Testing\AssertableInertia as Assert;
 
 // Summary All Depo dari tabel motoris (absen, kunjungan, penjualan, join visit), rumus mengikuti Marketama.
 class SummaryDepoTest extends AdminTestCase
@@ -88,10 +89,16 @@ class SummaryDepoTest extends AdminTestCase
         $this->assertSame([5, 5, 2], [$tim->akumulasi->hari_kerja, $tim->akumulasi->call, $tim->akumulasi->ec]);
 
         $this->get('/summary_all_depo/46?date_from=2026-10-01&date_to=2026-10-03')->assertOk()
-            ->assertSeeInOrder(['Total keseluruhan depo', 'Koor Satu', 'AVG Visit / Day:', '1,5', 'Rudi Hartono', 'Joko Lama', 'Non-aktif', 'Akumulasi']);
-        // Modal memuat potongan HTML tanpa kerangka halaman.
-        $this->get('/summary_all_depo/46?date_from=2026-10-01&date_to=2026-10-03&partial=1')->assertOk()
-            ->assertSee('Koor Satu')->assertDontSee('<html', false);
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Motoris/SummaryDepoDetail')
+                ->where('depo.nama', 'Sidoarjo')
+                ->where('total.hari_kerja', 5)
+                ->where('tim.0.nama', 'Koor Satu')
+                ->where('tim.0.avg_visit', 1.5)
+                ->where('tim.0.sales.0.nama', 'Rudi Hartono')
+                ->where('tim.0.sales.2.nama', 'Joko Lama')
+                ->where('tim.0.sales.2.aktif', false)
+                ->where('tim.0.akumulasi.hari_kerja', 5));
         $this->get('/summary_all_depo/999')->assertNotFound();
     }
 
@@ -105,22 +112,30 @@ class SummaryDepoTest extends AdminTestCase
         $this->assertSame(3, $j['baris']->total()); // S4 dibatalkan tidak tampil
         $this->assertSame(1, $this->summary()->penjualan(46, 'toko rudi')['baris']->total());
 
-        $this->get('/summary_all_depo/46/penjualan?date_from=2026-10-01&date_to=2026-10-03&partial=1')->assertOk()
-            ->assertSeeInOrder(['Total EC: 2', 'Total Sales: Rp 170.000', 'Total SKU: 6', 'Total Point: 17', '01/10/2026', 'Tegar Mahendra', '02/10/2026', 'OUT-7', 'Toko Rudi'])
-            ->assertDontSee('<html', false);
-        $this->get('/summary_all_depo/46/penjualan?date_from=2026-10-01&date_to=2026-10-03')->assertOk()->assertSee('Detail EC &amp; Penjualan — Sidoarjo', false);
+        $this->get('/summary_all_depo/46/penjualan?date_from=2026-10-01&date_to=2026-10-03')->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Motoris/SummaryDepoPenjualan')
+                ->where('judul', 'Detail EC & Penjualan — Sidoarjo')
+                ->where('total.ec', 2)->where('total.sales', 170000)->where('total.sku', 6)->where('total.point', 17)
+                ->where('baris.data.0.tanggal', '2026-10-01')->where('baris.data.0.sales', 'Tegar Mahendra')
+                ->where('baris.data.1.kode_outlet', 'OUT-7')->where('baris.data.1.nama_outlet', 'Toko Rudi'));
     }
 
     public function test_halaman_kartu_dan_cari_depo(): void
     {
         $this->get('/summary_all_depo?date_from=2026-10-01&date_to=2026-10-03')->assertOk()
-            ->assertSee('01 Oktober 2026 – 03 Oktober 2026')->assertSee('Call 45, EC 35, IPT 3')
-            ->assertSeeInOrder(['Sidoarjo', 'DEPO SUPRALITA 1', 'Total Sales Motoris', 'Rp 170.000', 'AVG Hari Kerja', '2,5', 'Call Achievement', '2,2%', 'Lihat Detail', 'Balaraja'])
-            ->assertSee('data-muat="'.e(route('summary-depo.detail', ['depo' => 46, 'date_from' => '2026-10-01', 'date_to' => '2026-10-03'])).'"', false)
-            ->assertSee('Chart Per Depo')->assertSee('Setting Target');
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Motoris/SummaryDepo')
+                ->where('periode.dari', '01 Oktober 2026')->where('periode.sampai', '03 Oktober 2026')->where('periode.sama', false)
+                ->where('target', ['call' => 45, 'ec' => 35, 'ipt' => 3])
+                ->where('kartu.0.nama', 'Sidoarjo')->where('kartu.0.distributor', 'DEPO SUPRALITA 1')
+                ->where('kartu.0.sales', 170000)->where('kartu.0.avg_hari_kerja', 2.5)->where('kartu.0.call_achievement', 2.2)
+                ->where('kartu.1.nama', 'Balaraja')
+                ->where('bolehUbah', true));
 
         $this->get('/summary_all_depo?date_from=2026-10-01&date_to=2026-10-03&q=bala')->assertOk()
-            ->assertSee('Balaraja')->assertDontSee('DEPO SUPRALITA 1');
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('kartu', fn ($kartu) => collect($kartu)->pluck('nama')->all() === ['Balaraja']));
     }
 
     public function test_admin_mengubah_target_nasional(): void
@@ -145,7 +160,9 @@ class SummaryDepoTest extends AdminTestCase
         $this->actingAs($staf);
 
         $this->get('/summary_all_depo?date_from=2026-10-01&date_to=2026-10-03')->assertOk()
-            ->assertSee('Balaraja')->assertDontSee('Sidoarjo')->assertDontSee('Simpan target');
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('bolehUbah', false)
+                ->where('kartu', fn ($kartu) => collect($kartu)->pluck('nama')->all() === ['Balaraja']));
         $this->get('/summary_all_depo/46')->assertNotFound();
         $this->post('/summary_all_depo/target', ['call' => '1', 'ec' => '1', 'ipt' => '1'])->assertForbidden();
 

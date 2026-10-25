@@ -8,9 +8,11 @@ use App\Support\Mobile\Pengaturan;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 // Absensi sales / koordinator, checkin/checkout depo, dan checkin outlet dari tabel motoris (trx_absensi,
@@ -24,11 +26,12 @@ class KehadiranController extends Controller
     /** Batas rentang tanggal sekali tampil (hari). */
     private const RENTANG_MAKS = 92;
 
-    public function absensi(Request $request): View
+    public function absensi(Request $request): Response
     {
         $menu = (string) $request->route('menu');
         $filter = $this->filter($request);
-        $status = in_array($request->query('status'), ['terlambat', 'belum_pulang'], true)
+        // "semua" harus bisa dipilih dari menu terlambat (yang bawaannya terlambat), jadi tidak boleh jatuh ke bawaan.
+        $status = in_array($request->query('status'), ['semua', 'terlambat', 'belum_pulang'], true)
             ? $request->query('status')
             : ($menu === 'absensi_sales_terlambat' ? 'terlambat' : 'semua');
 
@@ -40,21 +43,36 @@ class KehadiranController extends Controller
             'motoris' => (clone $dasar)->where('t.sumber', 'motoris')->count(),
         ];
 
+        $zona = Pengaturan::zona();
         $baris = $dasar
             ->when($status === 'terlambat', fn ($q) => $q->where('t.terlambat', true))
             ->when($status === 'belum_pulang', fn ($q) => $q->whereNull('t.pulang_at'))
             ->addSelect(['t.masuk_at', 't.pulang_at', 't.terlambat', 't.masuk_lat as lat', 't.masuk_lng as lng', 't.masuk_foto_id as foto_id', 't.mock_location'])
             ->orderByDesc('t.tanggal')->orderBy('t.masuk_at')
-            ->paginate(50)->withQueryString();
+            ->paginate(50)->withQueryString()
+            ->through(fn ($b) => [
+                'tanggal' => $this->tanggal($b->tanggal),
+                'sales' => $b->sales ?? 'Karyawan #'.$b->karyawan_id,
+                'depo' => $b->depo ?? '-',
+                'koordinator' => $b->koordinator,
+                'masuk' => $this->jam($b->masuk_at, $zona),
+                'terlambat' => (bool) $b->terlambat,
+                'pulang' => $this->jam($b->pulang_at, $zona),
+                'durasi' => $this->durasi($b->masuk_at, $b->pulang_at),
+                'peta' => $b->lat && $b->lng ? "https://www.google.com/maps?q={$b->lat},{$b->lng}" : null,
+                'foto' => $b->foto_id ? route('kehadiran.foto', $b->foto_id) : null,
+                'mock_location' => (bool) $b->mock_location,
+                'sumber' => $b->sumber,
+            ]);
 
-        return view('kehadiran.absensi', $this->dataView($menu, $filter, $baris) + [
+        return Inertia::render('Kehadiran/Absensi', $this->dataView($menu, $filter, $baris) + [
             'status' => $status,
             'ringkas' => $ringkas,
             'labelOrang' => $koordinator ? 'Koordinator' : 'Sales',
         ]);
     }
 
-    public function checkinDepo(Request $request): View
+    public function checkinDepo(Request $request): Response
     {
         $menu = (string) $request->route('menu');
         $filter = $this->filter($request);
@@ -65,17 +83,30 @@ class KehadiranController extends Controller
             'motoris' => (clone $dasar)->where('t.sumber', 'motoris')->count(),
         ];
 
+        $zona = Pengaturan::zona();
         $baris = $dasar
             ->addSelect(['t.checkin_at as masuk_at', 't.checkout_at as pulang_at', 't.lat', 't.lng', 't.jarak_m'])
             ->orderByDesc('t.tanggal')->orderBy('t.checkin_at')
-            ->paginate(50)->withQueryString();
+            ->paginate(50)->withQueryString()
+            ->through(fn ($b) => [
+                'tanggal' => $this->tanggal($b->tanggal),
+                'sales' => $b->sales ?? 'Karyawan #'.$b->karyawan_id,
+                'depo' => $b->depo ?? '-',
+                'koordinator' => $b->koordinator,
+                'masuk' => $this->jam($b->masuk_at, $zona),
+                'pulang' => $this->jam($b->pulang_at, $zona),
+                'durasi' => $this->durasi($b->masuk_at, $b->pulang_at),
+                'peta' => $b->lat && $b->lng ? "https://www.google.com/maps?q={$b->lat},{$b->lng}" : null,
+                'jarak_m' => $b->jarak_m,
+                'sumber' => $b->sumber,
+            ]);
 
-        return view('kehadiran.checkin-depo', $this->dataView($menu, $filter, $baris) + ['ringkas' => $ringkas]);
+        return Inertia::render('Kehadiran/CheckinDepo', $this->dataView($menu, $filter, $baris) + ['ringkas' => $ringkas]);
     }
 
     public const STATUS_KUNJUNGAN = ['semua' => 'Semua', 'beli' => 'Beli', 'tidak_beli' => 'Tidak beli', 'di_luar_rute' => 'Di luar rute'];
 
-    public function kunjungan(Request $request): View
+    public function kunjungan(Request $request): Response
     {
         $menu = (string) $request->route('menu');
         $filter = $this->filter($request);
@@ -98,6 +129,7 @@ class KehadiranController extends Controller
             'di_luar_rute' => (clone $dasar)->where('t.di_luar_rute', true)->count(),
         ];
 
+        $zona = Pengaturan::zona();
         $baris = $dasar
             ->when($status === 'beli', fn ($q) => $q->whereExists($beli))
             ->when($status === 'tidak_beli', fn ($q) => $q->whereNotNull('t.tidak_beli_kategori'))
@@ -109,13 +141,38 @@ class KehadiranController extends Controller
             ])
             ->selectSub(DB::table('trx_penjualan as p')->whereColumn('p.kunjungan_id', 't.id')->whereNull('p.dibatalkan_at')->selectRaw('SUM(p.total)'), 'total_jual')
             ->orderByDesc('t.tanggal')->orderByDesc('t.checkin_at')
-            ->paginate(50)->withQueryString();
+            ->paginate(50)->withQueryString()
+            ->through(fn ($b) => [
+                'tanggal' => $this->tanggal($b->tanggal),
+                'sales' => $b->sales ?? 'Karyawan #'.$b->karyawan_id,
+                'depo' => $b->depo ?? '-',
+                'koordinator' => $b->koordinator,
+                'outlet' => $b->outlet ?? '-',
+                'outlet_kode' => $b->outlet_kode,
+                'masuk' => $this->jam($b->masuk_at, $zona),
+                'pulang' => $this->jam($b->pulang_at, $zona),
+                'durasi' => $this->durasiDetik($b->durasi_detik),
+                'total_jual' => $b->total_jual,
+                'tidak_beli' => $b->tidak_beli_kategori
+                    ? (config('mobile.alasan_tidak_beli')[$b->tidak_beli_kategori] ?? $b->tidak_beli_kategori).($b->tidak_beli_keterangan ? ': '.$b->tidak_beli_keterangan : '')
+                    : null,
+                'keterangan_lama' => $b->sumber === 'lama' && ($b->kategori_lama !== null || $b->keterangan_lama)
+                    ? trim(($b->kategori_lama !== null ? 'Kategori '.$b->kategori_lama : '').($b->kategori_lama !== null && $b->keterangan_lama ? ' · ' : '').$b->keterangan_lama)
+                    : null,
+                'peta' => $b->lat && $b->lng ? "https://www.google.com/maps?q={$b->lat},{$b->lng}" : null,
+                'jarak_m' => $b->jarak_m,
+                'foto' => $b->foto_id ? route('kehadiran.foto', $b->foto_id) : null,
+                'foto_lama' => $b->foto_id ? null : $b->foto_url,
+                'di_luar_rute' => (bool) $b->di_luar_rute,
+                'mock_location' => (bool) $b->mock_location,
+                'sumber' => $b->sumber,
+            ]);
 
-        return view('kehadiran.kunjungan', $this->dataView($menu, $filter, $baris) + [
+        return Inertia::render('Kehadiran/Kunjungan', $this->dataView($menu, $filter, $baris) + [
             'status' => $status,
             'cariOutlet' => $cariOutlet,
             'ringkas' => $ringkas,
-            'alasan' => config('mobile.alasan_tidak_beli'),
+            'daftarStatus' => self::STATUS_KUNJUNGAN,
         ]);
     }
 
@@ -199,14 +256,46 @@ class KehadiranController extends Controller
         return Akses::batasiKaryawan($q, $request->user());
     }
 
+    /** Format tampilan (padanan helper di Blade kunjungan): tanggal bahasa Indonesia, jam WIB, durasi "x j y m". */
+    private function tanggal(string $tanggal): string
+    {
+        return Carbon::parse($tanggal)->locale('id')->translatedFormat('D, d M Y');
+    }
+
+    private function jam(?string $waktu, string $zona): string
+    {
+        return $waktu ? CarbonImmutable::parse($waktu, 'UTC')->timezone($zona)->format('H:i') : '—';
+    }
+
+    private function durasi(?string $masuk, ?string $pulang): string
+    {
+        if (! $masuk || ! $pulang) {
+            return '—';
+        }
+        $menit = (int) Carbon::parse($masuk)->diffInMinutes(Carbon::parse($pulang));
+
+        return intdiv($menit, 60).' j '.($menit % 60).' m';
+    }
+
+    private function durasiDetik(?int $detik): string
+    {
+        if ($detik === null) {
+            return '—';
+        }
+        $menit = intdiv($detik, 60);
+
+        return $menit >= 60 ? intdiv($menit, 60).' j '.($menit % 60).' m' : $menit.' m';
+    }
+
     private function dataView(string $menu, array $filter, $baris): array
     {
         return [
-            'menu' => $menu,
+            // Bukan 'menu': nama itu dipakai prop bersama sidebar (HandleInertiaRequests) dan akan tertimpa.
+            'slug' => $menu,
             'judul' => config("marketama.pages.{$menu}.title") ?? 'Kehadiran',
             'filter' => $filter,
             'baris' => $baris,
-            'zona' => Pengaturan::zona(),
+            'daftarSumber' => self::SUMBER,
             'daftarDepo' => DB::table('mk_depo')->orderBy('nama')->pluck('nama', 'id'),
             'daftarKoordinator' => Akses::batasiKaryawan(
                 DB::table('mk_karyawan as k')->where('k.kategori', 'koordinator')->where('k.aktif', true), auth()->user()

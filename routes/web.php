@@ -58,10 +58,16 @@ Route::middleware(['auth', 'wajib-ganti-password'])->group(function () {
     });
 
     // Ikon "Tambah" di kanan atas: formnya belum dibuat di versi Laravel.
-    Route::view('/loading_barang/add', 'menu.coming_soon', ['title' => 'Tambah Loading Barang', 'back' => 'loading_barang'])
-        ->middleware('hak:loading_barang,tambah');
-    Route::view('/barang_canvassing/add', 'menu.coming_soon', ['title' => 'Tambah Barang Canvassing', 'back' => 'barang_canvassing'])
-        ->middleware('hak:barang_canvassing,tambah');
+    Route::inertia('/loading_barang/add', 'Menu/ComingSoon', [
+        'title' => 'Tambah Loading Barang',
+        'back' => 'loading_barang',
+        'backTitle' => config('marketama.pages.loading_barang.title'),
+    ])->middleware('hak:loading_barang,tambah');
+    Route::inertia('/barang_canvassing/add', 'Menu/ComingSoon', [
+        'title' => 'Tambah Barang Canvassing',
+        'back' => 'barang_canvassing',
+        'backTitle' => config('marketama.pages.barang_canvassing.title'),
+    ])->middleware('hak:barang_canvassing,tambah');
 
     // Kelola akun login (4 menu Users) dan role & hak akses; parameter "menu" = slug menu.
     foreach (array_keys(AkunController::MENU) as $slug) {

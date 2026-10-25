@@ -3,6 +3,7 @@
 namespace Tests\Feature\Admin;
 
 use Illuminate\Support\Facades\DB;
+use Inertia\Testing\AssertableInertia as Assert;
 
 // Role & hak akses: daftar, tambah/edit matriks hak, anggota + pindah, hapus, riwayat.
 class RoleTest extends AdminTestCase
@@ -16,15 +17,19 @@ class RoleTest extends AdminTestCase
         $this->assertTrue((bool) DB::table('roles')->where('kode', 'sales')->value('login_mobile'));
         $this->assertFalse((bool) DB::table('roles')->where('kode', 'sales')->value('login_web'));
 
-        $this->get('/role')->assertOk()
-            ->assertSee('Super Admin')->assertSee('Sales Motoris')->assertSee('Per downline')->assertSee('BAWAAN')
-            ->assertSeeInOrder(['Sales Motoris', 'Diri sendiri', '1 menu', '2']); // akun tanpa role_id ikut role kategorinya
+        // Akun tanpa role_id ikut role kategorinya: Sales Motoris punya 2 akun dan 1 menu.
+        $this->get('/role')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Role/Index')
+            ->where('roles', fn ($roles) => $roles->contains(fn ($r) => $r['nama'] === 'Sales Motoris' && $r['jumlah_menu'] === 1 && $r['jumlah_akun'] === 2))
+            ->where('roles', fn ($roles) => $roles->contains(fn ($r) => $r['nama'] === 'Super Admin' && (bool) $r['bawaan'] && $r['jumlah_menu'] === null)));
         $this->get('/home')->assertSee('"slug":"role"', false); // menu sidebar (props Inertia)
     }
 
     public function test_tambah_role_dengan_matriks_hak(): void
     {
-        $this->get('/role/tambah')->assertOk()->assertSee('Hak akses per menu')->assertSee('name="hak[user_sales][ubah]"', false);
+        $this->get('/role/tambah')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Role/Form')->where('role', null)->where('bisaUbah', true)->where('superAdmin', false)
+            ->where('grup', fn ($grup) => $grup->flatMap(fn ($g) => $g['menu'])->contains(fn ($m) => $m['slug'] === 'user_sales')));
 
         $this->post('/role', [
             'nama' => 'Admin Depo',
@@ -68,8 +73,10 @@ class RoleTest extends AdminTestCase
         $this->assertContains('Cakupan data: Semua → Depo sendiri', $riwayat);
         $this->assertContains('Hak ditambah: Lihat Provinsi, Ekspor Provinsi', $riwayat);
 
-        $this->actingAs($this->admin)->get("/role/{$roleId}/anggota")->assertOk()
-            ->assertSee('sup')->assertSee('Cakupan data: Semua → Depo sendiri');
+        $this->actingAs($this->admin)->get("/role/{$roleId}/anggota")->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Role/Anggota')
+            ->where('anggota.data.0.username', 'sup')
+            ->where('riwayat', fn ($r) => $r->pluck('keterangan')->contains('Cakupan data: Semua → Depo sendiri')));
     }
 
     public function test_tidak_bisa_mengunci_diri_sendiri_dan_super_admin_selalu_penuh(): void
@@ -83,7 +90,8 @@ class RoleTest extends AdminTestCase
 
         // Matriks Super Admin diabaikan; login web tidak bisa ditutup.
         $super = $this->roleId('super_admin');
-        $this->actingAs($this->admin)->get("/role/{$super}/edit")->assertOk()->assertSee('Super Admin selalu punya semua hak');
+        $this->actingAs($this->admin)->get("/role/{$super}/edit")->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Role/Form')->where('superAdmin', true));
         $this->put("/role/{$super}", ['nama' => 'Super Admin', 'cakupan' => 'semua', 'hak' => []])->assertRedirect();
         $this->assertTrue((bool) DB::table('roles')->where('id', $super)->value('login_web'));
         $this->get('/provinsi')->assertOk();
@@ -97,7 +105,10 @@ class RoleTest extends AdminTestCase
         $b = $this->akun('sinta', 'sales', 2);
         $sales = $this->roleId('sales');
 
-        $this->get("/role/{$sales}/anggota")->assertOk()->assertSee('rudi.h')->assertSee('sinta');
+        $this->get("/role/{$sales}/anggota")->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Role/Anggota')
+            ->where('anggota.total', 2)
+            ->where('anggota.data', fn ($d) => $d->pluck('username')->sort()->values()->all() === ['rudi.h', 'sinta']));
         $this->post("/role/{$sales}/pindah", ['user_id' => [$a->id], 'ke' => $tujuan])->assertRedirect("/role/{$sales}/anggota");
         $this->assertSame($tujuan, (int) $a->fresh()->role_id);
         $this->assertSame($sales, (int) $b->fresh()->role_id);

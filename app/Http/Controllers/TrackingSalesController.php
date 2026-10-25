@@ -6,6 +6,7 @@ use App\Support\Tracking\TitikGps;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 
 // Riwayat lokasi sales: data lama Marketama (tracking_sales_lokasi) digabung dengan
 // titik GPS dari aplikasi HP sales motoris (trx_tracking, karyawan_id = sales_id).
@@ -16,16 +17,17 @@ class TrackingSalesController extends Controller
         $tanggal = substr((string) ($request->query('tanggal') ?? TitikGps::tanggalTerakhir('tracking_sales_lokasi', 'sales')), 0, 10);
         $people = $this->daftarSales();
 
-        return view('tracking.history', [
-            'page' => config('marketama.pages.tracking_sales_history_location'),
+        return Inertia::render('Tracking/History', [
+            'slug' => 'tracking_sales_history_location',
+            'title' => config('marketama.pages.tracking_sales_history_location.title'),
             'label' => 'Sales',
             'idParam' => 'sales_id',
-            'people' => $people,
+            'people' => $people->values()->all(),
             'groups' => $people->whereNotNull('group_id')->sortBy('koordinator_nama')->pluck('koordinator_nama', 'group_id')->all(),
             'locationsUrl' => route('tracking-sales.locations'),
             'countsUrl' => route('tracking-sales.counts'),
             'tanggal' => $tanggal,
-            'counts' => $this->countsFor($tanggal),
+            'counts' => (object) $this->countsFor($tanggal),
         ]);
     }
 

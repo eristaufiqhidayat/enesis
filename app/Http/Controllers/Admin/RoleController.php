@@ -7,17 +7,19 @@ use App\Support\Akses\Akses;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response;
 
 // Role & hak akses: daftar role, tambah/edit (cakupan data, login web/HP, matriks hak per
 // menu), anggota role + pindah role, riwayat perubahan, hapus role buatan yang kosong.
 class RoleController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): Response
     {
         $roles = DB::table('roles')->orderByDesc('bawaan')->orderBy('nama')->get();
         $hak = DB::table('role_hak')
@@ -29,17 +31,21 @@ class RoleController extends Controller
             $r->jumlah_akun = $this->anggotaQuery($r)->count();
         }
 
-        return view('role.index', ['roles' => $roles, 'cakupan' => Akses::CAKUPAN]);
+        return Inertia::render('Role/Index', [
+            'roles' => $roles,
+            'cakupan' => Akses::CAKUPAN,
+            'bisaTambah' => Akses::bisa($request->user(), 'role', 'tambah'),
+        ]);
     }
 
-    public function create(): View
+    public function create(Request $request): Response
     {
-        return $this->form(null);
+        return $this->form(null, $request);
     }
 
-    public function edit(int $id): View
+    public function edit(Request $request, int $id): Response
     {
-        return $this->form(DB::table('roles')->find($id) ?? abort(404));
+        return $this->form(DB::table('roles')->find($id) ?? abort(404), $request);
     }
 
     public function store(Request $request): RedirectResponse
@@ -99,10 +105,11 @@ class RoleController extends Controller
         return redirect()->route('role.edit', $id)->with('sukses', 'Role '.$data['nama'].' disimpan.');
     }
 
-    public function anggota(Request $request, int $id): View
+    public function anggota(Request $request, int $id): Response
     {
         $role = DB::table('roles')->find($id) ?? abort(404);
         $q = trim((string) $request->query('q'));
+        $menuAkun = array_flip(AkunController::MENU);
 
         $anggota = $this->anggotaQuery($role)
             ->leftJoin('mk_karyawan as k', 'k.id', '=', 'u.karyawan_id')
@@ -111,15 +118,32 @@ class RoleController extends Controller
                 ->orWhereRaw('LOWER(k.nama) LIKE ?', ['%'.mb_strtolower($q).'%'])))
             ->orderByRaw('LOWER(u.username)')
             ->select(['u.id', 'u.username', 'u.kategori', 'u.aktif', 'u.login_terakhir_pada', 'k.nama as karyawan', 'd.nama as depo'])
-            ->paginate(50)->withQueryString();
+            ->paginate(50)->withQueryString()
+            // Presentasi untuk Vue: tautan ke halaman akun (masih Blade) dan waktu terformat.
+            ->through(fn ($a) => [
+                'id' => $a->id,
+                'username' => $a->username,
+                'aktif' => (bool) $a->aktif,
+                'karyawan' => $a->karyawan,
+                'depo' => $a->depo,
+                'login_terakhir' => $this->waktu($a->login_terakhir_pada),
+                'url' => isset($menuAkun[$a->kategori]) ? route('akun.'.$menuAkun[$a->kategori].'.show', $a->id) : null,
+            ])
+            ->onEachSide(1);
 
-        return view('role.anggota', [
+        return Inertia::render('Role/Anggota', [
             'role' => $role,
+            'cakupan' => Akses::CAKUPAN,
             'anggota' => $anggota,
             'q' => $q,
             'roleLain' => DB::table('roles')->where('id', '!=', $id)->orderBy('nama')->pluck('nama', 'id'),
-            'riwayat' => DB::table('riwayat_admin')->where('objek', 'role')->where('objek_id', $id)->orderByDesc('id')->limit(20)->get(),
-            'menuAkun' => array_flip(AkunController::MENU),
+            'riwayat' => DB::table('riwayat_admin')->where('objek', 'role')->where('objek_id', $id)->orderByDesc('id')->limit(20)->get()
+                ->map(fn ($r) => [
+                    'keterangan' => $r->keterangan ?? $r->aksi,
+                    'aktor' => $r->aktor_nama ?? 'sistem',
+                    'waktu' => $this->waktu($r->created_at),
+                ]),
+            'bisaUbah' => Akses::bisa($request->user(), 'role', 'ubah'),
         ]);
     }
 
@@ -182,16 +206,25 @@ class RoleController extends Controller
         });
     }
 
-    private function form(?object $role): View
+    private function form(?object $role, Request $request): Response
     {
-        return view('role.form', [
+        return Inertia::render('Role/Form', [
             'role' => $role,
             'hak' => $role ? Akses::hakRole((int) $role->id) : [],
             'grup' => Akses::daftarMenu(),
             'aksi' => Akses::AKSI,
             'cakupan' => Akses::CAKUPAN,
             'jumlahAkun' => $role ? $this->anggotaQuery($role)->count() : 0,
+            'bisaUbah' => Akses::bisa($request->user(), 'role', $role ? 'ubah' : 'tambah'),
+            'bisaHapus' => (bool) $role && ! $role->bawaan && Akses::bisa($request->user(), 'role', 'hapus'),
+            'superAdmin' => (bool) $role && $role->kode === 'super_admin',
         ]);
+    }
+
+    /** Waktu tampilan riwayat & login terakhir (zona & locale sama dengan halaman Blade sebelumnya). */
+    private function waktu(?string $t): string
+    {
+        return $t ? Carbon::parse($t)->timezone('Asia/Jakarta')->locale('id')->translatedFormat('d M Y, H:i') : '—';
     }
 
     private function validasi(Request $request, ?object $role): array

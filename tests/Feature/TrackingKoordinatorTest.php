@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Concerns\LoginOtomatis;
 use Tests\TestCase;
 
@@ -15,13 +16,20 @@ class TrackingKoordinatorTest extends TestCase
     {
         DB::table('tracking_koordinator')->insert(['koordinator_id' => 7, 'nama' => 'Dian', 'depo' => 'JAKSEL']);
 
-        $response = $this->get('/tracking_koordinator_history_location')
+        $this->get('/tracking_koordinator_history_location')
             ->assertOk()
-            ->assertSee('id="tracking_map"', false)
-            ->assertSee('Dian');
-
-        $response->assertDontSee('fas fa-', false);
-        $response->assertSee('<svg', false);
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Tracking/History')
+                ->where('slug', 'tracking_koordinator_history_location')
+                ->where('label', 'Koordinator')
+                ->where('idParam', 'koordinator_id')
+                ->where('locationsUrl', route('tracking-koordinator.locations'))
+                ->where('countsUrl', route('tracking-koordinator.counts'))
+                ->has('people', 1, fn (Assert $orang) => $orang
+                    ->where('id', 7)
+                    ->where('nama', 'Dian')
+                    ->etc())
+            );
     }
 
     public function test_locations_endpoint_returns_route_in_time_order(): void

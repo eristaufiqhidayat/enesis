@@ -1,15 +1,19 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { usePage } from '@inertiajs/vue3';
+import { Link, router, usePage } from '@inertiajs/vue3';
 import Breadcrumb from '@/Components/ui/molecules/Breadcrumb.vue';
 import Button from '@/Components/ui/atoms/Button.vue';
 import Icon from '@/Components/ui/atoms/Icon.vue';
 import Tooltip from '@/Components/ui/atoms/Tooltip.vue';
 
+defineProps({ breadcrumbSlug: { type: String, default: null } });
+
 const page = usePage();
 const user = computed(() => page.props.auth?.user ?? null);
-// Logout lewat form biasa (bukan kunjungan Inertia) karena halaman login adalah Blade.
-const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+
+function keluar() {
+    router.post('/logout');
+}
 
 const notifOpen = ref(false);
 const notifWrapper = ref(null);
@@ -26,18 +30,18 @@ onUnmounted(() => document.removeEventListener('click', closeNotifOnOutsideClick
     <div class="topbar flex justify-between items-center gap-2 mb-3">
         <div>
             <h3 class="font-bold">Marketama Canvassing System</h3>
-            <Breadcrumb />
+            <Breadcrumb :current-slug="breadcrumbSlug" />
         </div>
         <div class="flex items-center gap-2">
-            <Tooltip label="Tambah Loading Barang" align="end"><a class="shortcut-btn" href="/loading_barang/add">
+            <Tooltip label="Tambah Loading Barang" align="end"><Link class="shortcut-btn" href="/loading_barang/add">
                     <Icon name="truck" />
-                </a></Tooltip>
-            <Tooltip label="Tambah Barang Canvassing" align="end"><a class="shortcut-btn" href="/barang_canvassing/add">
+                </Link></Tooltip>
+            <Tooltip label="Tambah Barang Canvassing" align="end"><Link class="shortcut-btn" href="/barang_canvassing/add">
                     <Icon name="boxes" />
-                </a></Tooltip>
-            <Tooltip label="Design Polygon Area" align="end"><a class="shortcut-btn" href="/master_area/design_area">
+                </Link></Tooltip>
+            <Tooltip label="Design Polygon Area" align="end"><Link class="shortcut-btn" href="/master_area/design_area">
                     <Icon name="shapes" />
-                </a></Tooltip>
+                </Link></Tooltip>
             <div class="relative" ref="notifWrapper">
                 <Tooltip label="Notifikasi Transaksi" align="end"><a class="notif-bell" href="#"
                         aria-label="Notifikasi Transaksi" @click.prevent="notifOpen = !notifOpen">
@@ -50,10 +54,7 @@ onUnmounted(() => document.removeEventListener('click', closeNotifOnOutsideClick
             <div v-if="user" class="topbar-user">
                 <Icon name="circle-user" />
                 <span class="topbar-user-name" :title="user.username">{{ user.name }}</span>
-                <form method="POST" action="/logout">
-                    <input type="hidden" name="_token" :value="csrfToken">
-                    <Button type="submit" variant="outline-secondary">Keluar</Button>
-                </form>
+                <Button variant="outline-secondary" @click="keluar">Keluar</Button>
             </div>
         </div>
     </div>

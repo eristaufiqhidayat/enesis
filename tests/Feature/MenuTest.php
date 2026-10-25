@@ -182,17 +182,14 @@ class MenuTest extends TestCase
         // Halaman sendiri (RekapPencapaianSkuController) yang menghitung dari penjualan aplikasi motoris, bukan tabel laporan Marketama.
         $this->get('/rekap_pencapaian_sku')
             ->assertOk()
-            ->assertViewIs('motoris.rekap-sku')
-            ->assertViewHas('tab', 'motoris')
-            ->assertSee('Avg/Day');
+            ->assertInertia(fn (Assert $page) => $page->component('Motoris/RekapSku')->where('tab', 'motoris'));
     }
 
     public function test_rekap_pencapaian_sku_tab_depo_follows_tab_query(): void
     {
         $this->get('/rekap_pencapaian_sku?tab=depo')
             ->assertOk()
-            ->assertViewHas('tab', 'depo')
-            ->assertSee('Avg/Day/Motoris');
+            ->assertInertia(fn (Assert $page) => $page->component('Motoris/RekapSku')->where('tab', 'depo'));
     }
 
     public function test_slug_lama_rekap_pencapaian_sku_motoris_redirects_to_tab_motoris(): void
@@ -225,25 +222,29 @@ class MenuTest extends TestCase
         // Halaman sendiri (MotorisReportController) yang menghitung dari tabel motoris, bukan tabel laporan Marketama.
         $this->get('/motoris_report')
             ->assertOk()
-            ->assertViewIs('motoris.report')
-            ->assertViewHas('tab', 'coverage')
-            ->assertSee('Quota Motoris');
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Motoris/Report')
+                ->where('tab', 'coverage')
+                ->has('total'));
     }
 
     public function test_motoris_report_tab_performance_follows_tab_query(): void
     {
         $this->get('/motoris_report?tab=performance')
             ->assertOk()
-            ->assertViewHas('tab', 'performance')
-            ->assertSee('HK Standar');
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Motoris/Report')
+                ->where('tab', 'performance'));
     }
 
     public function test_motoris_report_tab_absensi_follows_tab_query(): void
     {
         $this->get('/motoris_report?tab=absensi')
             ->assertOk()
-            ->assertViewHas('tab', 'absensi')
-            ->assertSee('Total Tidak Hadir');
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Motoris/Report')
+                ->where('tab', 'absensi')
+                ->has('baris.data'));
     }
 
     public function test_motoris_report_is_a_single_sidebar_menu(): void

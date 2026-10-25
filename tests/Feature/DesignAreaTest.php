@@ -2,8 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
+use App\Support\Akses\Akses;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Concerns\LoginOtomatis;
 use Tests\TestCase;
 
@@ -21,21 +24,43 @@ class DesignAreaTest extends TestCase
         DB::table('area_depo')->insert(['warehouse_id' => 48, 'name' => 'Banjarmasin', 'province' => 'Kalimantan Selatan', 'lat' => -3.36, 'lng' => 114.58]);
     }
 
-    public function test_page_and_topbar_icons_render(): void
+    public function test_page_renders_as_inertia_component_with_region_and_warehouse_props(): void
     {
         $this->seedArea();
 
-        $response = $this->get('/master_area/design_area')
+        $this->get('/master_area/design_area')
             ->assertOk()
-            ->assertSee('id="polygon_map"', false)
-            ->assertSee('Kalimantan Selatan')
-            ->assertSee('Design Polygon Area');
-
-        $response->assertDontSee('fas fa-', false);
-        $response->assertSee('<svg', false);
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Area/Design')
+                ->where('provinces', ['Kalimantan Selatan'])
+                ->has('warehouses', 1, fn (Assert $depo) => $depo->where('warehouse_id', 48)->where('name', 'Banjarmasin')->etc())
+                ->where('bisaUbah', true)
+                ->where('bisaHapus', true)
+            );
 
         $this->get('/loading_barang/add')->assertOk();
         $this->get('/barang_canvassing/add')->assertOk();
+    }
+
+    public function test_page_hides_save_and_delete_rights_when_role_lacks_them(): void
+    {
+        $this->seedArea();
+        Akses::lupakan();
+
+        $role = DB::table('roles')->insertGetId(['kode' => 'uji', 'nama' => 'Uji', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('role_hak')->insert([
+            'role_id' => $role, 'menu' => 'master_area',
+            'lihat' => true, 'tambah' => false, 'ubah' => false, 'hapus' => false, 'ekspor' => false,
+        ]);
+        $this->actingAs(User::factory()->make(['id' => 2, 'role_id' => $role, 'aktif' => true, 'wajib_ganti_password' => false]));
+
+        $this->get('/master_area/design_area')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Area/Design')
+                ->where('bisaUbah', false)
+                ->where('bisaHapus', false)
+            );
     }
 
     public function test_areas_and_cascading_options_filter_by_region(): void

@@ -6,8 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Support\Akses\Akses;
 use App\Support\Motoris\LaporanMotoris;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\AbstractPaginator;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response;
 
 // Menu Utama › Motoris Report: tab Coverage, Performance, Absensi dihitung dari tabel motoris (data HP
 // dan riwayat aplikasi lama hasil migrasi), bukan lagi dari tabel laporan Marketama.
@@ -17,7 +20,7 @@ class MotorisReportController extends Controller
 
     public const TAB = ['coverage' => 'Coverage', 'performance' => 'Performance', 'absensi' => 'Absensi'];
 
-    public function index(Request $request): View
+    public function index(Request $request): Response
     {
         $tab = array_key_exists($request->query('tab'), self::TAB) ? $request->query('tab') : 'coverage';
         $bulan = KuotaMotorisController::bulan($request);
@@ -34,20 +37,33 @@ class MotorisReportController extends Controller
             'absensi' => ['baris' => $laporan->absensi($filter)],
         };
 
-        return view('motoris.report', $data + [
-            'menu' => self::MENU,
+        return Inertia::render('Motoris/Report', [
+            'slug' => self::MENU,
             'judul' => config('marketama.pages.'.self::MENU.'.title') ?? 'Motoris Report',
             'tab' => $tab,
+            'tabs' => collect(self::TAB)->map(fn ($label, $kode) => ['key' => $kode, 'label' => $label])->values(),
             'bulan' => $bulan,
-            'laporan' => $laporan,
+            'periode' => [
+                'dari' => self::tanggal($laporan->dari),
+                'sampai' => self::tanggal($laporan->sampai),
+                'hkStandar' => $laporan->hkStandar,
+            ],
             'filter' => $filter,
             'bolehKuota' => Akses::bisa($request->user(), KuotaMotorisController::MENU),
-            'daftarDepo' => $tab === 'absensi' ? $this->daftarDepo($request) : collect(),
+            'daftarDepo' => $tab === 'absensi' ? $this->daftarDepo($request) : [],
             'daftarKoordinator' => $tab === 'absensi'
                 ? Akses::batasiKaryawan(DB::table('mk_karyawan as k')->where('k.kategori', 'koordinator')->where('k.aktif', true), $request->user())
                     ->orderBy('k.nama')->pluck('k.nama', 'k.id')
-                : collect(),
+                : [],
+            // Coverage & Performance: daftar baris per kota + total. Absensi: paginator (data, links, ...).
+            'baris' => $data['baris'] instanceof AbstractPaginator ? $data['baris'] : $data['baris']->values(),
+            'total' => $data['total'] ?? null,
         ]);
+    }
+
+    private static function tanggal(string $tanggal): string
+    {
+        return Carbon::parse($tanggal)->locale('id')->translatedFormat('d M Y');
     }
 
     private function daftarDepo(Request $request)

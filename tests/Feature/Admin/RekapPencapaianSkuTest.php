@@ -4,6 +4,7 @@ namespace Tests\Feature\Admin;
 
 use App\Support\Motoris\RekapPencapaianSku;
 use Illuminate\Support\Facades\DB;
+use Inertia\Testing\AssertableInertia as Assert;
 
 // Rekap Pencapaian SKU (Per Motoris & Per Depo) dari penjualan aplikasi motoris, rumus mengikuti Marketama.
 class RekapPencapaianSkuTest extends AdminTestCase
@@ -85,11 +86,25 @@ class RekapPencapaianSkuTest extends AdminTestCase
     public function test_halaman_dua_tab_dan_slug_lama(): void
     {
         $this->get('/rekap_pencapaian_sku?date_from=2026-10-01&date_to=2026-10-03')->assertOk()
-            ->assertSee('Hari Kerja Standar 3 hari')->assertSee('Target 5 /Hari')
-            ->assertSeeInOrder(['Pencapaian ≥ 5 /Hari', 'Rudi Hartono', '55,5', '18,5', 'Pencapaian < 5 /Hari', 'Joko Lama', 'Tidak aktif']);
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Motoris/RekapSku')
+                ->where('tab', 'motoris')
+                ->where('periode.hkStandar', 3)
+                ->where('periode.target', 5)
+                ->where('hasil.tercapai.baris.0.nama', 'Rudi Hartono')
+                ->where('hasil.tercapai.baris.0.qty', 55.5)
+                ->where('hasil.tercapai.baris.0.avg', 18.5)
+                ->where('hasil.belum.baris.0.nama', 'Joko Lama')
+                ->where('hasil.belum.baris.0.aktif', false));
 
         $this->get('/rekap_pencapaian_sku?tab=depo&date_from=2026-10-01&date_to=2026-10-03')->assertOk()
-            ->assertSee('Avg/Day/Motoris')->assertSeeInOrder(['Sidoarjo', '67,5', '16,88', 'Balaraja']);
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Motoris/RekapSku')
+                ->where('tab', 'depo')
+                ->where('hasil.tercapai.baris.0.nama', 'Sidoarjo')
+                ->where('hasil.tercapai.baris.0.qty', 67.5)
+                ->where('hasil.tercapai.baris.0.avg', 16.88)
+                ->where('hasil.belum.baris.0.nama', 'Balaraja'));
 
         // Tautan lama Marketama (nama parameter sama) diarahkan ke tab yang sesuai.
         $this->get('/rekap_pencapaian_depo_sku?date_from=2026-10-01&warehouse_id%5B0%5D=46')
@@ -120,9 +135,15 @@ class RekapPencapaianSkuTest extends AdminTestCase
         $this->actingAs($staf);
 
         $this->get('/rekap_pencapaian_sku?tab=depo&date_from=2026-10-01&date_to=2026-10-03')->assertOk()
-            ->assertSee('Balaraja')->assertDontSee('Sidoarjo')->assertDontSee('Simpan target');
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('bolehUbah', false)
+                ->where('hasil.belum.baris', fn ($baris) => collect($baris)->pluck('nama')->contains('Balaraja')
+                    && ! collect($baris)->pluck('nama')->contains('Sidoarjo')));
         // Depo di luar cakupan diabaikan walau dikirim lewat filter.
-        $this->get('/rekap_pencapaian_sku?date_from=2026-10-01&date_to=2026-10-03&warehouse_id[]=46')->assertOk()->assertDontSee('Rudi Hartono');
+        $this->get('/rekap_pencapaian_sku?date_from=2026-10-01&date_to=2026-10-03&warehouse_id[]=46')->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('hasil.tercapai.baris', fn ($baris) => ! collect($baris)->pluck('nama')->contains('Rudi Hartono'))
+                ->where('hasil.belum.baris', fn ($baris) => ! collect($baris)->pluck('nama')->contains('Rudi Hartono')));
         $this->post('/rekap_pencapaian_sku/target', ['target' => '3'])->assertForbidden();
 
         $lain = $this->akun('gudang', 'lainnya', 500, ['role_id' => $this->role('Gudang', 'semua', ['home' => ['lihat']])]);

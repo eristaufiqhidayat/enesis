@@ -9,10 +9,11 @@ penarikan dari Marketama, lengkap dengan pencarian dan paginasi.
 | Bagian | Lokasi |
 | --- | --- |
 | Struktur menu, daftar halaman, label kolom | `config/marketama.php` |
-| Layout Blade (shell halaman non-Inertia) | `resources/views/layouts/app.blade.php` |
-| Layout Inertia/Vue | `resources/js/Layouts/AppLayout.vue` |
-| Komponen UI reusable (atomic: atoms/molecules/organisms) | `resources/views/components/ui/` (Blade), `resources/js/Components/ui/` (Vue) |
+| Root template (satu-satunya Blade) | `resources/views/app.blade.php` |
+| Layout halaman (Inertia/Vue) | `resources/js/Layouts/AppLayout.vue`, `resources/js/Layouts/AuthLayout.vue` |
+| Komponen UI reusable (atomic: atoms/molecules/organisms) | `resources/js/Components/ui/` |
 | Halaman menu (tabel + cari) | `app/Http/Controllers/MenuController.php`, `resources/js/Pages/Menu/Show.vue` |
+| Halaman lain (akun, role, kehadiran, motoris, tracking, area) | controller di `app/Http/Controllers/`, halaman di `resources/js/Pages/` |
 | Migration semua tabel (101 tabel) | `database/migrations/2026_10_22_000001_create_marketama_tables.php` |
 | Seeder data referensi | `database/seeders/ReferenceDataSeeder.php`, CSV di `database/seeders/data/` |
 | Perintah impor data lengkap | `app/Console/Commands/ImportMarketama.php` |
@@ -20,37 +21,23 @@ penarikan dari Marketama, lengkap dengan pencarian dan paginasi.
 ### Komponen UI
 
 Aplikasi ini **wajib** memakai komponen UI reusable, bukan HTML yang ditulis ulang di
-setiap halaman. Ada dua pustaka paralel karena ada dua cara render (halaman menu memakai
-Inertia + Vue, halaman custom seperti tracking/area memakai Blade biasa), tapi keduanya
-disusun dengan pola atomic design yang sama dan memakai class komponen yang sama dari
-`resources/css/app.css` (`.card`, `.btn`, `.badge`, `.form-control`, `.data-table`, dst.):
+setiap halaman. Semua halaman web dirender lewat Inertia + Vue, jadi ada satu pustaka
+komponen: `resources/js/Components/ui/`. Pustaka ini disusun dengan atomic design dan
+memakai class komponen dari `resources/css/app.css` (`.card`, `.btn`, `.badge`,
+`.form-control`, `.data-table`, dst.):
 
 ```
-resources/views/components/ui/      resources/js/Components/ui/
-├── atoms/                          ├── atoms/
-│   ├── button.blade.php            │   ├── Button.vue
-│   ├── badge.blade.php             │   ├── Badge.vue
-│   ├── icon.blade.php              │   └── Icon.vue
-│   ├── label.blade.php             ├── molecules/
-│   ├── input.blade.php             │   ├── Card.vue
-│   ├── select.blade.php            │   ├── Alert.vue
-│   └── textarea.blade.php          │   └── Pagination.vue
-├── molecules/                      └── organisms/
-│   ├── card.blade.php                  ├── Sidebar.vue
-│   ├── alert.blade.php                 ├── Topbar.vue
-│   └── modal.blade.php                 └── DataTable.vue
+resources/js/Components/ui/
+├── atoms/
+│   ├── Button.vue       Badge.vue       Icon.vue
+│   ├── Input.vue        Label.vue       Select.vue
+│   └── Textarea.vue     Checkbox.vue    Radio.vue
+├── molecules/
+│   ├── Card.vue         Alert.vue       Modal.vue
+│   ├── Pagination.vue   PageHeader.vue  Tabs.vue
+│   └── Flash.vue        Breadcrumb.vue  PasswordInput.vue
 └── organisms/
-    ├── sidebar.blade.php
-    └── topbar.blade.php
-```
-
-Contoh pakai di Blade:
-
-```blade
-<x-ui.molecules.card body-class="card-body text-gray-500">
-    <x-slot:header>Judul Kartu</x-slot:header>
-    Isi kartu...
-</x-ui.molecules.card>
+    ├── Sidebar.vue      Topbar.vue      DataTable.vue
 ```
 
 Contoh pakai di Vue:

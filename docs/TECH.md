@@ -8,14 +8,14 @@ Dokumen ini merangkum teknologi yang dipakai di aplikasi Enesis Canvassing, berd
 | --- | --- |
 | Bahasa server | PHP ^8.3 |
 | Framework backend | Laravel 13 (`laravel/framework` ^13.17) |
-| Template / rendering | Laravel Blade (server-side rendering) |
+| Rendering halaman | Inertia.js + Vue 3 (root template Blade `resources/views/app.blade.php`) |
 | Database | MySQL (default `.env.example`), PostgreSQL 16 (didukung), SQLite (default `config/database.php` dan dipakai di test) |
 | Styling | Tailwind CSS 4 (lewat Vite) |
 | Ikon | Lucide (SVG self-hosted di `public/vendor/lucide/`) |
-| JavaScript | Vanilla JS, tanpa framework SPA |
+| JavaScript | Vue 3 lewat Inertia.js (navigasi halaman tanpa full reload) |
 | Peta | Leaflet, tile OpenStreetMap dan Esri |
 | Build asset | Vite 8, `laravel-vite-plugin`, `@tailwindcss/vite` |
-| Testing | PHPUnit 12 (via `php artisan test`), Mockery, Faker |
+| Testing | PHPUnit 12 (via `php artisan test`), Mockery, Faker; Vitest 5 untuk spec komponen Vue |
 | Code style | Laravel Pint |
 | Tooling dev | Laravel Pail, Laravel Tinker, Collision |
 
@@ -39,13 +39,14 @@ Dokumen ini merangkum teknologi yang dipakai di aplikasi Enesis Canvassing, berd
 
 ## Frontend
 
-- **Vue 3 + Inertia.js** untuk halaman menu tabel generik (`MenuController` me-render `Inertia::render('Menu/Show', ...)`, komponen di `resources/js/Pages/Menu/Show.vue`, layout sidebar/topbar di `resources/js/Layouts/AppLayout.vue`).
-- **Blade** untuk halaman lain (tracking, design area polygon, coming soon). Layout utama ada di `resources/views/layouts/app.blade.php`, dengan sidebar dan topbar sebagai include.
+- **Vue 3 + Inertia.js** untuk semua halaman web. Controller memanggil `Inertia::render('<Area>/<Halaman>', ...)`, dan halaman ada di `resources/js/Pages/` (mis. `Menu/Show.vue`, `Akun/`, `Role/`, `Kehadiran/`, `Motoris/`, `Tracking/`, `Area/`). Layout ada di `resources/js/Layouts/` (`AppLayout.vue` dan `AuthLayout.vue`). Sidebar dan topbar adalah organism Vue di `resources/js/Components/ui/organisms/`.
+- **Data bersama** (menu, data pencarian sidebar, hak akses, flash message, user) dikirim ke semua halaman lewat shared props di `App\Http\Middleware\HandleInertiaRequests`.
+- **Blade** hanya untuk root template `resources/views/app.blade.php` (memuat `@inertia` dan `@vite`).
 - **Tailwind CSS 4** (`resources/css/app.css`, lewat Vite) adalah satu-satunya sistem styling — tidak ada Bootstrap. Sebagian komponen umum (card, btn, form, badge, list-group, pagination, alert, modal, dropdown) didefinisikan sebagai class pendek di `app.css` lewat `@layer components` + `@apply`.
-- **Lucide** (`public/vendor/lucide/`) untuk ikon sidebar, topbar, dan halaman lain. Setiap ikon adalah file SVG, dimuat lewat atom `icon` (Blade: `resources/views/components/ui/atoms/icon.blade.php`; Vue: `resources/js/Components/ui/atoms/Icon.vue`). File disalin ke `public/vendor`, bukan diinstal lewat npm.
-- Tidak ada lagi JS komponen Bootstrap (tooltip/collapse/dropdown/modal) — diganti helper vanilla JS kecil (toggle class `hidden`) di `layouts/app.blade.php` untuk halaman Blade, dan state reaktif Vue di `AppLayout.vue`.
-- **Vanilla JavaScript** dengan `fetch` untuk memanggil endpoint JSON di halaman Blade. Token CSRF dikirim lewat header `X-CSRF-TOKEN`. Tidak ada Livewire atau Alpine.
-- **Leaflet** (`public/vendor/leaflet/`) untuk peta tracking koordinator, tracking sales, dan design polygon area. Dimuat statis, bukan lewat npm.
+- **Lucide** (`public/vendor/lucide/`) untuk ikon sidebar, topbar, dan halaman lain. Setiap ikon adalah file SVG, dimuat lewat atom `Icon` (`resources/js/Components/ui/atoms/Icon.vue`). File disalin ke `public/vendor`, bukan diinstal lewat npm.
+- Tidak ada JS komponen Bootstrap (tooltip/collapse/dropdown/modal). Interaksi seperti collapse grup sidebar, flyout, dan modal memakai state reaktif Vue di `AppLayout.vue` dan komponen `Components/ui/`.
+- **Endpoint JSON** (peta tracking, area polygon, pencarian karyawan) dipanggil dari halaman Vue dengan `fetch`, dan token CSRF dikirim lewat header `X-CSRF-TOKEN`. Tidak ada Livewire atau Alpine.
+- **Leaflet** (`public/vendor/leaflet/`) untuk peta tracking koordinator, tracking sales, dan design polygon area. Dimuat statis, bukan lewat npm. Helper ikon dan escape HTML untuk popup peta ada di `resources/js/Support/peta.js`.
 - **Layanan eksternal di browser**: tile OpenStreetMap dan Esri, serta Nominatim (OSM) untuk pencarian dan reverse geocoding alamat. Fitur peta butuh koneksi internet.
 
 ## Build asset (Vite + Tailwind)
@@ -59,6 +60,7 @@ Dokumen ini merangkum teknologi yang dipakai di aplikasi Enesis Canvassing, berd
 
 - `composer test` menjalankan `config:clear` lalu `php artisan test`.
 - Test memakai PHPUnit 12 dan SQLite in-memory.
+- Spec komponen Vue memakai Vitest: `npm test` (file `*.spec.js` di samping komponennya).
 - Code style: `vendor/bin/pint` (Laravel Pint).
 
 ## Setup lokal

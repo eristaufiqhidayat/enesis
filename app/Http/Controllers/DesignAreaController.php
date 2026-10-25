@@ -2,18 +2,29 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Akses\Akses;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 
 class DesignAreaController extends Controller
 {
     private const LEVELS = ['province', 'city', 'district', 'village'];
 
-    public function index()
+    public function index(Request $request)
     {
-        return view('area.design', [
+        return Inertia::render('Area/Design', [
+            'slug' => 'master_area',
+            'title' => 'Design Polygon Area',
             'provinces' => DB::table('area_polygon')->whereNotNull('province')->distinct()->orderBy('province')->pluck('province'),
             'warehouses' => DB::table('area_depo')->orderBy('name')->get(['warehouse_id', 'name']),
+            'bisaUbah' => Akses::bisa($request->user(), 'master_area', 'ubah'),
+            'bisaHapus' => Akses::bisa($request->user(), 'master_area', 'hapus'),
+            'kembaliUrl' => route('menu', 'master_area'),
+            'optionsUrl' => route('design-area.options'),
+            'areasUrl' => route('design-area.areas'),
+            'storeUrl' => route('design-area.store'),
+            'destroyUrl' => url('master_area/design_area/areas'),
         ]);
     }
 

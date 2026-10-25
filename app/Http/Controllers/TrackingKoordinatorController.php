@@ -6,6 +6,7 @@ use App\Support\Tracking\TitikGps;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 
 // Riwayat lokasi koordinator: data lama Marketama (tracking_koordinator_lokasi) digabung dengan
 // titik GPS dari aplikasi HP koordinator (trx_tracking, karyawan_id = koordinator_id).
@@ -15,16 +16,17 @@ class TrackingKoordinatorController extends Controller
     {
         $tanggal = $request->query('tanggal') ?? TitikGps::tanggalTerakhir('tracking_koordinator_lokasi', 'koordinator');
 
-        return view('tracking.history', [
-            'page' => config('marketama.pages.tracking_koordinator_history_location'),
+        return Inertia::render('Tracking/History', [
+            'slug' => 'tracking_koordinator_history_location',
+            'title' => config('marketama.pages.tracking_koordinator_history_location.title'),
             'label' => 'Koordinator',
             'idParam' => 'koordinator_id',
-            'people' => $this->daftarKoordinator(),
+            'people' => $this->daftarKoordinator()->values()->all(),
             'groups' => [],
             'locationsUrl' => route('tracking-koordinator.locations'),
             'countsUrl' => route('tracking-koordinator.counts'),
             'tanggal' => $tanggal,
-            'counts' => $this->countsFor($tanggal),
+            'counts' => (object) $this->countsFor($tanggal),
         ]);
     }
 
