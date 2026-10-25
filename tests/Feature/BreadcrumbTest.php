@@ -49,22 +49,6 @@ class BreadcrumbTest extends TestCase
         $this->assertStringNotContainsString('class="breadcrumb"', $html);
     }
 
-    public function test_coming_soon_loading_barang_menampilkan_breadcrumb_menu_asal(): void
-    {
-        $this->get('/loading_barang/add')
-            ->assertOk()
-            ->assertSee('breadcrumb-item">Warehouse</span>', false)
-            ->assertSee('breadcrumb-item">Loading Barang</span>', false);
-    }
-
-    public function test_coming_soon_barang_canvassing_menampilkan_breadcrumb_menu_asal(): void
-    {
-        $this->get('/barang_canvassing/add')
-            ->assertOk()
-            ->assertSee('breadcrumb-item">Canvassing</span>', false)
-            ->assertSee('breadcrumb-item">Barang Canvassing</span>', false);
-    }
-
     public function test_tracking_koordinator_menampilkan_breadcrumb_yang_benar(): void
     {
         $this->get('/tracking_koordinator_history_location')

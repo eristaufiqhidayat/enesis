@@ -1,10 +1,12 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { usePage } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import Breadcrumb from '@/Components/ui/molecules/Breadcrumb.vue';
 import Button from '@/Components/ui/atoms/Button.vue';
 import Icon from '@/Components/ui/atoms/Icon.vue';
 import Tooltip from '@/Components/ui/atoms/Tooltip.vue';
+
+defineProps({ breadcrumbSlug: { type: String, default: null } });
 
 const page = usePage();
 const user = computed(() => page.props.auth?.user ?? null);
@@ -26,15 +28,15 @@ onUnmounted(() => document.removeEventListener('click', closeNotifOnOutsideClick
     <div class="topbar flex justify-between items-center gap-2 mb-3">
         <div>
             <h3 class="font-bold">Marketama Canvassing System</h3>
-            <Breadcrumb />
+            <Breadcrumb :current-slug="breadcrumbSlug" />
         </div>
         <div class="flex items-center gap-2">
-            <Tooltip label="Tambah Loading Barang" align="end"><a class="shortcut-btn" href="/loading_barang/add">
+            <Tooltip label="Tambah Loading Barang" align="end"><Link class="shortcut-btn" href="/loading_barang/add">
                     <Icon name="truck" />
-                </a></Tooltip>
-            <Tooltip label="Tambah Barang Canvassing" align="end"><a class="shortcut-btn" href="/barang_canvassing/add">
+                </Link></Tooltip>
+            <Tooltip label="Tambah Barang Canvassing" align="end"><Link class="shortcut-btn" href="/barang_canvassing/add">
                     <Icon name="boxes" />
-                </a></Tooltip>
+                </Link></Tooltip>
             <Tooltip label="Design Polygon Area" align="end"><a class="shortcut-btn" href="/master_area/design_area">
                     <Icon name="shapes" />
                 </a></Tooltip>
