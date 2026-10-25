@@ -203,6 +203,7 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     .btn-outline-secondary { @apply border-gray-300 bg-white text-gray-600 hover:bg-gray-50; }
     .btn-outline-danger { @apply border-red-300 bg-white text-red-600 hover:bg-red-50; }
     .btn-outline-warning { @apply border-amber-300 bg-white text-amber-600 hover:bg-amber-50; }
+    .btn-outline-primary { @apply border-blue-300 bg-white text-blue-600 hover:bg-blue-50; }
 
     .card { @apply bg-white rounded-md border border-gray-200; }
     .card-header { @apply px-3 py-2.5 border-b border-gray-200; }
@@ -252,6 +253,16 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     .modal-body { @apply px-4 py-3; }
     .modal-footer { @apply flex justify-end gap-2 border-t border-gray-200 px-4 py-3; }
     .btn-close { @apply text-gray-400 hover:text-gray-600 text-lg leading-none; }
+    /* Modal lebar untuk tabel (detail depo, daftar transaksi, grafik); isi bergulir di dalam modal. */
+    .modal-content-xl { @apply flex max-h-[92vh] max-w-7xl flex-col; }
+    .modal-content-xl .modal-body { @apply overflow-auto; }
+    .modal-header-primary { @apply rounded-t-md border-0 bg-gradient-to-r from-blue-600 to-sky-400 text-white; }
+    .modal-header-primary .btn-close { @apply text-white/80 hover:text-white; }
+
+    /* Kartu ringkasan per depo (Summary All Depo). */
+    .card-header-primary { @apply rounded-t-md border-0 bg-gradient-to-r from-blue-600 to-sky-400 text-white; }
+    .stat-label { @apply mt-3 mb-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-gray-400; }
+    .stat-row { @apply flex items-center justify-between gap-2 border-b border-dashed border-gray-200 py-1; }
 
     .spinner { @apply inline-block h-3 w-3 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600 align-[-2px]; }
 }
