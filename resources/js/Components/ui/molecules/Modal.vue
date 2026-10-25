@@ -19,14 +19,18 @@ onUnmounted(() => document.removeEventListener('keydown', tutupDenganEsc));
 </script>
 
 <template>
-    <div v-if="show" class="modal-container" @click.self="emit('close')">
-        <div class="modal-content" role="dialog" aria-modal="true" :aria-label="title">
-            <div class="modal-header">
-                <h6 class="mb-0 font-semibold">{{ title }}</h6>
-                <button type="button" class="btn-close" aria-label="Tutup" @click="emit('close')">&times;</button>
-            </div>
-            <div class="modal-body"><slot /></div>
-            <div v-if="$slots.footer" class="modal-footer"><slot name="footer" /></div>
+    <Transition name="modal-backdrop">
+        <div v-if="show" class="modal-container" @click.self="emit('close')">
+            <Transition name="modal-content">
+                <div class="modal-content" role="dialog" aria-modal="true" :aria-label="title">
+                    <div class="modal-header">
+                        <h6 class="mb-0 font-semibold">{{ title }}</h6>
+                        <button type="button" class="btn-close" aria-label="Tutup" @click="emit('close')">&times;</button>
+                    </div>
+                    <div class="modal-body"><slot /></div>
+                    <div v-if="$slots.footer" class="modal-footer"><slot name="footer" /></div>
+                </div>
+            </Transition>
         </div>
-    </div>
+    </Transition>
 </template>

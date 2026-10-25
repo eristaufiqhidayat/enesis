@@ -310,6 +310,19 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     .modal-header-primary { @apply rounded-t-md border-0 bg-gradient-to-r from-blue-600 to-sky-400 text-white; }
     .modal-header-primary .btn-close { @apply text-white/80 hover:text-white; }
 
+    /* Transisi buka/tutup modal (lihat <Transition> di Modal.vue). */
+    .modal-backdrop-enter-active, .modal-backdrop-leave-active { @apply transition-opacity duration-200; }
+    .modal-backdrop-enter-from, .modal-backdrop-leave-to { @apply opacity-0; }
+    .modal-content-enter-active { @apply transition duration-200 ease-out; }
+    .modal-content-leave-active { @apply transition duration-150 ease-in; }
+    .modal-content-enter-from, .modal-content-leave-to { @apply opacity-0 scale-95; }
+
+    /* Tombol ikon info + panelnya (lihat InfoPopover.vue). Sisi/arah panel dihitung di JS, lebar dibatasi agar tidak terpotong di layar sempit. */
+    .info-popover-btn { @apply inline-flex items-center justify-center text-gray-400 hover:text-blue-600 transition-colors cursor-pointer; }
+    .info-popover-btn svg { @apply h-4 w-4; }
+    .info-popover-panel { @apply absolute z-20 w-80 max-w-[calc(100vw-2rem)] rounded-md border border-gray-200 bg-white p-3 text-xs text-gray-600 shadow-lg; }
+    .info-popover-title { @apply mb-2 border-b border-gray-100 pb-2 font-semibold text-gray-700; }
+
     /* Kartu ringkasan per depo (Summary All Depo). */
     .card-header-primary { @apply rounded-t-md border-0 bg-gradient-to-r from-blue-600 to-sky-400 text-white; }
     .stat-label { @apply mt-3 mb-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-gray-400; }
