@@ -2918,6 +2918,8 @@ return [
         'trx_outlet_baru' => [
             'title' => 'Outlet Baru dari HP',
             'sumber' => SumberOutletBaru::class,
+            // Tombol Setujui / Tolak + tautan foto (Menu/Show.vue), untuk akun dengan hak ubah outlet_all.
+            'aksi' => 'verifikasi_outlet_baru',
             'columns' => [
                 'id' => 'ID',
                 'status' => 'Status',
@@ -2933,6 +2935,7 @@ return [
                 'lng' => 'Longitude',
                 'outlet_id' => 'ID Master Outlet',
                 'recorded_at' => 'Dicatat di HP',
+                'alasan_tolak' => 'Alasan Tolak',
             ],
         ],
         'lap_outlet_all' => [

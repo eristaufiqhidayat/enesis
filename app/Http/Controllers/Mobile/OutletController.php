@@ -146,7 +146,7 @@ class OutletController extends MobileController
         return $this->dibuat(['new_outlet_id' => $id, 'status' => 'menunggu']);
     }
 
-    /** Outlet (master dan NOO yang belum ditolak) dalam radius, urut terdekat. */
+    /** Outlet (master dan NOO yang masih menunggu; yang disetujui sudah ada di master) dalam radius, urut terdekat. */
     private function sekitar(float $lat, float $lng, int $radius)
     {
         [$latMin, $latMax, $lngMin, $lngMax] = Lokasi::kotak($lat, $lng, $radius);
@@ -154,7 +154,7 @@ class OutletController extends MobileController
         $master = DB::table('mk_outlet')->whereBetween('latitude', [$latMin, $latMax])->whereBetween('longitude', [$lngMin, $lngMax])
             ->limit(500)->get()->map(fn ($o) => $this->ringkas($o, [$lat, $lng]) + ['is_new' => false]);
 
-        $baru = DB::table('trx_outlet_baru')->where('status', '!=', 'ditolak')
+        $baru = DB::table('trx_outlet_baru')->where('status', 'menunggu')
             ->whereBetween('lat', [$latMin, $latMax])->whereBetween('lng', [$lngMin, $lngMax])->limit(100)->get()
             ->map(fn ($o) => [
                 'id' => (int) $o->id,

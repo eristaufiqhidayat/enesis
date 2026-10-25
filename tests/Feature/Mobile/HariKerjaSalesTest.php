@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Mobile;
 
+use App\Models\User;
+use App\Support\Outlet\VerifikasiOutletBaru;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -193,6 +195,12 @@ class HariKerjaSalesTest extends MobileApiTestCase
         $dekat = $this->api('GET', 'outlets/nearby?lat=-6.201&lng=106.801&radius=50')->assertOk()->json('data');
         $this->assertSame([11, $baru], array_column($dekat, 'id'));
         $this->assertSame([false, true], array_column($dekat, 'is_new'));
+
+        // Setelah disetujui admin, NOO sudah ada di master: tidak muncul dobel sebagai outlet baru.
+        $outletId = app(VerifikasiOutletBaru::class)->setujui($baru, User::factory()->create());
+        $dekat = $this->api('GET', 'outlets/nearby?lat=-6.201&lng=106.801&radius=50')->assertOk()->json('data');
+        $this->assertEqualsCanonicalizing([11, $outletId], array_column($dekat, 'id'));
+        $this->assertSame([false, false], array_column($dekat, 'is_new'));
 
         $this->api('GET', 'outlets/11')->assertOk()->assertJsonPath('data.name', 'Toko Sebelas')->assertJsonPath('data.last_sale', null);
         $this->assertError($this->api('GET', 'outlets/987654'), 404, 'not_found');

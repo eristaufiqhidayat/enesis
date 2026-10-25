@@ -45,6 +45,23 @@ function kpiItems(kpi) {
     ] : [];
 }
 
+// Tab "Outlet Baru dari HP" (aksi verifikasi_outlet_baru): warna status dan tombol Setujui / Tolak.
+const warnaStatusOutletBaru = { status: { menunggu: 'warning', disetujui: 'success', ditolak: 'danger' } };
+
+function setujuiOutletBaru(row) {
+    if (window.confirm(`Setujui outlet "${row.nama}"? Outlet akan masuk master outlet dan bisa dikunjungi semua sales di areanya.`)) {
+        router.post(`/outlet_all/baru/${row.id}/setujui`, {}, { preserveScroll: true });
+    }
+}
+
+function tolakOutletBaru(row) {
+    const alasan = window.prompt(`Alasan menolak outlet "${row.nama}":`);
+
+    if (alasan && alasan.trim()) {
+        router.post(`/outlet_all/baru/${row.id}/tolak`, { alasan: alasan.trim() }, { preserveScroll: true });
+    }
+}
+
 function submitSearch() {
     const query = { q: search.value };
 
@@ -114,8 +131,20 @@ function pindahTab(key) {
                     :rows="table.rows.data"
                     :total="table.rows.total"
                     :links="table.rows.links"
-                    :badge-columns="table.name === 'checkin_pagi' ? ['checkin_pertama_hari_ini'] : []"
-                />
+                    :badge-columns="table.name === 'checkin_pagi' ? ['checkin_pertama_hari_ini'] : (table.aksi === 'verifikasi_outlet_baru' ? ['status'] : [])"
+                    :badge-variants="table.aksi === 'verifikasi_outlet_baru' ? warnaStatusOutletBaru : {}"
+                >
+                    <template v-if="table.aksi === 'verifikasi_outlet_baru'" #aksi="{ row }">
+                        <div class="flex gap-1">
+                            <Button v-if="row.foto_toko_id" tag="a" variant="light" :href="`/foto/${row.foto_toko_id}`" target="_blank" rel="noopener">Foto toko</Button>
+                            <Button v-if="row.foto_rak_id" tag="a" variant="light" :href="`/foto/${row.foto_rak_id}`" target="_blank" rel="noopener">Foto rak</Button>
+                            <template v-if="row.status === 'menunggu'">
+                                <Button variant="success" @click="setujuiOutletBaru(row)">Setujui</Button>
+                                <Button variant="outline-danger" @click="tolakOutletBaru(row)">Tolak</Button>
+                            </template>
+                        </div>
+                    </template>
+                </DataTable>
             </template>
         </template>
         <div v-else-if="!page.same_as" class="card">

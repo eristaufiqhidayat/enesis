@@ -8,6 +8,7 @@ use App\Http\Controllers\Auth\GantiPasswordController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\DesignAreaController;
 use App\Http\Controllers\MenuController;
+use App\Http\Controllers\OutletBaruController;
 use App\Http\Controllers\TrackingKoordinatorController;
 use App\Http\Controllers\TrackingSalesController;
 use Illuminate\Http\Request;
@@ -98,6 +99,12 @@ Route::middleware(['auth', 'wajib-ganti-password'])->group(function () {
             ->defaults('menu', $slug)->name("kehadiran.{$slug}");
     }
     Route::get('/foto/{id}', [KehadiranController::class, 'foto'])->whereUuid('id')->name('kehadiran.foto');
+
+    // Verifikasi outlet baru dari HP (menu All Outlet, tab Outlet Baru dari HP).
+    Route::prefix('outlet_all/baru/{id}')->name('outlet-baru.')->whereNumber('id')->controller(OutletBaruController::class)->group(function () {
+        Route::post('/setujui', 'setujui')->middleware('hak:outlet_all,ubah')->name('setujui');
+        Route::post('/tolak', 'tolak')->middleware('hak:outlet_all,ubah')->name('tolak');
+    });
 
     Route::prefix('role')->name('role.')->controller(RoleController::class)->group(function () {
         Route::get('/', 'index')->middleware('hak:role')->name('index');
