@@ -30,27 +30,33 @@ class OutletSalesTest extends AdminTestCase
         $sinta = $this->akun('sinta', 'sales', 2);
 
         // Hanya area aktif yang jadi rute (sama dengan aplikasi HP).
-        $this->get('/user_sales/'.$rudi->id)->assertOk()
-            ->assertSee('Outlet di bawah sales ini')->assertSee('1 area aktif · 2 outlet')
-            ->assertSee('Toko Makmur')->assertSee('Warung Bu Sri')
-            ->assertDontSee('Toko Gedangan')->assertDontSee('Toko Balaraja')
-            ->assertSee('Gedangan · 1 outlet · tidak aktif');
+        $outlet = $this->inertiaProps($this->get('/user_sales/'.$rudi->id), 'Akun/Show')['outletSales'];
+        $this->assertSame(1, collect($outlet['area'])->where('rute', true)->count());
+        $this->assertSame(2, $outlet['outlet']['total']);
+        $this->assertSame(['Toko Makmur', 'Warung Bu Sri'], collect($outlet['outlet']['data'])->pluck('nama')->all());
+        $gedangan = collect($outlet['area'])->firstWhere('nama', 'Gedangan');
+        $this->assertSame(1, $gedangan['jumlahOutlet']);
+        $this->assertFalse($gedangan['rute']);
 
         // Cari outlet.
-        $this->get('/user_sales/'.$rudi->id.'?cari_outlet=sri')->assertOk()
-            ->assertSee('Warung Bu Sri')->assertDontSee('Toko Makmur');
+        $cari = $this->inertiaProps($this->get('/user_sales/'.$rudi->id.'?cari_outlet=sri'), 'Akun/Show')['outletSales'];
+        $this->assertSame(['Warung Bu Sri'], collect($cari['outlet']['data'])->pluck('nama')->all());
 
         // Juga di halaman edit.
-        $this->get('/user_sales/'.$rudi->id.'/edit')->assertOk()->assertSee('Toko Makmur');
+        $edit = $this->inertiaProps($this->get('/user_sales/'.$rudi->id.'/edit'), 'Akun/Form')['outletSales'];
+        $this->assertContains('Toko Makmur', collect($edit['outlet']['data'])->pluck('nama')->all());
 
         // Sales yang semua areanya tidak aktif: semua area jadi rute.
-        $this->get('/user_sales/'.$sinta->id.'/edit')->assertOk()->assertSee('Toko Balaraja')->assertSee('1 area aktif · 1 outlet');
+        $sintaOutlet = $this->inertiaProps($this->get('/user_sales/'.$sinta->id.'/edit'), 'Akun/Form')['outletSales'];
+        $this->assertSame(['Toko Balaraja'], collect($sintaOutlet['outlet']['data'])->pluck('nama')->all());
+        $this->assertSame(1, collect($sintaOutlet['area'])->where('rute', true)->count());
 
         // Sales tanpa area.
-        $this->get('/user_sales/'.$this->akun('tegar', 'sales', 3)->id)->assertOk()->assertSee('belum punya area');
+        $tegar = $this->akun('tegar', 'sales', 3);
+        $this->assertSame([], $this->inertiaProps($this->get('/user_sales/'.$tegar->id), 'Akun/Show')['outletSales']['area']);
 
         // Akun koordinator tidak menampilkan kartu outlet.
         $koor = $this->akun('koor.satu', 'koordinator', 137);
-        $this->get('/user_koordinator/'.$koor->id)->assertOk()->assertDontSee('Outlet di bawah sales ini');
+        $this->assertNull($this->inertiaProps($this->get('/user_koordinator/'.$koor->id), 'Akun/Show')['outletSales']);
     }
 }

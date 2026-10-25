@@ -10,6 +10,12 @@ use Illuminate\Support\Facades\Hash;
 // Kelola akun login: daftar, tambah, edit, password awal, status, sesi HP, keputusan, hapus.
 class AkunTest extends AdminTestCase
 {
+    /** Username baris daftar akun dari halaman Inertia. */
+    private function usernameDaftar(string $url, string $komponen = 'Akun/Index'): array
+    {
+        return collect($this->inertiaProps($this->get($url), $komponen)['akun']['data'])->pluck('username')->all();
+    }
+
     public function test_daftar_user_sales_dari_tabel_users_dengan_filter(): void
     {
         $rudi = $this->akun('rudi.h', 'sales', 1, ['wajib_ganti_password' => true]);
@@ -20,17 +26,25 @@ class AkunTest extends AdminTestCase
         DB::table('users')->where('id', $rudi->id)->update(['sumber_jenis' => 'sales', 'sumber_id' => 2001]);
         DB::table('mobile_tokens')->insert(['user_id' => $rudi->id, 'token_hash' => str_repeat('a', 64), 'device_id' => 'X', 'device_model' => 'Redmi 10', 'app_version' => '1.0.0', 'last_used_at' => now()]);
 
-        $this->get('/user_sales')->assertOk()
-            ->assertSee('rudi.h')->assertSee('Rudi H')->assertSee('Rudi Hartono')->assertSee('Sidoarjo')->assertSee('Koor Satu')
-            ->assertSee('Redmi 10 · v1.0.0')->assertSee('Belum ganti password awal')->assertSee('Perlu keputusan admin')
-            ->assertSee('Karyawan sudah tidak aktif')->assertDontSee('>koor<', false)
-            ->assertSee('Tambah akun');
+        $props = $this->inertiaProps($this->get('/user_sales'), 'Akun/Index');
+        $baris = collect($props['akun']['data'])->keyBy('username');
+        $this->assertSame('Rudi H', $baris['rudi.h']['nickname']);
+        $this->assertSame('Rudi Hartono', $baris['rudi.h']['karyawan']);
+        $this->assertSame('Sidoarjo', $baris['rudi.h']['depo']);
+        $this->assertSame('Koor Satu', $baris['rudi.h']['koordinator']);
+        $this->assertSame('Redmi 10', $baris['rudi.h']['hp']);
+        $this->assertSame('1.0.0', $baris['rudi.h']['hpVersi']);
+        $this->assertSame('Belum ganti password awal', $baris['rudi.h']['keterangan']);
+        $this->assertSame('Perlu keputusan admin', $baris['sinta']['keterangan']);
+        $this->assertSame('Karyawan sudah tidak aktif', $baris['joko']['keterangan']);
+        $this->assertTrue($props['bisaTambah']);
 
-        $this->get('/user_sales?status=keputusan')->assertOk()->assertSee('sinta')->assertDontSee('rudi.h');
-        $this->get('/user_sales?status=nonaktif')->assertOk()->assertSee('joko')->assertDontSee('sinta');
-        $this->get('/user_sales?q=balaraja')->assertOk()->assertSee('sinta')->assertDontSee('rudi.h');
-        $this->get('/user_sales?depo=46')->assertOk()->assertSee('rudi.h')->assertDontSee('sinta');
-        $this->get('/user_koordinator')->assertOk()->assertSee('koor')->assertDontSee('rudi.h');
+        $this->assertSame(['sinta'], $this->usernameDaftar('/user_sales?status=keputusan'));
+        $this->assertSame(['joko'], $this->usernameDaftar('/user_sales?status=nonaktif'));
+        $this->assertSame(['sinta'], $this->usernameDaftar('/user_sales?q=balaraja'));
+        $this->assertContains('rudi.h', $this->usernameDaftar('/user_sales?depo=46'));
+        $this->assertNotContains('sinta', $this->usernameDaftar('/user_sales?depo=46'));
+        $this->assertSame(['koor'], $this->usernameDaftar('/user_koordinator'));
     }
 
     public function test_lihat_sales_di_bawah_koordinator(): void
@@ -42,64 +56,67 @@ class AkunTest extends AdminTestCase
         $this->akun('joko', 'sales', 4, ['aktif' => false]);
 
         // Daftar koordinator: jumlah sales aktif bertaut ke User Sales tersaring.
-        $this->get('/user_koordinator')->assertOk()
-            ->assertSee('Sales aktif')
-            ->assertSee(route('akun.user_sales.index', ['koordinator' => 137]), false);
+        $koordinator = collect($this->inertiaProps($this->get('/user_koordinator'), 'Akun/Index')['akun']['data'])->keyBy('username');
+        $this->assertSame(2, $koordinator['koor.satu']['jumlahSales']);
 
         // User Sales tersaring per koordinator.
-        $this->get('/user_sales?koordinator=137')->assertOk()
-            ->assertSee('Semua koordinator')->assertSee('rudi')->assertSee('tegar')->assertSee('joko')
-            ->assertDontSee('sinta');
+        $tersaring = $this->usernameDaftar('/user_sales?koordinator=137');
+        $this->assertEqualsCanonicalizing(['rudi', 'tegar', 'joko'], $tersaring);
 
         // Cari juga lewat nama koordinator.
-        $this->get('/user_sales?q=koor+satu')->assertOk()->assertSee('rudi')->assertDontSee('sinta');
+        $this->assertContains('rudi', $this->usernameDaftar('/user_sales?q=koor+satu'));
+        $this->assertNotContains('sinta', $this->usernameDaftar('/user_sales?q=koor+satu'));
 
         // Detail koordinator menampilkan daftar sales bawahannya.
-        $this->get('/user_koordinator/'.$koor->id)->assertOk()
-            ->assertSee('Sales di bawah koordinator ini')->assertSee('2 aktif dari 3 akun')
-            ->assertSee('rudi')->assertDontSee('sinta');
+        $detail = $this->inertiaProps($this->get('/user_koordinator/'.$koor->id), 'Akun/Show');
+        $this->assertSame(['rudi', 'tegar', 'joko'], collect($detail['salesBawahan'])->pluck('username')->all());
+        $this->assertSame(2, collect($detail['salesBawahan'])->where('aktif', true)->count());
 
         // Juga di halaman edit koordinator.
-        $this->get('/user_koordinator/'.$koor->id.'/edit')->assertOk()
-            ->assertSee('Sales di bawah koordinator ini')->assertSee('tegar');
+        $edit = $this->inertiaProps($this->get('/user_koordinator/'.$koor->id.'/edit'), 'Akun/Form');
+        $this->assertContains('tegar', collect($edit['salesBawahan'])->pluck('username')->all());
 
         // Akun sales tidak menampilkan kartu ini.
-        $this->get('/user_sales/'.User::where('username', 'rudi')->value('id'))->assertOk()
-            ->assertDontSee('Sales di bawah koordinator ini');
+        $sales = $this->inertiaProps($this->get('/user_sales/'.User::where('username', 'rudi')->value('id')), 'Akun/Show');
+        $this->assertNull($sales['salesBawahan']);
     }
 
-    public function test_klik_menu_dari_halaman_inertia_membuka_halaman_blade_penuh(): void
+    public function test_menu_akun_dirender_sebagai_halaman_inertia(): void
     {
         // Tanpa ini Inertia menampilkan halaman Blade di dalam popup.
         $this->get('/user_sales', ['X-Inertia' => 'true', 'X-Inertia-Version' => ''])
             ->assertStatus(409)->assertHeader('X-Inertia-Location', url('/user_sales'));
         $this->get('/role', ['X-Inertia' => 'true'])->assertStatus(409);
 
-        // Halaman Inertia dan permintaan biasa tidak berubah.
         $versi = (string) app(HandleInertiaRequests::class)->version(request());
+        $this->get('/user_sales', ['X-Inertia' => 'true', 'X-Inertia-Version' => $versi])
+            ->assertOk()->assertJsonPath('component', 'Akun/Index');
         $this->get('/provinsi', ['X-Inertia' => 'true', 'X-Inertia-Version' => $versi])->assertOk()->assertHeader('X-Inertia', 'true');
-        $this->get('/user_sales')->assertOk();
         $this->getJson('/user_sales/karyawan?q=ru')->assertOk();
     }
 
     public function test_tambah_akun_password_otomatis_tampil_sekali(): void
     {
-        $this->get('/user_sales/tambah')->assertOk()->assertSee('Password awal')->assertSee('name="karyawan_id"', false);
+        $this->inertiaProps($this->get('/user_sales/tambah'), 'Akun/Form');
 
         $res = $this->post('/user_sales', [
             'kategori' => 'sales', 'username' => 'Tegar', 'karyawan_id' => 3, 'password_mode' => 'otomatis', 'aktif' => '1',
-        ])->assertOk()->assertSee('hanya tampil sekali')->assertHeader('Cache-Control', 'no-store, private');
+        ])->assertOk()->assertHeader('Cache-Control', 'no-store, private');
+
+        $halaman = $res->viewData('page');
+        $this->assertSame('Akun/Password', $halaman['component']);
+        $this->assertTrue($halaman['encryptHistory']);
+        $password = $halaman['props']['password'];
 
         $user = User::where('username', 'Tegar')->firstOrFail();
-        preg_match('/id="password_awal"[^>]*>([^<]+)</', $res->getContent(), $m);
-        $this->assertTrue(Hash::check(trim($m[1]), $user->password));
+        $this->assertTrue(Hash::check($password, $user->password));
         $this->assertTrue($user->wajib_ganti_password);
         $this->assertSame('Tegar Mahendra', $user->name);
         $this->assertSame($this->roleId('sales'), (int) $user->role_id);
         $this->assertDatabaseHas('riwayat_admin', ['objek' => 'user', 'objek_id' => $user->id, 'aksi' => 'dibuat', 'aktor_id' => $this->admin->id]);
 
         // Password tidak tersimpan di session untuk dibaca ulang.
-        $this->get('/user_sales/'.$user->id)->assertOk()->assertDontSee(trim($m[1]));
+        $this->get('/user_sales/'.$user->id)->assertOk()->assertDontSee($password);
     }
 
     public function test_aturan_tambah_akun(): void
@@ -131,7 +148,8 @@ class AkunTest extends AdminTestCase
         DB::table('mobile_tokens')->insert(['user_id' => $rudi->id, 'token_hash' => str_repeat('b', 64), 'device_id' => 'X', 'last_used_at' => now()]);
         $gudangRole = $this->role('Admin Depo', 'depo', ['home' => ['lihat']]);
 
-        $this->get("/user_sales/{$rudi->id}/edit")->assertOk()->assertSee('value="rudi.h"', false)->assertDontSee('Password awal</legend>', false);
+        $edit = $this->inertiaProps($this->get("/user_sales/{$rudi->id}/edit"), 'Akun/Form');
+        $this->assertSame('rudi.h', $edit['akun']['username']);
 
         $this->put("/user_sales/{$rudi->id}", [
             'kategori' => 'sales', 'username' => 'rudi.h', 'karyawan_id' => 1, 'role_id' => $gudangRole, 'aktif' => '0',
@@ -151,11 +169,15 @@ class AkunTest extends AdminTestCase
     {
         $rudi = $this->akun('rudi.h', 'sales', 1);
 
-        $res = $this->post("/user_sales/{$rudi->id}/password")->assertOk()->assertSee('Password awal untuk rudi.h');
-        preg_match('/id="password_awal"[^>]*>([^<]+)</', $res->getContent(), $m);
+        $res = $this->post("/user_sales/{$rudi->id}/password")->assertOk()->assertHeader('Cache-Control', 'no-store, private');
+        $halaman = $res->viewData('page');
+        $this->assertSame('Akun/Password', $halaman['component']);
+        $this->assertTrue($halaman['encryptHistory']);
+        $this->assertSame('rudi.h', $halaman['props']['akun']['username']);
+        $password = $halaman['props']['password'];
 
         $rudi->refresh();
-        $this->assertTrue(Hash::check(trim($m[1]), $rudi->password));
+        $this->assertTrue(Hash::check($password, $rudi->password));
         $this->assertFalse(Hash::check('rahasia123', $rudi->password));
         $this->assertTrue($rudi->wajib_ganti_password);
     }
@@ -166,7 +188,9 @@ class AkunTest extends AdminTestCase
         $b = $this->akun('agung_877', 'sales', 1, ['perlu_keputusan' => true]);
         DB::table('mobile_tokens')->insert(['user_id' => $b->id, 'token_hash' => str_repeat('c', 64), 'device_id' => 'X', 'device_model' => 'Samsung A15', 'last_used_at' => now()]);
 
-        $this->get("/user_sales/{$a->id}")->assertOk()->assertSee('Perlu keputusan admin')->assertSee('agung_877')->assertSee('Pakai akun ini');
+        $detail = $this->inertiaProps($this->get("/user_sales/{$a->id}"), 'Akun/Show');
+        $this->assertTrue($detail['akun']['perluKeputusan']);
+        $this->assertSame('agung_877', $detail['kembar'][0]['username']);
 
         $this->post("/user_sales/{$a->id}/pakai")->assertRedirect("/user_sales/{$a->id}");
         $this->assertTrue($a->fresh()->aktif);
@@ -198,7 +222,8 @@ class AkunTest extends AdminTestCase
         $pernah = $this->akun('pernah', 'sales', 2, ['login_terakhir_pada' => now()]);
         $baru = $this->akun('baru', 'sales', 3);
 
-        $this->get("/user_sales/{$lama->id}")->assertSee('Akun dari data aplikasi lama tidak dihapus');
+        $detail = $this->inertiaProps($this->get("/user_sales/{$lama->id}"), 'Akun/Show');
+        $this->assertStringContainsString('Akun dari data aplikasi lama tidak dihapus', $detail['alasanHapus']);
         $this->delete("/user_sales/{$lama->id}", ['konfirmasi' => 'dari.lama'])->assertSessionHasErrors('hapus');
         $this->delete("/user_sales/{$pernah->id}", ['konfirmasi' => 'pernah'])->assertSessionHasErrors('hapus');
         $this->delete("/user_sales/{$baru->id}", ['konfirmasi' => 'salah'])->assertSessionHasErrors('hapus');
@@ -232,7 +257,9 @@ class AkunTest extends AdminTestCase
         // Role buatan: lihat user sales, cakupan depo sendiri (Sidoarjo).
         DB::table('users')->where('id', $staf->id)->update(['role_id' => $this->role('Admin Depo', 'depo', ['home' => ['lihat'], 'user_sales' => ['lihat']])]);
         $this->actingAs($staf->fresh());
-        $this->get('/user_sales')->assertOk()->assertSee('rudi.h')->assertDontSee('sinta')->assertDontSee('Tambah akun');
+        $props = $this->inertiaProps($this->get('/user_sales'), 'Akun/Index');
+        $this->assertSame(['rudi.h'], collect($props['akun']['data'])->pluck('username')->all());
+        $this->assertFalse($props['bisaTambah']);
         $this->get('/user_sales/tambah')->assertForbidden();
         $this->get('/user_sales/'.User::where('username', 'sinta')->value('id'))->assertNotFound();
         $this->get('/home')->assertSee('"slug":"user_sales"', false);

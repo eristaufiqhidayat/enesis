@@ -12,13 +12,15 @@ use Illuminate\Database\Query\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 // Kelola akun login (tabel users) untuk menu Super Admin, User Koordinator, User Sales, dan
 // User Lainnya: daftar, tambah, edit, detail + sesi HP, password awal, aktif/nonaktif,
@@ -43,7 +45,9 @@ class AkunController extends Controller
 
     public const ALASAN_NONAKTIF = ['Akun ganda (karyawan sama)', 'Karyawan keluar', 'Pindah peran', 'HP hilang / disalahgunakan', 'Lainnya'];
 
-    public function index(Request $request): View
+    private const ALASAN_SESI = ['logout' => 'Logout', 'device_replaced' => 'Diganti HP lain', 'relogin' => 'Login ulang', 'idle' => 'Lama tidak dipakai', 'admin' => 'Dicabut admin'];
+
+    public function index(Request $request): InertiaResponse
     {
         $menu = $this->menu($request);
         $status = array_key_exists($request->query('status'), self::STATUS) ? $request->query('status') : 'semua';
@@ -79,52 +83,86 @@ class AkunController extends Controller
         }
 
         $akun = $this->saring($dasar, $status)->orderByRaw('LOWER(u.username)')
-            ->paginate(50)->withQueryString();
+            ->paginate(50)->withQueryString()
+            ->through(fn ($a) => $this->ringkasDaftar($a));
 
-        return view('akun.index', [
+        return Inertia::render('Akun/Index', [
             'menu' => $menu,
             'judul' => $this->judul($menu),
             'akun' => $akun,
             'jumlah' => $jumlah,
+            'statusOpsi' => self::STATUS,
             'status' => $status,
             'q' => $q,
             'depo' => $depo,
             'koordinator' => $koordinator,
             'daftarDepo' => DB::table('mk_depo')->orderBy('nama')->pluck('nama', 'id'),
             'daftarKoordinator' => $daftarKoordinator,
+            'bisaTambah' => Akses::bisa($request->user(), $menu, 'tambah'),
+            'bisaUbah' => Akses::bisa($request->user(), $menu, 'ubah'),
+            'bisaHapus' => Akses::bisa($request->user(), $menu, 'hapus'),
+            'bisaLihatSales' => Akses::bisa($request->user(), 'user_sales'),
         ]);
     }
 
-    public function show(Request $request, int $id): View
+    public function show(Request $request, int $id): InertiaResponse
     {
         $menu = $this->menu($request);
         $akun = $this->cari($request, $menu, $id);
         $karyawan = $akun->karyawan_id ? DB::table('mk_karyawan')->where('id', $akun->karyawan_id)->first() : null;
+        $sesi = DB::table('mobile_tokens')->where('user_id', $id)->orderByDesc('id')->limit(10)->get();
+        $sesiAktif = $sesi->firstWhere('revoked_at', null);
 
-        return view('akun.show', [
+        return Inertia::render('Akun/Show', [
             'menu' => $menu,
             'judul' => $this->judul($menu),
-            'akun' => $akun,
-            'karyawan' => $karyawan,
+            'akun' => $this->ringkasDetail($akun),
+            'karyawan' => $karyawan ? ['id' => $karyawan->id, 'aktif' => $karyawan->aktif === null ? null : (bool) $karyawan->aktif] : null,
             'area' => $karyawan ? DB::table('mk_karyawan_area')->where('karyawan_id', $karyawan->id)->where('aktif', true)->count() : 0,
-            'kembar' => $this->akunLainKaryawanSama($akun),
-            'sesi' => DB::table('mobile_tokens')->where('user_id', $id)->orderByDesc('id')->limit(10)->get(),
-            'riwayat' => DB::table('riwayat_admin')->where('objek', 'user')->where('objek_id', $id)->orderByDesc('id')->limit(10)->get(),
+            'kembar' => $this->akunLainKaryawanSama($akun)->map(fn ($k) => [
+                'id' => $k->id,
+                'username' => $k->username,
+                'aktif' => (bool) $k->aktif,
+                'menu' => array_search($k->kategori, self::MENU, true) ?: $menu,
+            ]),
+            'sesiAktif' => $sesiAktif ? [
+                'device' => $sesiAktif->device_model,
+                'versi' => $sesiAktif->app_version,
+                'login' => $this->waktu($sesiAktif->created_at),
+                'terakhir' => $this->waktu($sesiAktif->last_used_at),
+            ] : null,
+            'sesi' => $sesi->map(fn ($s) => [
+                'device' => $s->device_model,
+                'versi' => $s->app_version,
+                'login' => $this->waktu($s->created_at),
+                'terakhir' => $this->waktu($s->last_used_at),
+                'berakhir' => $s->revoked_at ? implode(' · ', array_filter([self::ALASAN_SESI[$s->revoked_reason] ?? $s->revoked_reason, $this->waktu($s->revoked_at)])) : null,
+            ]),
+            'riwayat' => DB::table('riwayat_admin')->where('objek', 'user')->where('objek_id', $id)->orderByDesc('id')->limit(10)->get()
+                ->map(fn ($r) => [
+                    'keterangan' => $r->keterangan ?? $r->aksi,
+                    'aktor' => $r->aktor_nama,
+                    'waktu' => $this->waktu($r->created_at),
+                ]),
             'alasanHapus' => $this->alasanTidakBisaHapus($request, $akun),
             'alasanNonaktif' => self::ALASAN_NONAKTIF,
             'salesBawahan' => $this->salesBawahan($request, $akun),
             'outletSales' => $this->outletSales($request, $akun),
+            'bisaUbah' => Akses::bisa($request->user(), $menu, 'ubah'),
+            'bisaHapus' => Akses::bisa($request->user(), $menu, 'hapus'),
+            'bisaLihatSales' => Akses::bisa($request->user(), 'user_sales'),
+            'bisaAturSales' => Akses::bisa($request->user(), 'user_koordinator', 'ubah'),
         ]);
     }
 
-    public function create(Request $request): View
+    public function create(Request $request): InertiaResponse
     {
         $menu = $this->menu($request);
 
         return $this->form($request, $menu, null);
     }
 
-    public function edit(Request $request, int $id): View
+    public function edit(Request $request, int $id): InertiaResponse
     {
         $menu = $this->menu($request);
 
@@ -152,7 +190,7 @@ class AkunController extends Controller
         $menuBaru = array_search($user->kategori, self::MENU, true) ?: $menu;
 
         if ($data['password_mode'] === 'otomatis') {
-            return $this->tampilPassword($menuBaru, $user, $password);
+            return $this->tampilPassword($request, $menuBaru, $user, $password);
         }
 
         return redirect()->route("akun.{$menuBaru}.show", $user->id)->with('sukses', 'Akun '.$user->username.' dibuat.');
@@ -202,7 +240,7 @@ class AkunController extends Controller
         ]);
         Akses::catat($request->user(), 'user', $id, 'password', 'Password awal baru dibuat');
 
-        return $this->tampilPassword($menu, $akun, $password);
+        return $this->tampilPassword($request, $menu, $akun, $password);
     }
 
     public function ubahStatus(Request $request, int $id): RedirectResponse
@@ -493,7 +531,7 @@ class AkunController extends Controller
         return config("marketama.pages.{$menu}.title") ?? 'Users';
     }
 
-    private function form(Request $request, string $menu, ?object $akun): View
+    private function form(Request $request, string $menu, ?object $akun): InertiaResponse
     {
         $kategori = collect(self::MENU)->filter(fn ($k, $slug) => Akses::bisa($request->user(), $slug, $akun ? 'ubah' : 'tambah'))
             ->mapWithKeys(fn ($k, $slug) => [$k => $this->judul($slug)]);
@@ -503,16 +541,18 @@ class AkunController extends Controller
                 ->where('k.id', $akun->karyawan_id)->first(['k.id', 'k.nama', 'd.nama as depo', 'ko.nama as koordinator'])
             : null;
 
-        return view('akun.form', [
+        return Inertia::render('Akun/Form', [
             'menu' => $menu,
             'judul' => $this->judul($menu),
-            'akun' => $akun,
+            'akun' => $akun ? $this->ringkasDetail($akun) : null,
             'karyawan' => $karyawan,
             'kategoriAwal' => $akun->kategori ?? self::MENU[$menu],
             'pilihanKategori' => $kategori,
             'roles' => DB::table('roles')->orderByDesc('bawaan')->orderBy('nama')->get(['id', 'kode', 'nama']),
             'salesBawahan' => $akun ? $this->salesBawahan($request, $akun) : null,
             'outletSales' => $akun ? $this->outletSales($request, $akun) : null,
+            'bisaLihatSales' => Akses::bisa($request->user(), 'user_sales'),
+            'bisaAturSales' => Akses::bisa($request->user(), 'user_koordinator', 'ubah'),
         ]);
     }
 
@@ -533,11 +573,12 @@ class AkunController extends Controller
             ->selectRaw('ka.area_id, ka.aktif, a.nama, a.kode, (SELECT COUNT(*) FROM mk_outlet o WHERE o.area_id = ka.area_id) as jumlah_outlet')
             ->orderByDesc('ka.aktif')->orderBy('a.nama')->get()
             // Jangan pakai each(fn ...): nilai false dari callback menghentikan perulangan.
-            ->map(function ($a) use ($rute) {
-                $a->rute = in_array((int) $a->area_id, $rute, true);
-
-                return $a;
-            });
+            ->map(fn ($a) => [
+                'areaId' => $a->area_id,
+                'nama' => $a->nama,
+                'jumlahOutlet' => $a->jumlah_outlet,
+                'rute' => in_array((int) $a->area_id, $rute, true),
+            ]);
 
         $q = trim((string) $request->query('cari_outlet'));
         $outlet = DB::table('mk_outlet as o')->leftJoin('mk_area as a', 'a.id', '=', 'o.area_id')
@@ -549,7 +590,18 @@ class AkunController extends Controller
             }))
             ->orderBy('a.nama')->orderBy('o.nama')
             ->select(['o.id', 'o.kode', 'o.nama', 'o.alamat', 'o.kelurahan', 'o.kecamatan', 'o.latitude', 'o.longitude', 'o.verifikasi', 'a.nama as area'])
-            ->paginate(25, ['*'], 'hal_outlet')->withQueryString()->fragment('outlet-sales');
+            ->paginate(25, ['*'], 'hal_outlet')->withQueryString()->fragment('outlet-sales')
+            ->through(fn ($o) => [
+                'kode' => $o->kode,
+                'nama' => $o->nama,
+                'area' => $o->area,
+                'alamat' => $o->alamat,
+                'kelurahan' => $o->kelurahan,
+                'kecamatan' => $o->kecamatan,
+                'verifikasi' => $o->verifikasi,
+                'latitude' => $o->latitude,
+                'longitude' => $o->longitude,
+            ]);
 
         return ['area' => $area, 'outlet' => $outlet, 'q' => $q];
     }
@@ -562,7 +614,17 @@ class AkunController extends Controller
         }
 
         return $this->query($request->user(), 'user_sales')->where('k.koordinator_id', $akun->karyawan_id)
-            ->orderByDesc('u.aktif')->orderByRaw('LOWER(u.username)')->limit(100)->get();
+            ->orderByDesc('u.aktif')->orderByRaw('LOWER(u.username)')->limit(100)->get()
+            ->map(fn ($s) => [
+                'id' => $s->id,
+                'username' => $s->username,
+                'nama' => $s->karyawan ?? $s->name,
+                'depo' => $s->depo,
+                'aktif' => (bool) $s->aktif,
+                'hp' => $s->hp_model,
+                'hpVersi' => $s->hp_versi,
+                'loginTerakhir' => $this->waktu($s->login_terakhir_pada),
+            ]);
     }
 
     private function validasi(Request $request, ?object $lama): array
@@ -614,15 +676,67 @@ class AkunController extends Controller
         return $data;
     }
 
-    /** Password tampil langsung dari POST (tidak lewat session) dan tidak boleh di-cache browser. */
-    private function tampilPassword(string $menu, object $akun, string $password): Response
+    /**
+     * Password tampil langsung dari POST (tidak lewat session): riwayat browser dienkripsi
+     * supaya password tidak terbaca di history.state, dan respons tidak boleh di-cache browser.
+     */
+    private function tampilPassword(Request $request, string $menu, object $akun, string $password): Response
     {
-        return response()->view('akun.password', [
+        Inertia::encryptHistory();
+
+        return Inertia::render('Akun/Password', [
             'menu' => $menu,
             'judul' => $this->judul($menu),
-            'akun' => $akun,
+            'akun' => ['id' => $akun->id, 'username' => $akun->username],
             'password' => $password,
-        ])->header('Cache-Control', 'no-store, private');
+        ])->toResponse($request)->header('Cache-Control', 'no-store, private');
+    }
+
+    private function ringkasDaftar(object $a): array
+    {
+        return [
+            'id' => $a->id,
+            'username' => $a->username,
+            'nickname' => $a->nickname,
+            'karyawan' => $a->karyawan ?? $a->name,
+            'depo' => $a->depo,
+            'koordinator' => $a->koordinator,
+            'karyawanId' => $a->karyawan_id,
+            'jumlahSales' => $a->jumlah_sales ?? null,
+            'role' => $a->role,
+            'aktif' => (bool) $a->aktif,
+            'keterangan' => self::keterangan($a),
+            'hp' => $a->hp_model,
+            'hpVersi' => $a->hp_versi,
+            'loginTerakhir' => $this->waktu($a->login_terakhir_pada),
+        ];
+    }
+
+    private function ringkasDetail(object $a): array
+    {
+        return [
+            'id' => $a->id,
+            'username' => $a->username,
+            'name' => $a->name,
+            'kategori' => $a->kategori,
+            'karyawanId' => $a->karyawan_id,
+            'roleId' => $a->role_id,
+            'karyawan' => $a->karyawan,
+            'depo' => $a->depo,
+            'koordinator' => $a->koordinator,
+            'role' => $a->role,
+            'aktif' => (bool) $a->aktif,
+            'perluKeputusan' => (bool) $a->perlu_keputusan,
+            'sumberJenis' => $a->sumber_jenis,
+            'catatanMigrasi' => $a->catatan_migrasi,
+            'loginTerakhir' => $this->waktu($a->login_terakhir_pada),
+            'keterangan' => self::keterangan($a),
+        ];
+    }
+
+    private function waktu(?string $waktu): ?string
+    {
+        return $waktu ? Carbon::parse($waktu)->timezone('Asia/Jakarta')->locale('id')->translatedFormat('d M Y, H:i') : null;
     }
 
     private function akunLainKaryawanSama(object $akun)

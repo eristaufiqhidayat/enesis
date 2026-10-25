@@ -15,9 +15,9 @@ class KoordinatorSalesTest extends AdminTestCase
         $sinta = $this->akun('sinta', 'sales', 2);
         $rudi = $this->akun('rudi', 'sales', 1);
 
-        // Tombol & modal tampil di detail dan edit.
-        $this->get('/user_koordinator/'.$koor2->id)->assertOk()->assertSee('Tambah sales')->assertSee('modal-tambah-sales', false);
-        $this->get('/user_koordinator/'.$koor2->id.'/edit')->assertOk()->assertSee('Tambah sales');
+        // Tombol tambah sales tampil di detail dan edit.
+        $this->assertTrue($this->inertiaProps($this->get('/user_koordinator/'.$koor2->id), 'Akun/Show')['bisaAturSales']);
+        $this->assertTrue($this->inertiaProps($this->get('/user_koordinator/'.$koor2->id.'/edit'), 'Akun/Form')['bisaAturSales']);
 
         // Cari: rudi masih di bawah Koor Satu, akan dipindah.
         $this->getJson('/user_koordinator/'.$koor2->id.'/sales/cari?q=rudi')->assertOk()
@@ -31,8 +31,10 @@ class KoordinatorSalesTest extends AdminTestCase
         $this->post('/user_koordinator/'.$koor2->id.'/sales', ['sales_id' => $rudi->id])->assertRedirect();
         $this->assertSame(138, (int) DB::table('mk_karyawan')->where('id', 1)->value('koordinator_id'));
         $this->assertDatabaseHas('riwayat_admin', ['objek_id' => $rudi->id, 'keterangan' => 'Koordinator: Koor Satu → Koor Dua']);
-        $this->get('/user_koordinator/'.$koor2->id)->assertSee('2 aktif dari 2 akun');
-        $this->get('/user_koordinator/'.$koor->id)->assertDontSee('rudi</a>', false);
+        $bawahan = $this->inertiaProps($this->get('/user_koordinator/'.$koor2->id), 'Akun/Show')['salesBawahan'];
+        $this->assertSame(['rudi', 'sinta'], collect($bawahan)->pluck('username')->sort()->values()->all());
+        $this->assertSame(2, collect($bawahan)->where('aktif', true)->count());
+        $this->assertNotContains('rudi', collect($this->inertiaProps($this->get('/user_koordinator/'.$koor->id), 'Akun/Show')['salesBawahan'])->pluck('username')->all());
 
         // Lepas.
         $this->delete('/user_koordinator/'.$koor2->id.'/sales/'.$sinta->id)->assertRedirect();
@@ -69,7 +71,7 @@ class KoordinatorSalesTest extends AdminTestCase
         ]);
 
         $this->actingAs($lihat);
-        $this->get('/user_koordinator/'.$koor->id)->assertOk()->assertDontSee('Tambah sales');
+        $this->assertFalse($this->inertiaProps($this->get('/user_koordinator/'.$koor->id), 'Akun/Show')['bisaAturSales']);
         $this->post('/user_koordinator/'.$koor->id.'/sales', ['sales_id' => $sinta->id])->assertForbidden();
         $this->assertNull(DB::table('mk_karyawan')->where('id', 2)->value('koordinator_id'));
     }

@@ -5,6 +5,8 @@ namespace Tests\Feature\Admin;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Testing\TestResponse;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 // Dasar uji kelola akun & role: master karyawan rekaan dan akun admin (role bawaan Super Admin).
@@ -47,6 +49,14 @@ abstract class AdminTestCase extends TestCase
     protected function roleId(string $kode): int
     {
         return (int) DB::table('roles')->where('kode', $kode)->value('id');
+    }
+
+    /** Pastikan respons adalah halaman Inertia $komponen, lalu kembalikan props-nya. */
+    protected function inertiaProps(TestResponse $res, string $komponen): array
+    {
+        $res->assertInertia(fn (Assert $page) => $page->component($komponen));
+
+        return $res->viewData('page')['props'];
     }
 
     /** Buat role baru dengan hak tertentu: ['menu' => ['lihat', 'ubah'], ...]. */
