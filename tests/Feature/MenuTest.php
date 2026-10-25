@@ -271,7 +271,8 @@ class MenuTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Motoris/Report')
                 ->where('tab', 'coverage')
-                ->has('total'));
+                ->missing('laporan')
+                ->loadDeferredProps(fn (Assert $page) => $page->has('laporan.total')));
     }
 
     public function test_motoris_report_tab_performance_follows_tab_query(): void
@@ -290,7 +291,8 @@ class MenuTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Motoris/Report')
                 ->where('tab', 'absensi')
-                ->has('baris.data'));
+                ->missing('laporan')
+                ->loadDeferredProps(fn (Assert $page) => $page->has('laporan.baris.data')));
     }
 
     public function test_motoris_report_is_a_single_sidebar_menu(): void
