@@ -2,7 +2,8 @@
 defineProps({
     variant: { type: String, default: 'primary' },
     size: { type: String, default: 'sm' },
-    tag: { type: String, default: 'button' },
+    // String tag HTML, atau komponen Inertia Link agar tombol navigasi tidak full reload.
+    tag: { type: [String, Object], default: 'button' },
     type: { type: String, default: 'button' },
 });
 </script>
