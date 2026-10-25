@@ -182,17 +182,14 @@ class MenuTest extends TestCase
         // Halaman sendiri (RekapPencapaianSkuController) yang menghitung dari penjualan aplikasi motoris, bukan tabel laporan Marketama.
         $this->get('/rekap_pencapaian_sku')
             ->assertOk()
-            ->assertViewIs('motoris.rekap-sku')
-            ->assertViewHas('tab', 'motoris')
-            ->assertSee('Avg/Day');
+            ->assertInertia(fn (Assert $page) => $page->component('Motoris/RekapSku')->where('tab', 'motoris'));
     }
 
     public function test_rekap_pencapaian_sku_tab_depo_follows_tab_query(): void
     {
         $this->get('/rekap_pencapaian_sku?tab=depo')
             ->assertOk()
-            ->assertViewHas('tab', 'depo')
-            ->assertSee('Avg/Day/Motoris');
+            ->assertInertia(fn (Assert $page) => $page->component('Motoris/RekapSku')->where('tab', 'depo'));
     }
 
     public function test_slug_lama_rekap_pencapaian_sku_motoris_redirects_to_tab_motoris(): void

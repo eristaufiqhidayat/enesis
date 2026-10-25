@@ -8,7 +8,9 @@ use App\Support\Mobile\Pengaturan;
 use App\Support\Motoris\SummaryDepo;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
+use Illuminate\Support\Carbon;
+use Inertia\Inertia;
+use Inertia\Response;
 
 // Menu Utama › Summary All Depo: kartu ringkasan per depo + detail per koordinator & sales, dihitung dari
 // tabel motoris (absen, kunjungan, penjualan, join visit). Parameter tanggal sama dengan Marketama.
@@ -16,52 +18,65 @@ class SummaryDepoController extends Controller
 {
     public const MENU = 'summary_all_depo';
 
-    public function index(Request $request): View
+    public function index(Request $request): Response
     {
         [$dari, $sampai] = self::rentang($request);
         $summary = new SummaryDepo($dari, $sampai, $request->user());
         $cari = trim((string) $request->query('q'));
 
-        return view('motoris.summary-depo', [
-            'menu' => self::MENU,
+        return Inertia::render('Motoris/SummaryDepo', [
+            'slug' => self::MENU,
             'judul' => config('marketama.pages.'.self::MENU.'.title') ?? 'Summary All Depo',
-            'summary' => $summary,
+            'periode' => self::periode($summary),
             'kartu' => $summary->kartu($cari),
+            'target' => $summary->target,
+            'metrikGrafik' => collect(SummaryDepo::METRIK_GRAFIK)->map(fn ($label, $kunci) => ['key' => $kunci, 'label' => $label])->values(),
             'filter' => ['date_from' => $dari, 'date_to' => $sampai, 'q' => $cari],
             'bolehUbah' => Akses::bisa($request->user(), self::MENU, 'ubah'),
         ]);
     }
 
-    /** Lihat Detail: halaman penuh, atau potongan HTML untuk modal bila ?partial=1. */
-    public function detail(Request $request, int $depo): View
+    /** Lihat Detail: ringkasan depo + per koordinator dan sales. */
+    public function detail(Request $request, int $depo): Response
     {
         [$dari, $sampai] = self::rentang($request);
         $summary = new SummaryDepo($dari, $sampai, $request->user());
         $detail = $summary->detail($depo) ?? abort(404);
 
-        return view($request->boolean('partial') ? 'motoris._summary-detail' : 'motoris.summary-depo-detail', $detail + [
-            'menu' => self::MENU,
+        return Inertia::render('Motoris/SummaryDepoDetail', $detail + [
+            'slug' => self::MENU,
             'judul' => $detail['depo']->nama,
-            'summary' => $summary,
+            'periode' => self::periode($summary),
             'filter' => ['date_from' => $dari, 'date_to' => $sampai],
         ]);
     }
 
-    /** Detail EC & Penjualan satu depo (daftar transaksi), halaman penuh atau potongan modal. */
-    public function penjualan(Request $request, int $depo): View
+    /** Detail EC & Penjualan satu depo (daftar transaksi, dipaginasi). */
+    public function penjualan(Request $request, int $depo): Response
     {
         [$dari, $sampai] = self::rentang($request);
         $summary = new SummaryDepo($dari, $sampai, $request->user());
         $detail = $summary->detail($depo) ?? abort(404);
         $cari = trim((string) $request->query('q'));
 
-        return view($request->boolean('partial') ? 'motoris._summary-penjualan' : 'motoris.summary-depo-penjualan', $summary->penjualan($depo, $cari) + [
-            'menu' => self::MENU,
+        return Inertia::render('Motoris/SummaryDepoPenjualan', $summary->penjualan($depo, $cari) + [
+            'slug' => self::MENU,
             'judul' => 'Detail EC & Penjualan — '.$detail['depo']->nama,
             'depo' => $detail['depo'],
-            'summary' => $summary,
+            'periode' => self::periode($summary),
             'filter' => ['date_from' => $dari, 'date_to' => $sampai, 'q' => $cari],
         ]);
+    }
+
+    /** @return array{dari: string, sampai: string, sama: bool, hkKoordinator: int} */
+    private static function periode(SummaryDepo $summary): array
+    {
+        $tanggal = fn (string $t) => Carbon::parse($t)->locale('id')->translatedFormat('d F Y');
+
+        return [
+            'dari' => $tanggal($summary->dari), 'sampai' => $tanggal($summary->sampai),
+            'sama' => $summary->dari === $summary->sampai, 'hkKoordinator' => $summary->hkKoordinator,
+        ];
     }
 
     public function simpanTarget(Request $request): RedirectResponse

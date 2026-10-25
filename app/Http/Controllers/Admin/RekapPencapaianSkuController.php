@@ -7,8 +7,10 @@ use App\Support\Akses\Akses;
 use App\Support\Motoris\RekapPencapaianSku;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response;
 
 // Menu Utama › Rekap Pencapaian SKU: tab Per Motoris dan Per Depo dihitung dari penjualan aplikasi motoris
 // (trx_penjualan), bukan lagi dari tabel laporan Marketama. Parameter filter memakai nama yang sama dengan
@@ -19,7 +21,7 @@ class RekapPencapaianSkuController extends Controller
 
     public const TAB = ['motoris' => 'Per Motoris', 'depo' => 'Per Depo'];
 
-    public function index(Request $request): View
+    public function index(Request $request): Response
     {
         $tab = array_key_exists($request->query('tab'), self::TAB) ? $request->query('tab') : 'motoris';
         $hariIni = RekapPencapaianSku::hariIni();
@@ -35,18 +37,31 @@ class RekapPencapaianSkuController extends Controller
         $produk = $ids('product_id');
 
         $rekap = new RekapPencapaianSku($dari, $sampai, $depo, $produk, $request->user());
+        $hasil = $tab === 'depo' ? $rekap->perDepo() : $rekap->perMotoris();
 
-        return view('motoris.rekap-sku', [
-            'menu' => self::MENU,
+        return Inertia::render('Motoris/RekapSku', [
+            'slug' => self::MENU,
             'judul' => config('marketama.pages.'.self::MENU.'.title') ?? 'Rekap Pencapaian SKU',
             'tab' => $tab,
-            'rekap' => $rekap,
-            'hasil' => $tab === 'depo' ? $rekap->perDepo() : $rekap->perMotoris(),
+            'tabs' => collect(self::TAB)->map(fn ($label, $kode) => ['key' => $kode, 'label' => $label])->values(),
+            'periode' => [
+                'dari' => self::tanggal($dari),
+                'sampai' => self::tanggal($sampai),
+                'sama' => $dari === $sampai,
+                'hkStandar' => $rekap->hkStandar,
+                'target' => $rekap->target,
+            ],
+            'hasil' => $hasil,
             'filter' => ['date_from' => $dari, 'date_to' => $sampai, 'warehouse_id' => $depo, 'product_id' => $produk],
             'daftarDepo' => $daftarDepo,
             'daftarProduk' => DB::table('mk_produk')->orderBy('nama')->pluck('nama', 'id'),
             'bolehUbah' => Akses::bisa($request->user(), self::MENU, 'ubah'),
         ]);
+    }
+
+    private static function tanggal(string $tanggal): string
+    {
+        return Carbon::parse($tanggal)->locale('id')->translatedFormat('d M Y');
     }
 
     public function simpanTarget(Request $request): RedirectResponse
