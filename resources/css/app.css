@@ -277,6 +277,9 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     .page-item.active .page-link { @apply bg-blue-600 text-white border-blue-600 hover:bg-blue-600; }
     .page-item.disabled .page-link { @apply opacity-50 cursor-not-allowed hover:bg-transparent; }
 
+    .tab-pill { @apply px-2.5 py-1 text-xs rounded-md cursor-pointer transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200; }
+    .tab-pill.active { @apply bg-blue-600 text-white font-semibold hover:bg-blue-600; }
+
     .alert { @apply rounded-md px-3 py-2 text-sm; }
     .alert-info { @apply bg-sky-50 text-sky-700 border border-sky-100; }
     .alert-danger { @apply bg-red-50 text-red-700 border border-red-100; }
