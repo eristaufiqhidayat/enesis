@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue';
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { Deferred, Head, Link, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Button from '@/Components/ui/atoms/Button.vue';
 import Input from '@/Components/ui/atoms/Input.vue';
@@ -8,12 +8,14 @@ import Label from '@/Components/ui/atoms/Label.vue';
 import Select from '@/Components/ui/atoms/Select.vue';
 import Card from '@/Components/ui/molecules/Card.vue';
 import PageHeader from '@/Components/ui/molecules/PageHeader.vue';
+import TableSkeleton from '@/Components/ui/molecules/TableSkeleton.vue';
 import Tabs from '@/Components/ui/molecules/Tabs.vue';
 import Absensi from './partials/Absensi.vue';
 import Coverage from './partials/Coverage.vue';
 import Performance from './partials/Performance.vue';
 import { bersihkanQuery } from '@/Support/query.js';
 
+// `laporan` ({ baris, total }) kosong saat masih ditunda (lihat <Deferred> di bawah).
 const props = defineProps({
     slug: { type: String, required: true },
     judul: { type: String, required: true },
@@ -25,9 +27,11 @@ const props = defineProps({
     bolehKuota: { type: Boolean, default: false },
     daftarDepo: { type: [Object, Array], default: () => ({}) },
     daftarKoordinator: { type: [Object, Array], default: () => ({}) },
-    baris: { type: [Object, Array], required: true },
-    total: { type: Object, default: null },
+    laporan: { type: Object, default: () => ({}) },
 });
+
+// Kunjungan partial (pindah tab, Tampilkan) mengambil ulang laporan dalam satu request, tanpa skeleton.
+const PROPS_LAPORAN = ['tab', 'bulan', 'periode', 'filter', 'bolehKuota', 'daftarDepo', 'daftarKoordinator', 'laporan'];
 
 const appName = usePage().props.appName;
 
@@ -40,7 +44,7 @@ const filterDepo = ref(props.filter.depo ? String(props.filter.depo) : '');
 const filterKoordinator = ref(props.filter.koordinator ? String(props.filter.koordinator) : '');
 
 function pindahTab(kode) {
-    router.get('/motoris_report', { tab: kode, bulan: props.bulan });
+    router.get('/motoris_report', { tab: kode, bulan: props.bulan }, { only: PROPS_LAPORAN });
 }
 
 function saring() {
@@ -48,7 +52,7 @@ function saring() {
         ? { q: filterQ.value, depo: filterDepo.value, koordinator: filterKoordinator.value }
         : {};
 
-    router.get('/motoris_report', bersihkanQuery({ tab: props.tab, bulan: filterBulan.value, ...tambahan }));
+    router.get('/motoris_report', bersihkanQuery({ tab: props.tab, bulan: filterBulan.value, ...tambahan }), { only: PROPS_LAPORAN });
 }
 </script>
 
@@ -94,9 +98,15 @@ function saring() {
                 </form>
             </template>
 
-            <Coverage v-if="tab === 'coverage'" :baris="baris" :total="total" />
-            <Performance v-else-if="tab === 'performance'" :baris="baris" :total="total" />
-            <Absensi v-else :baris="baris" />
+            <Deferred data="laporan">
+                <template #fallback>
+                    <TableSkeleton />
+                </template>
+
+                <Coverage v-if="tab === 'coverage'" :baris="laporan.baris" :total="laporan.total" />
+                <Performance v-else-if="tab === 'performance'" :baris="laporan.baris" :total="laporan.total" />
+                <Absensi v-else :baris="laporan.baris" />
+            </Deferred>
         </Card>
     </AppLayout>
 </template>

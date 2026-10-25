@@ -31,12 +31,6 @@ class MotorisReportController extends Controller
             'q' => trim((string) $request->query('q')),
         ];
 
-        $data = match ($tab) {
-            'coverage' => $laporan->coverage(),
-            'performance' => $laporan->performance(),
-            'absensi' => ['baris' => $laporan->absensi($filter)],
-        };
-
         return Inertia::render('Motoris/Report', [
             'slug' => self::MENU,
             'judul' => config('marketama.pages.'.self::MENU.'.title') ?? 'Motoris Report',
@@ -55,10 +49,28 @@ class MotorisReportController extends Controller
                 ? Akses::batasiKaryawan(DB::table('mk_karyawan as k')->where('k.kategori', 'koordinator')->where('k.aktif', true), $request->user())
                     ->orderBy('k.nama')->pluck('k.nama', 'k.id')
                 : [],
-            // Coverage & Performance: daftar baris per kota + total. Absensi: paginator (data, links, ...).
+            // Hitungan tab paling berat; ditunda supaya halaman tampil dulu (lihat Motoris/Report.vue).
+            'laporan' => Inertia::defer(fn () => $this->muatLaporan($tab, $laporan, $filter), 'laporan'),
+        ]);
+    }
+
+    /**
+     * Baris dan total untuk tab aktif. Coverage & Performance: daftar baris per kota + total. Absensi: paginator.
+     *
+     * @return array{baris: mixed, total: ?object}
+     */
+    private function muatLaporan(string $tab, LaporanMotoris $laporan, array $filter): array
+    {
+        $data = match ($tab) {
+            'coverage' => $laporan->coverage(),
+            'performance' => $laporan->performance(),
+            'absensi' => ['baris' => $laporan->absensi($filter)],
+        };
+
+        return [
             'baris' => $data['baris'] instanceof AbstractPaginator ? $data['baris'] : $data['baris']->values(),
             'total' => $data['total'] ?? null,
-        ]);
+        ];
     }
 
     private static function tanggal(string $tanggal): string

@@ -93,28 +93,34 @@ class MotorisReportTest extends AdminTestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Motoris/Report')
                 ->where('tab', 'coverage')
-                ->where('baris.0.kota', 'Bodetabekten')
-                ->where('baris.1.kota', 'Surabaya')
-                ->where('baris.0.coverage', 6.7)
-                ->where('total.kota', 'TOTAL 2 CITY'));
+                ->missing('laporan')
+                ->loadDeferredProps(fn (Assert $page) => $page
+                    ->where('laporan.baris.0.kota', 'Bodetabekten')
+                    ->where('laporan.baris.1.kota', 'Surabaya')
+                    ->where('laporan.baris.0.coverage', 6.7)
+                    ->where('laporan.total.kota', 'TOTAL 2 CITY')));
 
         $this->get('/motoris_report?tab=performance&bulan=2026-10')->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Motoris/Report')
                 ->where('tab', 'performance')
-                ->where('baris.1.value', 150000)
-                ->where('total.value', 190000));
+                ->missing('laporan')
+                ->loadDeferredProps(fn (Assert $page) => $page
+                    ->where('laporan.baris.1.value', 150000)
+                    ->where('laporan.total.value', 190000)));
 
         $this->get('/motoris_report?tab=absensi&bulan=2026-10')->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Motoris/Report')
                 ->where('tab', 'absensi')
-                ->where('baris.data', function ($baris) {
-                    $nama = collect($baris)->pluck('nama')->all();
+                ->missing('laporan')
+                ->loadDeferredProps(fn (Assert $page) => $page
+                    ->where('laporan.baris.data', function ($baris) {
+                        $nama = collect($baris)->pluck('nama')->all();
 
-                    return array_values(array_intersect($nama, ['Sinta Wulandari', 'Rudi Hartono', 'Tegar Mahendra'])) === ['Sinta Wulandari', 'Rudi Hartono', 'Tegar Mahendra']
-                        && ! in_array('Joko Lama', $nama, true);
-                }));
+                        return array_values(array_intersect($nama, ['Sinta Wulandari', 'Rudi Hartono', 'Tegar Mahendra'])) === ['Sinta Wulandari', 'Rudi Hartono', 'Tegar Mahendra']
+                            && ! in_array('Joko Lama', $nama, true);
+                    })));
 
         // Slug lama tetap diarahkan ke tab yang sesuai.
         $this->get('/motoris_performance')->assertRedirect('/motoris_report?tab=performance');
@@ -136,7 +142,10 @@ class MotorisReportTest extends AdminTestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Motoris/Kuota')
                 ->where('bolehUbah', true)
-                ->where('depo', fn ($depo) => collect($depo)->contains(fn ($d) => $d['id'] === 46 && $d['sumber'] === 'marketama')));
+                ->missing('depo')->missing('riwayat')
+                ->loadDeferredProps(fn (Assert $page) => $page
+                    ->where('depo', fn ($depo) => collect($depo)->contains(fn ($d) => $d['id'] === 46 && $d['sumber'] === 'marketama'))
+                    ->has('riwayat')));
 
         $this->post('/kuota_motoris', ['bulan' => '2026-10', 'kuota' => [46 => '5', 22 => '15', 23 => '15']])
             ->assertRedirect(route('kuota-motoris.index', ['bulan' => '2026-10']))
@@ -167,13 +176,17 @@ class MotorisReportTest extends AdminTestCase
 
         $this->get('/motoris_report?bulan=2026-10')->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('total.kota', 'TOTAL 1 CITY')
-                ->where('baris', fn ($baris) => ! collect($baris)->contains(fn ($b) => $b['kota'] === 'Surabaya')));
+                ->missing('laporan')
+                ->loadDeferredProps(fn (Assert $page) => $page
+                    ->where('laporan.total.kota', 'TOTAL 1 CITY')
+                    ->where('laporan.baris', fn ($baris) => ! collect($baris)->contains(fn ($b) => $b['kota'] === 'Surabaya'))));
         $this->get('/kuota_motoris?bulan=2026-10')->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->where('bolehUbah', false)
-                ->where('depo', fn ($depo) => collect($depo)->pluck('nama')->contains('Balaraja')
-                    && ! collect($depo)->contains(fn ($d) => $d['id'] === 46)));
+                ->missing('depo')
+                ->loadDeferredProps(fn (Assert $page) => $page
+                    ->where('depo', fn ($depo) => collect($depo)->pluck('nama')->contains('Balaraja')
+                        && ! collect($depo)->contains(fn ($d) => $d['id'] === 46))));
         $this->post('/kuota_motoris', ['bulan' => '2026-10', 'kuota' => [22 => '3']])->assertForbidden();
 
         $lain = $this->akun('gudang', 'lainnya', 500, ['role_id' => $this->role('Gudang', 'semua', ['home' => ['lihat']])]);

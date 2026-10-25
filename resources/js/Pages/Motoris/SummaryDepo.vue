@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue';
-import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
+import { Deferred, Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Button from '@/Components/ui/atoms/Button.vue';
 import FieldError from '@/Components/ui/atoms/FieldError.vue';
@@ -10,6 +10,7 @@ import Label from '@/Components/ui/atoms/Label.vue';
 import Card from '@/Components/ui/molecules/Card.vue';
 import Modal from '@/Components/ui/molecules/Modal.vue';
 import PageHeader from '@/Components/ui/molecules/PageHeader.vue';
+import KartuDepoSkeleton from './partials/KartuDepoSkeleton.vue';
 import { angka, angkaRingkas } from '@/Support/format.js';
 import { bersihkanQuery } from '@/Support/query.js';
 
@@ -17,7 +18,8 @@ const props = defineProps({
     slug: { type: String, required: true },
     judul: { type: String, required: true },
     periode: { type: Object, required: true },
-    kartu: { type: Array, required: true },
+    // Kosong saat masih ditunda (lihat <Deferred> di bawah).
+    kartu: { type: Array, default: () => [] },
     target: { type: Object, required: true },
     metrikGrafik: { type: Array, required: true },
     filter: { type: Object, required: true },
@@ -27,6 +29,9 @@ const props = defineProps({
 const appName = usePage().props.appName;
 
 const subtitle = computed(() => (props.periode.sama ? props.periode.dari : `${props.periode.dari} – ${props.periode.sampai}`));
+
+// Grafik dibaca dari kartu, jadi tombol Chart baru aktif setelah kartu tiba (prop ditunda belum ada di page.props).
+const kartuDimuat = computed(() => Object.hasOwn(usePage().props, 'kartu'));
 
 // Warna achievement sama dengan Marketama: ≥ 100% hijau, 75–<100% kuning, < 75% merah.
 const warnaCapai = (n) => (n >= 100 ? 'text-green-500' : (n >= 75 ? 'text-yellow-600' : 'text-rose-500'));
@@ -44,8 +49,11 @@ function urlPenjualan(k) {
 const filterDari = ref(props.filter.date_from);
 const filterSampai = ref(props.filter.date_to);
 
+// Hanya prop yang berubah oleh filter yang dimuat ulang, supaya kartu lama tetap tampil (tanpa skeleton).
 function tampilkan() {
-    router.get('/summary_all_depo', bersihkanQuery({ date_from: filterDari.value, date_to: filterSampai.value, q: cari.value }));
+    router.get('/summary_all_depo', bersihkanQuery({ date_from: filterDari.value, date_to: filterSampai.value, q: cari.value }), {
+        only: ['kartu', 'periode', 'filter'],
+    });
 }
 
 // Cari depo langsung di kartu yang sedang tampil (tidak perlu round-trip ke server tiap ketik).
@@ -91,13 +99,17 @@ function simpanTarget() {
                 <form class="flex flex-wrap items-center gap-2" role="search" @submit.prevent="tampilkan">
                     <Input id="date_from" v-model="filterDari" type="date" aria-label="Dari tanggal" class="w-36" @change="tampilkan" />
                     <Input id="date_to" v-model="filterSampai" type="date" aria-label="Sampai tanggal" class="w-36" @change="tampilkan" />
-                    <Button type="button" @click="modal = 'grafik'"><Icon name="chart-bar" class="w-3.5 h-3.5" /> Chart</Button>
+                    <Button type="button" :disabled="!kartuDimuat" @click="modal = 'grafik'"><Icon name="chart-bar" class="w-3.5 h-3.5" /> Chart</Button>
                     <Input id="cari-depo" v-model="cari" type="search" placeholder="Cari depo…" aria-label="Cari depo" class="w-40" />
                     <Button v-if="bolehUbah" type="button" variant="outline-primary" @click="modal = 'target'"><Icon name="settings" class="w-3.5 h-3.5" /> Setting Target</Button>
                 </form>
             </template>
         </PageHeader>
 
+        <Deferred data="kartu">
+        <template #fallback>
+            <KartuDepoSkeleton />
+        </template>
         <div class="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
             <Card v-for="k in kartuTampil" :key="k.id" class="shadow-sm text-xs" header-class="card-header-primary" body-class="px-3 pb-1">
                 <template #header>
@@ -158,6 +170,7 @@ function simpanTarget() {
             </Card>
             <p v-if="!kartuTampil.length" class="text-gray-500 col-span-full">{{ kartu.length ? 'Tidak ada depo yang cocok.' : 'Tidak ada depo untuk filter ini.' }}</p>
         </div>
+        </Deferred>
 
         <p class="mt-3 text-xs text-gray-500">
             Dihitung dari data aplikasi motoris, diurutkan dari EC Achievement tertinggi. Hari kerja sales = tanggal dengan absen atau kunjungan;

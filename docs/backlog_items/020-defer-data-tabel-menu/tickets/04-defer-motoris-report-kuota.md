@@ -8,19 +8,19 @@ Terapkan pola defer + skeleton (dari tiket 01) ke `MotorisReportController` (tab
 
 ## Acceptance criteria
 
-- [ ] `GET /motoris_report` menampilkan halaman (tab) tanpa menunggu query coverage/performance/absensi; area tabel menampilkan skeleton sampai data datang.
-- [ ] Pindah tab (Coverage/Performance/Absensi) mengikuti perilaku partial reload yang sudah ada — tidak menampilkan skeleton ulang.
-- [ ] `GET /kuota_motoris` menampilkan halaman (judul, form) tanpa menunggu query baris depo + riwayat isian; area tabel/riwayat menampilkan skeleton sampai data datang.
-- [ ] Simpan kuota (`POST /kuota_motoris`) tidak terpengaruh — tetap request biasa, tidak di-defer; validasi, riwayat, dan pesan sukses/galat tetap sama seperti sebelumnya.
-- [ ] Nilai Coverage/Performance/Absensi dan data kuota/riwayat yang ditampilkan identik dengan sebelum perubahan (regresi nilai).
+- [x] `GET /motoris_report` menampilkan halaman (tab) tanpa menunggu query coverage/performance/absensi; area tabel menampilkan skeleton sampai data datang. *(Diverifikasi di browser: kunjungan penuh dari sidebar memunculkan skeleton lalu data; test `loadDeferredProps` juga lulus.)*
+- [x] Pindah tab (Coverage/Performance/Absensi) mengikuti perilaku partial reload yang sudah ada — tidak menampilkan skeleton ulang. *(Diverifikasi di browser dengan MutationObserver: pindah ke Performance dan Absensi tidak memunculkan skeleton.)*
+- [x] `GET /kuota_motoris` menampilkan halaman (judul, form) tanpa menunggu query baris depo + riwayat isian; area tabel/riwayat menampilkan skeleton sampai data datang. *(Diverifikasi di browser: skeleton tampil saat memuat lalu tabel depo; Tampilkan tidak memunculkan skeleton. Riwayat tidak teramati karena data lokal kosong.)*
+- [x] Simpan kuota (`POST /kuota_motoris`) tidak terpengaruh — tetap request biasa, tidak di-defer; validasi, riwayat, dan pesan sukses/galat tetap sama seperti sebelumnya. *(Diverifikasi: `test_admin_mengisi_kuota_berlaku_mulai_bulan` lulus, termasuk validasi dan pesan sukses.)*
+- [x] Nilai Coverage/Performance/Absensi dan data kuota/riwayat yang ditampilkan identik dengan sebelum perubahan (regresi nilai). *(Diverifikasi: asersi nilai dijalankan lewat `loadDeferredProps`, 214 test lulus.)*
 
 ## Implementation steps
 
-- [ ] Identifikasi prop berat di `MotorisReportController@index` (tiga perhitungan tab) dan `KuotaMotorisController@index` (baris depo + riwayat), bungkus masing-masing dengan `Inertia::defer(...)` mengikuti pola tiket 01.
-- [ ] Tambah skeleton (reuse `TableSkeleton.vue`) di `Pages/Motoris/Report.vue` dan `Pages/Motoris/Kuota.vue`, dibungkus `<Deferred>`.
-- [ ] Update test terkait (`tests/Feature/MotorisReportTest.php`, test kuota motoris — cek nama aktual) untuk assert nilai tidak berubah setelah defer diterapkan.
-- [ ] Verifikasi manual: buka Motoris Report (skeleton lalu data, pindah tab tanpa skeleton ulang), buka Kuota Motoris (skeleton lalu data), simpan & hapus kuota tetap berfungsi.
-- [ ] Jalankan `php artisan test`, `npm run build`, `vendor/bin/pint`.
+- [x] Identifikasi prop berat di `MotorisReportController@index` (tiga perhitungan tab) dan `KuotaMotorisController@index` (baris depo + riwayat), bungkus masing-masing dengan `Inertia::defer(...)` mengikuti pola tiket 01. *(Tab dibungkus sebagai satu prop `laporan`; depo dan riwayat masing-masing prop terpisah.)*
+- [x] Tambah skeleton (reuse `TableSkeleton.vue`) di `Pages/Motoris/Report.vue` dan `Pages/Motoris/Kuota.vue`, dibungkus `<Deferred>`. *(Baris depo dipindah ke partial baru `partials/KuotaDepoTabel.vue` agar `useForm` dibuat setelah data tiba.)*
+- [x] Update test terkait (`tests/Feature/Admin/MotorisReportTest.php`, `tests/Feature/MenuTest.php`) untuk assert nilai tidak berubah setelah defer diterapkan.
+- [ ] Verifikasi manual: buka Motoris Report (skeleton lalu data, pindah tab tanpa skeleton ulang), buka Kuota Motoris (skeleton lalu data), simpan & hapus kuota tetap berfungsi. *(Sebagian sudah dilakukan di browser: skeleton lalu data dan pindah tab/Tampilkan tanpa skeleton. Belum: simpan & hapus kuota serta pagination Absensi, karena database lokal belum punya data depo dan hanya satu halaman data.)*
+- [x] Jalankan `php artisan test`, `npm run build`, `vendor/bin/pint`. *(`php artisan test` 214/214, `npm run build` sukses, `vendor/bin/pint --test` lulus, `npm test` 34/34.)*
 
 ## Blocked by
 

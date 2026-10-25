@@ -52,6 +52,28 @@ class MenuController extends Controller
         $tanggal = $hasDateFilter ? $this->resolveTanggal($request) : null;
         // Filter depo / koordinator untuk sumber bertanggal (mis. Sales Checkin Outlet Pagi).
         $filter = ['depo' => $request->integer('depo') ?: null, 'koordinator' => $request->integer('koordinator') ?: null];
+
+        return Inertia::render('Menu/Show', [
+            'slug' => $slug,
+            'page' => [
+                ...$page,
+                'same_as_title' => $page['same_as'] ? config("marketama.pages.{$page['same_as']}.title") : null,
+            ],
+            // Query tabel yang berat ditunda ke request susulan (lihat Menu/Show.vue), supaya halaman langsung tampil.
+            'tables' => Inertia::defer(fn () => $this->muatTabel($request, $slug, $konfigTabel, $search, $tanggal, $filter), 'tables'),
+            'activeTab' => $activeTab,
+            'search' => $search,
+            'tanggal' => $tanggal,
+            'hasDateFilter' => $hasDateFilter,
+            'filter' => $filter,
+        ]);
+    }
+
+    /**
+     * Query tiap tabel di konfigurasi halaman (termasuk pencarian, filter tanggal, dan KPI).
+     */
+    private function muatTabel(Request $request, string $slug, array $konfigTabel, string $search, ?string $tanggal, array $filter): array
+    {
         $tables = [];
 
         foreach ($konfigTabel as $konfig) {
@@ -132,19 +154,7 @@ class MenuController extends Controller
             ];
         }
 
-        return Inertia::render('Menu/Show', [
-            'slug' => $slug,
-            'page' => [
-                ...$page,
-                'same_as_title' => $page['same_as'] ? config("marketama.pages.{$page['same_as']}.title") : null,
-            ],
-            'tables' => $tables,
-            'activeTab' => $activeTab,
-            'search' => $search,
-            'tanggal' => $tanggal,
-            'hasDateFilter' => $hasDateFilter,
-            'filter' => $filter,
-        ]);
+        return $tables;
     }
 
     /**

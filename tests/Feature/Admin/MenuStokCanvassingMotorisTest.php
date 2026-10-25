@@ -37,21 +37,25 @@ class MenuStokCanvassingMotorisTest extends AdminTestCase
         ]);
 
         $this->get('/stok_outlet')->assertOk()->assertInertia(fn (Assert $p) => $p
-            ->where('tables.0.name', 'lap_stok_outlet')
-            ->where('tables.0.rows.total', 2)
-            ->where('tables.0.rows.data.0.product_name', 'Adem Sari')
-            ->where('tables.0.rows.data.0.unit_name', 'Botol')
-            ->where('tables.0.rows.data.0.quantity', '4')
-            ->where('tables.0.rows.data.0.category', 'Menjual Produk')
-            ->where('tables.0.rows.data.0.datetime_checkin', '09:00:00')
-            ->where('tables.0.rows.data.0.koordinator_name', 'Koor Satu')
-            ->where('tables.0.rows.data.1.category', 'Toko Tutup'));
+            ->loadDeferredProps(fn (Assert $p) => $p
+                ->where('tables.0.name', 'lap_stok_outlet')
+                ->where('tables.0.rows.total', 2)
+                ->where('tables.0.rows.data.0.product_name', 'Adem Sari')
+                ->where('tables.0.rows.data.0.unit_name', 'Botol')
+                ->where('tables.0.rows.data.0.quantity', '4')
+                ->where('tables.0.rows.data.0.category', 'Menjual Produk')
+                ->where('tables.0.rows.data.0.datetime_checkin', '09:00:00')
+                ->where('tables.0.rows.data.0.koordinator_name', 'Koor Satu')
+                ->where('tables.0.rows.data.1.category', 'Toko Tutup')
+            ));
 
         $this->get('/lap_stok_kompetitor')->assertOk()->assertInertia(fn (Assert $p) => $p
-            ->where('tables.0.rows.total', 1)
-            ->where('tables.0.rows.data.0.product_name', 'Larutan Kaki Tiga')
-            ->where('tables.0.rows.data.0.quantity', '6')
-            ->where('tables.0.rows.data.0.outlet_code', 'OUT-1'));
+            ->loadDeferredProps(fn (Assert $p) => $p
+                ->where('tables.0.rows.total', 1)
+                ->where('tables.0.rows.data.0.product_name', 'Larutan Kaki Tiga')
+                ->where('tables.0.rows.data.0.quantity', '6')
+                ->where('tables.0.rows.data.0.outlet_code', 'OUT-1')
+            ));
     }
 
     public function test_barang_canvassing_pengembalian_dan_habis_terjual(): void
@@ -74,26 +78,32 @@ class MenuStokCanvassingMotorisTest extends AdminTestCase
         ]);
 
         $this->get('/barang_canvassing')->assertOk()->assertInertia(fn (Assert $p) => $p
-            ->where('tables.0.name', 'lap_barang_canvassing')
-            ->where('tables.0.rows.total', 3) // CNV-3 belum diterima
-            ->where('tables.0.rows.data.0.canvassing_no', 'CNV-2')
-            ->where('tables.0.rows.data.0.total_qty', '8')
-            ->where('tables.0.rows.data.0.returned', 'Belum')
-            ->where('tables.0.rows.data.1.receive_datetime', '2026-10-06 07:30:00')
-            ->where('tables.0.rows.data.1.sale_qty', '10')
-            ->where('tables.0.rows.data.1.koordinator_name', 'Koor Satu'));
+            ->loadDeferredProps(fn (Assert $p) => $p
+                ->where('tables.0.name', 'lap_barang_canvassing')
+                ->where('tables.0.rows.total', 3) // CNV-3 belum diterima
+                ->where('tables.0.rows.data.0.canvassing_no', 'CNV-2')
+                ->where('tables.0.rows.data.0.total_qty', '8')
+                ->where('tables.0.rows.data.0.returned', 'Belum')
+                ->where('tables.0.rows.data.1.receive_datetime', '2026-10-06 07:30:00')
+                ->where('tables.0.rows.data.1.sale_qty', '10')
+                ->where('tables.0.rows.data.1.koordinator_name', 'Koor Satu')
+            ));
 
         $this->get('/lap_pengembalian_barang')->assertOk()->assertInertia(fn (Assert $p) => $p
-            ->where('tables.0.rows.total', 2)
-            ->where('tables.0.rows.data.1.product_sku', 'SKU-4')
-            ->where('tables.0.rows.data.1.return_qty', '3')
-            ->where('tables.0.rows.data.1.return_datetime', '2026-10-06 17:00:00'));
+            ->loadDeferredProps(fn (Assert $p) => $p
+                ->where('tables.0.rows.total', 2)
+                ->where('tables.0.rows.data.1.product_sku', 'SKU-4')
+                ->where('tables.0.rows.data.1.return_qty', '3')
+                ->where('tables.0.rows.data.1.return_datetime', '2026-10-06 17:00:00')
+            ));
 
         $this->get('/lap_barang_habis_terjual?q=CNV-1')->assertOk()->assertInertia(fn (Assert $p) => $p
-            ->where('tables.0.rows.data.0.status_terjual', 'Habis Terjual')
-            ->where('tables.0.rows.data.0.pct_terjual', '100%')
-            ->where('tables.0.rows.data.1.sisa_qty', '3')
-            ->where('tables.0.rows.data.1.status_terjual', 'Belum Habis')
-            ->where('tables.0.rows.data.1.pct_terjual', '40%'));
+            ->loadDeferredProps(fn (Assert $p) => $p
+                ->where('tables.0.rows.data.0.status_terjual', 'Habis Terjual')
+                ->where('tables.0.rows.data.0.pct_terjual', '100%')
+                ->where('tables.0.rows.data.1.sisa_qty', '3')
+                ->where('tables.0.rows.data.1.status_terjual', 'Belum Habis')
+                ->where('tables.0.rows.data.1.pct_terjual', '40%')
+            ));
     }
 }

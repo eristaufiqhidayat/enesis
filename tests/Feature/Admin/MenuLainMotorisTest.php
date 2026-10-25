@@ -25,22 +25,26 @@ class MenuLainMotorisTest extends AdminTestCase
         DB::table('tracking_sales_lokasi')->insert(['sales_id' => 3, 'tanggal' => '2026-10-05', 'waktu' => '2026-10-05 15:00:00', 'lat' => -7.4, 'lng' => 112.4]);
 
         $this->get('/tracking_sales')->assertOk()->assertInertia(fn (Assert $p) => $p
-            ->where('tables.0.name', 'tracking_last_seen_sales')
-            ->where('tables.0.rows.total', 3) // sales aktif: Rudi, Sinta, Tegar
-            ->where('tables.0.rows.data.0.nama', 'Rudi Hartono')
-            ->where('tables.0.rows.data.0.terakhir_terlihat', '2026-10-07 11:00:00')
-            ->where('tables.0.rows.data.0.latitude', -7.2)
-            ->where('tables.0.rows.data.0.baterai', '75%')
-            ->where('tables.0.rows.data.0.sumber', 'Aplikasi HP')
-            ->where('tables.0.rows.data.1.nama', 'Sinta Wulandari')
-            ->where('tables.0.rows.data.1.terakhir_terlihat', 'Belum ada data')
-            ->where('tables.0.rows.data.2.nama', 'Tegar Mahendra')
-            ->where('tables.0.rows.data.2.terakhir_terlihat', '2026-10-05 15:00:00')
-            ->where('tables.0.rows.data.2.sumber', 'Aplikasi lama'));
+            ->loadDeferredProps(fn (Assert $p) => $p
+                ->where('tables.0.name', 'tracking_last_seen_sales')
+                ->where('tables.0.rows.total', 3) // sales aktif: Rudi, Sinta, Tegar
+                ->where('tables.0.rows.data.0.nama', 'Rudi Hartono')
+                ->where('tables.0.rows.data.0.terakhir_terlihat', '2026-10-07 11:00:00')
+                ->where('tables.0.rows.data.0.latitude', -7.2)
+                ->where('tables.0.rows.data.0.baterai', '75%')
+                ->where('tables.0.rows.data.0.sumber', 'Aplikasi HP')
+                ->where('tables.0.rows.data.1.nama', 'Sinta Wulandari')
+                ->where('tables.0.rows.data.1.terakhir_terlihat', 'Belum ada data')
+                ->where('tables.0.rows.data.2.nama', 'Tegar Mahendra')
+                ->where('tables.0.rows.data.2.terakhir_terlihat', '2026-10-05 15:00:00')
+                ->where('tables.0.rows.data.2.sumber', 'Aplikasi lama')
+            ));
 
         $this->get('/tracking_koordinator')->assertOk()->assertInertia(fn (Assert $p) => $p
-            ->where('tables.0.rows.total', 1)
-            ->where('tables.0.rows.data.0.terakhir_terlihat', '2026-10-06 08:00:00'));
+            ->loadDeferredProps(fn (Assert $p) => $p
+                ->where('tables.0.rows.total', 1)
+                ->where('tables.0.rows.data.0.terakhir_terlihat', '2026-10-06 08:00:00')
+            ));
     }
 
     public function test_lap_join_visit_dan_absensi_koordinator(): void
@@ -52,8 +56,10 @@ class MenuLainMotorisTest extends AdminTestCase
         ]);
 
         $this->get('/lap_join_visit')->assertOk()->assertInertia(fn (Assert $p) => $p
-            ->where('tables.0.name', 'trx_join_visit')
-            ->where('tables.0.rows.data.0.koordinator', 'Koor Satu'));
+            ->loadDeferredProps(fn (Assert $p) => $p
+                ->where('tables.0.name', 'trx_join_visit')
+                ->where('tables.0.rows.data.0.koordinator', 'Koor Satu')
+            ));
 
         $this->get('/lap_absensi_koordinator?dari=2026-10-06&sampai=2026-10-06')->assertOk()
             ->assertSee('Koor Satu')->assertDontSee('Rudi Hartono');
@@ -70,12 +76,14 @@ class MenuLainMotorisTest extends AdminTestCase
         ]);
 
         $this->get('/login_session')->assertOk()->assertInertia(fn (Assert $p) => $p
-            ->where('tables.0.rows.total', 1)
-            ->where('tables.0.rows.data.0.username_nickname', 'rudi')
-            ->where('tables.0.rows.data.0.nama_karyawan', 'Rudi Hartono')
-            ->where('tables.0.rows.data.0.nama_koordinator', 'Koor Satu')
-            ->where('tables.0.rows.data.0.device_token', 'Redmi 12 · HP-123 · v1.1.0')
-            ->where('tables.0.rows.data.0.terakhir_aktif', '2026-10-07 10:00:00'));
+            ->loadDeferredProps(fn (Assert $p) => $p
+                ->where('tables.0.rows.total', 1)
+                ->where('tables.0.rows.data.0.username_nickname', 'rudi')
+                ->where('tables.0.rows.data.0.nama_karyawan', 'Rudi Hartono')
+                ->where('tables.0.rows.data.0.nama_koordinator', 'Koor Satu')
+                ->where('tables.0.rows.data.0.device_token', 'Redmi 12 · HP-123 · v1.1.0')
+                ->where('tables.0.rows.data.0.terakhir_aktif', '2026-10-07 10:00:00')
+            ));
     }
 
     public function test_lap_insentif_sales_per_bulan(): void
@@ -91,13 +99,15 @@ class MenuLainMotorisTest extends AdminTestCase
         DB::table('trx_penjualan')->insert([$jual('A', '2026-10-01', true, 10), $jual('B', '2026-10-06', true, 5), $jual('C', '2026-10-06', false, 0), $jual('D', '2026-09-30', true, 99)]);
 
         $this->get('/lap_insentif_sales?tanggal=2026-10-15')->assertOk()->assertInertia(fn (Assert $p) => $p
-            ->where('tables.0.rows.data.0.nama_sales', 'Rudi Hartono')
-            ->where('tables.0.rows.data.0.periode', 'Oktober 2026')
-            ->where('tables.0.rows.data.0.no_payroll', 'INS-202610-1')
-            ->where('tables.0.rows.data.0.total_ec', 2)
-            ->where('tables.0.rows.data.0.insentif_ec', 'Rp 50.000')
-            ->where('tables.0.rows.data.0.insentif_poin', 'Rp 1.500')
-            ->where('tables.0.rows.data.0.total_insentif', 'Rp 51.500')
-            ->where('tables.0.kpi.3.value', 'Rp 50.000'));
+            ->loadDeferredProps(fn (Assert $p) => $p
+                ->where('tables.0.rows.data.0.nama_sales', 'Rudi Hartono')
+                ->where('tables.0.rows.data.0.periode', 'Oktober 2026')
+                ->where('tables.0.rows.data.0.no_payroll', 'INS-202610-1')
+                ->where('tables.0.rows.data.0.total_ec', 2)
+                ->where('tables.0.rows.data.0.insentif_ec', 'Rp 50.000')
+                ->where('tables.0.rows.data.0.insentif_poin', 'Rp 1.500')
+                ->where('tables.0.rows.data.0.total_insentif', 'Rp 51.500')
+                ->where('tables.0.kpi.3.value', 'Rp 50.000')
+            ));
     }
 }

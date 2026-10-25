@@ -28,7 +28,8 @@ class SummaryDepoController extends Controller
             'slug' => self::MENU,
             'judul' => config('marketama.pages.'.self::MENU.'.title') ?? 'Summary All Depo',
             'periode' => self::periode($summary),
-            'kartu' => $summary->kartu($cari),
+            // Kartu per depo paling berat; ditunda supaya halaman tampil dulu (lihat Motoris/SummaryDepo.vue).
+            'kartu' => Inertia::defer(fn () => $summary->kartu($cari), 'kartu'),
             'target' => $summary->target,
             'metrikGrafik' => collect(SummaryDepo::METRIK_GRAFIK)->map(fn ($label, $kunci) => ['key' => $kunci, 'label' => $label])->values(),
             'filter' => ['date_from' => $dari, 'date_to' => $sampai, 'q' => $cari],
@@ -41,13 +42,18 @@ class SummaryDepoController extends Controller
     {
         [$dari, $sampai] = self::rentang($request);
         $summary = new SummaryDepo($dari, $sampai, $request->user());
-        $detail = $summary->detail($depo) ?? abort(404);
+        $identitas = $summary->depo($depo) ?? abort(404);
+        // Ringkasan tim dihitung sekali, lalu dibagi ke dua prop yang ditunda (total dan tim).
+        $ringkasan = fn () => once(fn () => $summary->detail($depo));
 
-        return Inertia::render('Motoris/SummaryDepoDetail', $detail + [
+        return Inertia::render('Motoris/SummaryDepoDetail', [
             'slug' => self::MENU,
-            'judul' => $detail['depo']->nama,
+            'judul' => $identitas->nama,
+            'depo' => $identitas,
             'periode' => self::periode($summary),
             'filter' => ['date_from' => $dari, 'date_to' => $sampai],
+            'total' => Inertia::defer(fn () => $ringkasan()['total'], 'detail'),
+            'tim' => Inertia::defer(fn () => $ringkasan()['tim'], 'detail'),
         ]);
     }
 
@@ -56,15 +62,19 @@ class SummaryDepoController extends Controller
     {
         [$dari, $sampai] = self::rentang($request);
         $summary = new SummaryDepo($dari, $sampai, $request->user());
-        $detail = $summary->detail($depo) ?? abort(404);
+        $identitas = $summary->depo($depo) ?? abort(404);
         $cari = trim((string) $request->query('q'));
+        // Daftar transaksi dan total dihitung sekali, lalu dibagi ke dua prop yang ditunda.
+        $hasil = fn () => once(fn () => $summary->penjualan($depo, $cari));
 
-        return Inertia::render('Motoris/SummaryDepoPenjualan', $summary->penjualan($depo, $cari) + [
+        return Inertia::render('Motoris/SummaryDepoPenjualan', [
             'slug' => self::MENU,
-            'judul' => 'Detail EC & Penjualan — '.$detail['depo']->nama,
-            'depo' => $detail['depo'],
+            'judul' => 'Detail EC & Penjualan — '.$identitas->nama,
+            'depo' => $identitas,
             'periode' => self::periode($summary),
             'filter' => ['date_from' => $dari, 'date_to' => $sampai, 'q' => $cari],
+            'total' => Inertia::defer(fn () => $hasil()['total'], 'penjualan'),
+            'baris' => Inertia::defer(fn () => $hasil()['baris'], 'penjualan'),
         ]);
     }
 

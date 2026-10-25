@@ -15,6 +15,8 @@ const props = defineProps({
     // Tanpa peta: terisi = success.
     badgeVariants: { type: Object, default: () => ({}) },
     emptyText: { type: String, default: 'Tidak ada data.' },
+    // Prop Inertia yang diambil ulang saat pindah halaman tabel (lihat Pagination).
+    paginationOnly: { type: Array, default: () => [] },
 });
 
 // Kolom "Aksi" muncul bila halaman mengisi slot #aksi="{ row }".
@@ -65,7 +67,7 @@ function badgeVariant(column, value) {
         <template #footer>
             <div class="flex justify-between items-center">
                 <small class="text-gray-500">Total {{ formatTotal(total) }} data</small>
-                <Pagination :links="links" />
+                <Pagination :links="links" :only="paginationOnly" />
             </div>
         </template>
     </Card>

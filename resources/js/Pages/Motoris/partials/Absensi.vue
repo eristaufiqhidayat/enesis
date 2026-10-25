@@ -38,6 +38,6 @@ defineProps({ baris: { type: Object, required: true } });
         </tbody>
     </table>
     <div v-if="baris.last_page > 1" class="p-3">
-        <Pagination :links="baris.links" />
+        <Pagination :links="baris.links" :only="['laporan']" />
     </div>
 </template>

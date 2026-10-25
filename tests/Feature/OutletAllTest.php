@@ -37,15 +37,17 @@ class OutletAllTest extends TestCase
                 ->component('Menu/Show')
                 ->where('activeTab', 'master')
                 ->where('page.same_as', null)
-                ->has('tables', 1)
-                ->where('tables.0.name', 'mk_outlet')
-                ->where('tables.0.rows.total', 2)
-                ->where('tables.0.rows.data.0.id', 1)
-                ->where('tables.0.rows.data.0.area', 'Bekasi Timur 01')
-                ->where('tables.0.rows.data.0.depo', 'Depo Bekasi')
-                // Outlet tanpa area tetap tampil, area "-" seperti aplikasi lama.
-                ->where('tables.0.rows.data.1.area', '-')
-                ->where('tables.0.rows.data.1.depo', null)
+                ->loadDeferredProps(fn (Assert $page) => $page
+                    ->has('tables', 1)
+                    ->where('tables.0.name', 'mk_outlet')
+                    ->where('tables.0.rows.total', 2)
+                    ->where('tables.0.rows.data.0.id', 1)
+                    ->where('tables.0.rows.data.0.area', 'Bekasi Timur 01')
+                    ->where('tables.0.rows.data.0.depo', 'Depo Bekasi')
+                    // Outlet tanpa area tetap tampil, area "-" seperti aplikasi lama.
+                    ->where('tables.0.rows.data.1.area', '-')
+                    ->where('tables.0.rows.data.1.depo', null)
+                )
             );
     }
 
@@ -59,8 +61,10 @@ class OutletAllTest extends TestCase
         $this->get('/outlet_all?q=bekasi')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('tables.0.rows.total', 1)
-                ->where('tables.0.rows.data.0.nama', 'Toko Satu')
+                ->loadDeferredProps(fn (Assert $page) => $page
+                    ->where('tables.0.rows.total', 1)
+                    ->where('tables.0.rows.data.0.nama', 'Toko Satu')
+                )
             );
     }
 
@@ -76,14 +80,16 @@ class OutletAllTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->where('activeTab', 'baru')
-                ->has('tables', 1)
-                ->where('tables.0.name', 'trx_outlet_baru')
-                ->where('tables.0.rows.total', 2)
-                ->where('tables.0.rows.data.0.nama', 'Warung Menunggu')
-                ->where('tables.0.rows.data.0.sales', 'Budi Motoris')
-                ->where('tables.0.rows.data.0.depo', 'Depo Bekasi')
-                ->where('tables.0.rows.data.0.area', 'Bekasi Timur 01')
-                ->where('tables.0.rows.data.1.outlet_id', 1)
+                ->loadDeferredProps(fn (Assert $page) => $page
+                    ->has('tables', 1)
+                    ->where('tables.0.name', 'trx_outlet_baru')
+                    ->where('tables.0.rows.total', 2)
+                    ->where('tables.0.rows.data.0.nama', 'Warung Menunggu')
+                    ->where('tables.0.rows.data.0.sales', 'Budi Motoris')
+                    ->where('tables.0.rows.data.0.depo', 'Depo Bekasi')
+                    ->where('tables.0.rows.data.0.area', 'Bekasi Timur 01')
+                    ->where('tables.0.rows.data.1.outlet_id', 1)
+                )
             );
     }
 
@@ -95,10 +101,12 @@ class OutletAllTest extends TestCase
         $this->get('/lap_outlet_all')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('tables.0.name', 'lap_outlet_all')
-                ->where('tables.0.rows.total', 1)
-                ->where('tables.0.rows.data.0.outlet_name', 'Toko Satu')
-                ->where('tables.0.rows.data.0.warehouse_name', 'Depo Bekasi')
+                ->loadDeferredProps(fn (Assert $page) => $page
+                    ->where('tables.0.name', 'lap_outlet_all')
+                    ->where('tables.0.rows.total', 1)
+                    ->where('tables.0.rows.data.0.outlet_name', 'Toko Satu')
+                    ->where('tables.0.rows.data.0.warehouse_name', 'Depo Bekasi')
+                )
             );
     }
 }

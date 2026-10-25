@@ -34,8 +34,42 @@ class MenuTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Menu/Show')
-                ->where('tables.0.rows.data.0.nama_provinsi', 'Jawa Barat')
-                ->where('tables.0.rows.total', 1)
+                ->missing('tables')
+                ->loadDeferredProps(fn (Assert $page) => $page
+                    ->where('tables.0.rows.data.0.nama_provinsi', 'Jawa Barat')
+                    ->where('tables.0.rows.total', 1)
+                )
+            );
+    }
+
+    public function test_tables_is_deferred_on_initial_visit_and_loaded_on_partial_reload(): void
+    {
+        // Query tabel ditunda (Inertia defer): respons awal tidak membawa `tables`, lalu dimuat lewat partial reload.
+        DB::table('provinsi')->insert(['kode' => '32', 'nama_provinsi' => 'Jawa Barat']);
+
+        $this->get('/provinsi')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Menu/Show')
+                ->missing('tables')
+                ->where('slug', 'provinsi')
+                ->loadDeferredProps(fn (Assert $page) => $page
+                    ->has('tables', 1)
+                    ->where('tables.0.name', 'provinsi')
+                    ->where('tables.0.rows.total', 1)
+                )
+            );
+    }
+
+    public function test_halaman_tanpa_tabel_konfigurasi_tidak_menunda_tables(): void
+    {
+        // Halaman tanpa tabel data (mis. peta/grafik) tidak punya apa pun yang perlu ditarik, jadi tidak ada defer.
+        $this->get('/home')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Menu/Show')
+                ->where('page.tables', [])
+                ->missing('tables')
             );
     }
 
@@ -46,15 +80,21 @@ class MenuTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Menu/Show')
-                ->has('tables', 1)
-                ->where('tables.0.name', 'checkin_pagi')
+                ->missing('tables')
+                ->loadDeferredProps(fn (Assert $page) => $page
+                    ->has('tables', 1)
+                    ->where('tables.0.name', 'checkin_pagi')
+                )
             );
 
         $this->get('/monitoring_harian_sales?tab=sales_tidak_penjualan')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->has('tables', 1)
-                ->where('tables.0.name', 'sales_tidak_penjualan')
+                ->missing('tables')
+                ->loadDeferredProps(fn (Assert $page) => $page
+                    ->has('tables', 1)
+                    ->where('tables.0.name', 'sales_tidak_penjualan')
+                )
             );
     }
 
@@ -63,7 +103,9 @@ class MenuTest extends TestCase
         $this->get('/monitoring_harian_sales?tab=sales_tidak_penjualan')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('tables.0.kpi', null)
+                ->loadDeferredProps(fn (Assert $page) => $page
+                    ->where('tables.0.kpi', null)
+                )
             );
     }
 
@@ -80,9 +122,11 @@ class MenuTest extends TestCase
         $this->get('/monitoring_harian_sales?tab=sales_tidak_penjualan&tanggal=2026-10-22')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('tables.0.rows.total', 2)
                 ->where('tanggal', null)
                 ->where('hasDateFilter', false)
+                ->loadDeferredProps(fn (Assert $page) => $page
+                    ->where('tables.0.rows.total', 2)
+                )
             );
 
         $this->get('/monitoring_harian_sales?tab=checkin_pagi&tanggal=2026-10-22')
@@ -132,9 +176,11 @@ class MenuTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->where('activeTab', 'gabungan')
-                ->has('tables', 2)
-                ->where('tables.0.tab_key', 'gabungan')
-                ->where('tables.1.tab_key', 'gabungan')
+                ->loadDeferredProps(fn (Assert $page) => $page
+                    ->has('tables', 2)
+                    ->where('tables.0.tab_key', 'gabungan')
+                    ->where('tables.1.tab_key', 'gabungan')
+                )
             );
     }
 
@@ -225,7 +271,8 @@ class MenuTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Motoris/Report')
                 ->where('tab', 'coverage')
-                ->has('total'));
+                ->missing('laporan')
+                ->loadDeferredProps(fn (Assert $page) => $page->has('laporan.total')));
     }
 
     public function test_motoris_report_tab_performance_follows_tab_query(): void
@@ -244,7 +291,8 @@ class MenuTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Motoris/Report')
                 ->where('tab', 'absensi')
-                ->has('baris.data'));
+                ->missing('laporan')
+                ->loadDeferredProps(fn (Assert $page) => $page->has('laporan.baris.data')));
     }
 
     public function test_motoris_report_is_a_single_sidebar_menu(): void
