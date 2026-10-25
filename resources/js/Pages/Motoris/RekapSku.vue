@@ -8,6 +8,8 @@ import Input from '@/Components/ui/atoms/Input.vue';
 import Label from '@/Components/ui/atoms/Label.vue';
 import Card from '@/Components/ui/molecules/Card.vue';
 import Combobox from '@/Components/ui/molecules/Combobox.vue';
+import InfoPopover from '@/Components/ui/molecules/InfoPopover.vue';
+import Modal from '@/Components/ui/molecules/Modal.vue';
 import PageHeader from '@/Components/ui/molecules/PageHeader.vue';
 import TableSkeleton from '@/Components/ui/molecules/TableSkeleton.vue';
 import Tabs from '@/Components/ui/molecules/Tabs.vue';
@@ -66,12 +68,19 @@ function pindahTab(kode) {
 }
 
 const formTarget = useForm({ target: props.periode.target });
+const modalTarget = ref(false);
+
+function bukaModalTarget() {
+    formTarget.reset();
+    formTarget.target = props.periode.target;
+    modalTarget.value = true;
+}
 
 function simpanTarget() {
     formTarget.transform((data) => ({
         ...data, tab: props.tab, date_from: filterDariTanggal.value, date_to: filterSampaiTanggal.value,
         warehouse_id: filterDepo.value, product_id: filterProduk.value,
-    })).post('/rekap_pencapaian_sku/target', { preserveScroll: true });
+    })).post('/rekap_pencapaian_sku/target', { preserveScroll: true, onSuccess: () => { modalTarget.value = false; } });
 }
 </script>
 
@@ -102,18 +111,22 @@ function simpanTarget() {
                 </div>
                 <Button type="submit">Tampilkan</Button>
                 <Button :tag="Link" variant="outline-secondary" :href="`/rekap_pencapaian_sku?tab=${tab}`">Reset Filter</Button>
-            </form>
-
-            <form v-if="bolehUbah" class="flex flex-wrap items-end gap-2 mt-3 pt-3 border-t" @submit.prevent="simpanTarget">
-                <div>
-                    <Label for="target">Setting Target (/Hari)</Label>
-                    <Input id="target" v-model="formTarget.target" type="number" step="0.01" min="0.01" class="w-28" />
-                    <FieldError v-if="formTarget.errors.target">{{ formTarget.errors.target }}</FieldError>
-                </div>
-                <Button type="submit" variant="outline-secondary" :disabled="formTarget.processing">Simpan target</Button>
-                <span class="text-xs text-gray-500">Satu target untuk tab Per Motoris dan Per Depo.</span>
+                <Button v-if="bolehUbah" type="button" variant="outline-secondary" class="ms-auto" @click="bukaModalTarget">Setting Target ({{ angkaRingkas(periode.target) }} /Hari)</Button>
             </form>
         </Card>
+
+        <Modal v-if="bolehUbah" :show="modalTarget" title="Setting Target (/Hari)" @close="modalTarget = false">
+            <form id="form-target" @submit.prevent="simpanTarget">
+                <Label for="target">Target (/Hari)</Label>
+                <Input id="target" v-model="formTarget.target" type="number" step="0.01" min="0.01" />
+                <FieldError v-if="formTarget.errors.target">{{ formTarget.errors.target }}</FieldError>
+                <p class="mt-2 text-xs text-gray-500">Satu target untuk tab Per Motoris dan Per Depo.</p>
+            </form>
+            <template #footer>
+                <Button variant="light" @click="modalTarget = false">Batal</Button>
+                <Button type="submit" form="form-target" :disabled="formTarget.processing">Simpan target</Button>
+            </template>
+        </Modal>
 
         <Deferred data="hasil">
             <template #fallback>
@@ -143,16 +156,24 @@ function simpanTarget() {
             </div>
         </Deferred>
 
-        <p class="mt-3 text-xs text-gray-500">
-            Total Qty = jumlah qty produk terjual (transaksi yang tidak dibatalkan). Hari Kerja = hari kerja standar sales pada rentang (Waktu Aktif App, tanpa hari libur).
-            <template v-if="perMotoris">
-                Avg/Day = Total Qty ÷ Hari Kerja. TOTAL = Σ Qty ÷ (jumlah motoris di tabel × Hari Kerja).
-                Daftar berisi sales motoris aktif ditambah sales tidak aktif yang masih menjual pada rentang.
-            </template>
-            <template v-else>
-                Avg/Day/Motoris = Total Qty ÷ jumlah hari-motoris bertransaksi (satu motoris yang menjual pada satu tanggal = 1). TOTAL = Σ Qty ÷ Σ hari-motoris.
-                Daftar berisi depo yang punya sales motoris aktif atau penjualan pada rentang.
-            </template>
-        </p>
+        <div class="mt-3 flex items-center gap-1 text-xs text-gray-500">
+            <span>Keterangan cara hitung</span>
+            <InfoPopover title="Cara Hitung">
+                <ul class="list-disc ps-4 space-y-1">
+                    <li><strong>Total Qty</strong> = jumlah qty produk terjual (transaksi yang tidak dibatalkan).</li>
+                    <li><strong>Hari Kerja</strong> = hari kerja standar sales pada rentang (Waktu Aktif App, tanpa hari libur).</li>
+                    <template v-if="perMotoris">
+                        <li><strong>Avg/Day</strong> = Total Qty ÷ Hari Kerja.</li>
+                        <li><strong>TOTAL</strong> = Σ Qty ÷ (jumlah motoris di tabel × Hari Kerja).</li>
+                        <li>Daftar berisi sales motoris aktif ditambah sales tidak aktif yang masih menjual pada rentang.</li>
+                    </template>
+                    <template v-else>
+                        <li><strong>Avg/Day/Motoris</strong> = Total Qty ÷ jumlah hari-motoris bertransaksi (satu motoris yang menjual pada satu tanggal = 1).</li>
+                        <li><strong>TOTAL</strong> = Σ Qty ÷ Σ hari-motoris.</li>
+                        <li>Daftar berisi depo yang punya sales motoris aktif atau penjualan pada rentang.</li>
+                    </template>
+                </ul>
+            </InfoPopover>
+        </div>
     </AppLayout>
 </template>

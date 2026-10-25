@@ -18,7 +18,7 @@ const kolom = props.perMotoris ? 7 : 6;
 <template>
     <Card body-class="overflow-x-auto">
         <template #header>
-            <div class="font-semibold" :class="tercapai ? 'text-green-700' : 'text-red-700'">{{ judul }}</div>
+            <div class="text-xs font-semibold" :class="tercapai ? 'text-green-700' : 'text-red-700'">{{ judul }}</div>
             <div class="text-xs text-gray-500">{{ baris.length }} dari {{ jumlah }} total {{ perMotoris ? 'motoris' : 'depo' }}</div>
         </template>
         <table class="data-table">
@@ -53,7 +53,7 @@ const kolom = props.perMotoris ? 7 : 6;
                     <td :colspan="kolom" class="text-center text-gray-500">Tidak ada data</td>
                 </tr>
             </tbody>
-            <tfoot>
+            <tfoot v-if="baris.length">
                 <tr class="font-semibold">
                     <th scope="row" :colspan="perMotoris ? 3 : 2">TOTAL</th>
                     <td class="text-end">{{ angkaRingkas(total.qty) }}</td>
