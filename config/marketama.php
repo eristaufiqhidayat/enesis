@@ -1,12 +1,17 @@
 <?php
 
+use App\Support\Menu\Motoris\SumberBarangHabisTerjual;
 use App\Support\Menu\Motoris\SumberBarangTerbaikBulanan;
 use App\Support\Menu\Motoris\SumberBarangTerbaikHarian;
 use App\Support\Menu\Motoris\SumberBarangTerbaikMingguan;
+use App\Support\Menu\Motoris\SumberCanvassing;
 use App\Support\Menu\Motoris\SumberEffectiveCall;
 use App\Support\Menu\Motoris\SumberEffectiveCallItem;
+use App\Support\Menu\Motoris\SumberPengembalianBarang;
 use App\Support\Menu\Motoris\SumberPenjualan;
 use App\Support\Menu\Motoris\SumberPenjualanItem;
+use App\Support\Menu\Motoris\SumberStokKompetitor;
+use App\Support\Menu\Motoris\SumberStokOutlet;
 use App\Support\Menu\SumberCheckinPagi;
 use App\Support\Menu\SumberJoinVisit;
 use App\Support\Menu\SumberOutletBaru;
@@ -2436,6 +2441,7 @@ return [
         ],
         'lap_stok_kompetitor' => [
             'title' => 'Lap. Stok Kompetitor',
+            'sumber' => SumberStokKompetitor::class,
             'columns' => [
                 'source_id' => 'ID',
                 'quantity' => 'Quantity',
@@ -2451,6 +2457,7 @@ return [
                 'outlet_address' => 'Outlet Address',
                 'area_name' => 'Area Name',
                 'product_name' => 'Product Name',
+                'sumber' => 'Sumber',
             ],
         ],
         'retur_barang' => [
@@ -2643,6 +2650,7 @@ return [
         ],
         'lap_barang_habis_terjual' => [
             'title' => 'Lap. Barang Habis Terjual',
+            'sumber' => SumberBarangHabisTerjual::class,
             'columns' => [
                 'source_id' => 'ID',
                 'canvassing_no' => 'Canvassing No',
@@ -2662,10 +2670,12 @@ return [
                 'sisa_qty' => 'Sisa Qty',
                 'status_terjual' => 'Status Terjual',
                 'pct_terjual' => 'Pct Terjual',
+                'sumber' => 'Sumber',
             ],
         ],
         'lap_pengembalian_barang' => [
             'title' => 'Lap. Pengembalian Barang',
+            'sumber' => SumberPengembalianBarang::class,
             'columns' => [
                 'source_id' => 'ID',
                 'canvas_return_no' => 'Canvas Return No',
@@ -2684,10 +2694,12 @@ return [
                 'total_qty' => 'Total Qty',
                 'sale_qty' => 'Sale Qty',
                 'return_qty' => 'Return Qty',
+                'sumber' => 'Sumber',
             ],
         ],
         'lap_barang_canvassing' => [
             'title' => 'Lap. Barang Canvassing',
+            'sumber' => SumberCanvassing::class,
             'columns' => [
                 'source_id' => 'ID',
                 'canvassing_no' => 'Canvassing No',
@@ -2707,6 +2719,7 @@ return [
                 'sale_qty' => 'Sale Qty',
                 'return_qty' => 'Return Qty',
                 'returned' => 'Returned',
+                'sumber' => 'Sumber',
             ],
         ],
         'kelurahan' => [
@@ -3045,6 +3058,7 @@ return [
         ],
         'lap_stok_outlet' => [
             'title' => 'Lap. Stok Outlet',
+            'sumber' => SumberStokOutlet::class,
             'columns' => [
                 'source_id' => 'ID',
                 'quantity' => 'Quantity',
@@ -3066,6 +3080,7 @@ return [
                 'product_name' => 'Product Name',
                 'category_name' => 'Category Name',
                 'brand_name' => 'Brand Name',
+                'sumber' => 'Sumber',
             ],
         ],
         'rekap_pencapaian_sku_motoris_tableachieved' => [
