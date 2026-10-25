@@ -1,19 +1,11 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { Link, router, usePage } from '@inertiajs/vue3';
+import { onMounted, onUnmounted, ref } from 'vue';
+import { Link } from '@inertiajs/vue3';
 import Breadcrumb from '@/Components/ui/molecules/Breadcrumb.vue';
-import Button from '@/Components/ui/atoms/Button.vue';
 import Icon from '@/Components/ui/atoms/Icon.vue';
 import Tooltip from '@/Components/ui/atoms/Tooltip.vue';
 
 defineProps({ breadcrumbSlug: { type: String, default: null } });
-
-const page = usePage();
-const user = computed(() => page.props.auth?.user ?? null);
-
-function keluar() {
-    router.post('/logout');
-}
 
 const notifOpen = ref(false);
 const notifWrapper = ref(null);
@@ -50,11 +42,6 @@ onUnmounted(() => document.removeEventListener('click', closeNotifOnOutsideClick
                 <div class="dropdown-menu" :class="{ hidden: !notifOpen }">
                     <Icon name="bell-off" class="me-1" /> Tidak ada notifikasi baru
                 </div>
-            </div>
-            <div v-if="user" class="topbar-user">
-                <Icon name="circle-user" />
-                <span class="topbar-user-name" :title="user.username">{{ user.name }}</span>
-                <Button variant="outline-secondary" @click="keluar">Keluar</Button>
             </div>
         </div>
     </div>

@@ -617,6 +617,8 @@ return [
         [
             'label' => 'Master Data & Pengaturan',
             'icon' => 'settings',
+            // Tidak ditampilkan di daftar scroll sidebar, tapi di popup menu user (footer sidebar).
+            'posisi' => 'footer',
             'items' => [
                 [
                     'slug' => 'panduan',
@@ -661,7 +663,7 @@ return [
                     ],
                 ],
                 [
-                    'title' => 'Konfirgurasi',
+                    'title' => 'Konfigurasi',
                     'icon' => 'settings',
                     'id' => 'konfigurasi_group',
                     'children' => [

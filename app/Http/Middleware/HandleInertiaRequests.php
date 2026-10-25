@@ -49,9 +49,11 @@ class HandleInertiaRequests extends Middleware
                 'sukses' => $request->session()->get('sukses'),
                 'galat' => $request->session()->get('galat'),
             ],
-            // Hanya data yang perlu ditampilkan di topbar (bukan seluruh kolom users).
+            // Hanya data yang perlu ditampilkan di menu user (footer sidebar), bukan seluruh kolom users.
             'auth' => [
-                'user' => fn () => $request->user()?->only(['name', 'username', 'kategori']),
+                'user' => fn () => ($user = $request->user())
+                    ? $user->only(['name', 'username', 'kategori']) + ['role' => Akses::role($user)?->nama]
+                    : null,
             ],
         ];
     }

@@ -58,6 +58,26 @@ body { background: var(--color-surface); font-size: .875rem; }
 .sidebar .section-label:first-child { padding-top: .75rem; padding-bottom: .75rem; margin-top: 0; }
 .sidebar .section-label:hover, .sidebar .section-label:focus { background: rgba(255, 255, 255, .08); }
 .sidebar .section-label-name { min-width: 0; }
+/* Footer sidebar: menu user (SidebarUserMenu) di luar area scroll, dipisah garis di atasnya. */
+.sidebar .sidebar-footer { flex: 0 0 auto; border-top: 1px solid rgba(255, 255, 255, .2); padding: .5rem 0 .75rem; }
+/* Mobile: sidebar tidak fixed dan ikut mengalir di atas halaman, jadi footer ditempel di bawah layar supaya Keluar tetap terlihat. */
+@media (max-width: 991px) { .sidebar .sidebar-footer { position: sticky; bottom: 0; z-index: 30; background-color: var(--color-brand-dark); } }
+.sidebar-user-menu { position: relative; }
+.sidebar-user-btn { display: flex; align-items: center; gap: .6rem; width: 100%; padding: .4rem .5rem; border: 0; border-radius: .25rem; background: transparent; color: #fff; text-align: left; text-shadow: 0 1px 2px rgba(0, 0, 0, .35); cursor: pointer; }
+.sidebar-user-btn:hover, .sidebar-user-btn:focus, .sidebar-user-btn.is-active, .sidebar-user-btn[aria-expanded="true"] { background: rgba(255, 255, 255, .12); }
+.sidebar-user-avatar { width: 1.5rem; height: 1.5rem; flex: 0 0 auto; }
+.sidebar-user-text { display: flex; flex-direction: column; min-width: 0; }
+.sidebar-user-name { font-size: .8rem; font-weight: 600; line-height: 1.1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sidebar-user-role { font-size: .7rem; line-height: 1rem; color: rgba(255, 255, 255, .7); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Popup ke atas tombol footer; di mode strip ikon (lihat media query di bawah) dipindah ke kanan strip. */
+.sidebar-user-popup { position: absolute; left: 0; right: 0; bottom: calc(100% + .25rem); z-index: 50; padding: .25rem 0; background: #fff; border-radius: .375rem; box-shadow: 0 4px 12px rgba(0, 0, 0, .25); }
+.sidebar-user-popup-header { display: flex; flex-direction: column; padding: .5rem .75rem; margin-bottom: .25rem; border-bottom: 1px solid rgba(0, 42, 92, .12); color: #002a5c; }
+.sidebar-user-popup-header .sidebar-user-role { color: #5b6b82; }
+.sidebar-user-popup-list { list-style: none; margin: 0; padding: 0; }
+.sidebar-user-popup-list a, .sidebar-user-popup-list button { display: flex; align-items: center; gap: .6rem; width: 100%; padding: .4rem .75rem; border: 0; background: transparent; color: #1f2937; font-size: .75rem; text-align: left; text-decoration: none; cursor: pointer; }
+.sidebar-user-popup-list a:hover, .sidebar-user-popup-list a:focus, .sidebar-user-popup-list button:hover, .sidebar-user-popup-list button:focus { background: rgba(0, 42, 92, .08); color: #002a5c; }
+.sidebar-user-popup-list a.is-active { color: #002a5c; font-weight: 600; background: rgba(0, 42, 92, .12); }
+.sidebar-user-popup-list svg { width: .9rem; height: .9rem; flex: 0 0 auto; }
 main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
 /* Mode collapse seluruh sidebar jadi strip ikon-saja (lihat sidebar.blade.php/layouts/app.blade.php). Desktop saja: di mobile sidebar tetap full-width. */
 @media (min-width: 992px) {
@@ -81,6 +101,10 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
        di dalamnya harus tetap tampil (chevron dibutuhkan untuk submenu bersarang di dalam flyout). */
     body.sidebar-collapsed .sidebar .nav-flyout .nav-link-text { display: inline; }
     body.sidebar-collapsed .sidebar .nav-flyout .nav-chevron { display: inline-block; }
+    /* Strip ikon: hanya avatar yang tampil di footer; popup keluar ke kanan strip karena .sidebar memotong overflow. */
+    body.sidebar-collapsed .sidebar-user-btn { justify-content: center; }
+    body.sidebar-collapsed .sidebar-user-text { display: none; }
+    body.sidebar-collapsed .sidebar-user-popup { position: fixed; left: 5rem; right: auto; bottom: .75rem; width: 14rem; }
 }
 /* Topbar fixed di atas, mulai dari tepi sidebar sampai kanan, sejajar dengan konten (bukan menutupi sidebar). */
 .topbar { position: fixed; top: 0; left: 260px; right: 0; height: 3.5rem; z-index: 20; background: #fff; padding: 0 1.5rem; margin-bottom: 0; border-bottom: 1px solid #e5e7eb; }
@@ -93,10 +117,6 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
 .notif-bell::before { content: ""; position: absolute; right: .3rem; top: .35rem; width: .7rem; height: .7rem; border-radius: 40%; background-color: var(--color-brand); border: 2px solid var(--color-surface); }
 .notif-bell svg { width: 1.25rem; height: 1.25rem; }
 .dropdown-menu svg { width: 1rem; height: 1rem; vertical-align: -.15em; }
-/* Info user login + tombol Keluar di kanan topbar. */
-.topbar-user { display: inline-flex; align-items: center; gap: .5rem; padding-left: .75rem; margin-left: .25rem; border-left: 1px solid #e5e7eb; color: var(--color-ink-muted); font-size: .8rem; }
-.topbar-user svg { width: 1.1rem; height: 1.1rem; }
-.topbar-user-name { font-weight: 600; color: var(--color-ink, #344050); max-width: 12rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Halaman tamu (login, ganti password): tanpa sidebar/topbar, kartu di tengah. */
 .auth-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem; background-image: linear-gradient(-45deg, var(--color-brand-light), var(--color-brand-dark)); }
 .auth-box { width: 100%; max-width: 24rem; }
