@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Admin\AkunController;
 use App\Http\Controllers\Admin\KehadiranController;
+use App\Http\Controllers\Admin\KuotaMotorisController;
+use App\Http\Controllers\Admin\MotorisReportController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Auth\DemoLoginController;
 use App\Http\Controllers\Auth\GantiPasswordController;
@@ -100,6 +102,11 @@ Route::middleware(['auth', 'wajib-ganti-password'])->group(function () {
             ->defaults('menu', $slug)->name("kehadiran.{$slug}");
     }
     Route::get('/foto/{id}', [KehadiranController::class, 'foto'])->whereUuid('id')->name('kehadiran.foto');
+
+    // Motoris Report (Coverage, Performance, Absensi) dihitung dari tabel motoris + kuota isian admin.
+    Route::get('/motoris_report', [MotorisReportController::class, 'index'])->middleware('hak:motoris_report')->name('motoris-report');
+    Route::get('/kuota_motoris', [KuotaMotorisController::class, 'index'])->middleware('hak:kuota_motoris')->name('kuota-motoris.index');
+    Route::post('/kuota_motoris', [KuotaMotorisController::class, 'simpan'])->middleware('hak:kuota_motoris,ubah')->name('kuota-motoris.simpan');
 
     // Verifikasi outlet baru dari HP (menu All Outlet, tab Outlet Baru dari HP).
     Route::prefix('outlet_all/baru/{id}')->name('outlet-baru.')->whereNumber('id')->controller(OutletBaruController::class)->group(function () {

@@ -315,6 +315,26 @@ tampil di daftar (dengan nama koordinatornya), dan lokasi depo diambil dari `mk_
 data lama tidak punya. Logika GPS HP dipakai bersama dengan peta koordinator
 (`App\Support\Tracking\TitikGps`).
 
+## Motoris Report dan Kuota Motoris
+
+Halaman `/motoris_report` (tab Coverage, Performance, Absensi) dihitung dari tabel motoris
+(`trx_absensi`, `trx_kunjungan`, `trx_penjualan`, termasuk riwayat aplikasi lama hasil migrasi)
+dan master `mk_karyawan` / `mk_depo`, per bulan, dibatasi cakupan role. Coverage dan Performance
+dikelompokkan per kota (City Group depo, `kota_besar` di Master Depo); baris terakhir
+**TOTAL N CITY** menjumlahkan kota yang tampil, jadi jumlahnya mengikuti depo yang ada.
+
+- **Quota**: menu Master Data › Kuota Motoris (`/kuota_motoris`), isian admin per depo yang berlaku
+  mulai bulan tertentu sampai diubah lagi (`master_kuota_motoris`). Depo yang belum diisi memakai
+  kuota dari Master Depo Marketama. Role yang punya hak Master Depo mendapat hak yang sama.
+- **Already Transaction** = sales dengan minimal satu penjualan (tidak batal) pada periode;
+  **Active End Periode** = sales berstatus aktif; **Vacant** = Quota − Active;
+  **Coverage** = Active ÷ Quota.
+- **HK Standar** = hari kerja sales dari awal bulan sampai hari ini (Waktu Aktif App, tanpa libur);
+  **Act HK** = rata-rata hari hadir per motoris yang absen; **Target** = target call per hari depo
+  (sama dengan aplikasi HP) × HK Standar × motoris aktif; **EC** = transaksi effective call;
+  **IPT** = rata-rata SKU per transaksi; **Value** = total penjualan.
+- **Absensi**: per sales motoris, Hari Kerja = HK Standar, Total Kehadiran dari `trx_absensi`.
+
 ## Menu kanan atas & Design Polygon Area
 
 Ikon kanan atas sama dengan header Marketama: Tambah Loading Barang, Tambah Barang Canvassing,
