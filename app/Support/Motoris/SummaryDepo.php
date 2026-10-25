@@ -7,6 +7,7 @@ use App\Support\Akses\Akses;
 use App\Support\Mobile\Pengaturan;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -163,6 +164,45 @@ class SummaryDepo
             'tim' => $tim,
         ];
     }
+
+    /**
+     * Daftar transaksi penjualan depo (tidak dibatalkan) untuk modal "Detail EC & Penjualan", plus totalnya.
+     *
+     * @return array{baris: LengthAwarePaginator, total: object}
+     */
+    public function penjualan(int $depoId, string $cari = '', int $perHalaman = 25): array
+    {
+        $q = $this->karyawan('sales')->where('k.depo_id', $depoId)
+            ->join('trx_penjualan as p', 'p.karyawan_id', '=', 'k.id')
+            ->leftJoin('mk_outlet as o', 'o.id', '=', 'p.outlet_id')
+            ->whereBetween('p.tanggal', [$this->dari, $this->sampai])
+            ->whereNull('p.dibatalkan_at');
+
+        $total = (clone $q)->selectRaw('SUM(CASE WHEN p.is_effective_call THEN 1 ELSE 0 END) AS ec, '
+            .'COALESCE(SUM(p.total), 0) AS sales, COALESCE(SUM(p.jumlah_sku), 0) AS sku, COALESCE(SUM(p.poin), 0) AS point')->first();
+
+        $baris = $q
+            ->when($cari !== '', function ($w) use ($cari) {
+                $kata = '%'.mb_strtolower($cari).'%';
+                $w->where(fn ($x) => $x->whereRaw('LOWER(k.nama) LIKE ?', [$kata])
+                    ->orWhereRaw('LOWER(o.nama) LIKE ?', [$kata])->orWhereRaw('LOWER(o.kode) LIKE ?', [$kata]));
+            })
+            ->orderBy('p.tanggal')->orderBy('p.id')
+            ->select(['p.tanggal', 'o.kode as kode_outlet', 'o.nama as nama_outlet', 'k.nama as sales', 'p.is_effective_call',
+                'p.total', 'p.jumlah_sku', 'p.poin'])
+            ->paginate($perHalaman)->withQueryString();
+
+        return ['baris' => $baris, 'total' => (object) array_map('intval', (array) $total)];
+    }
+
+    /** Nilai kartu yang bisa dipilih di grafik per depo (kunci => label), sama dengan pilihan Marketama. */
+    public const METRIK_GRAFIK = [
+        'ec' => 'Total EC', 'call' => 'Total Call', 'sales' => 'Total Sales (Rp)', 'hari_kerja' => 'Total Hari Kerja',
+        'sku' => 'Total SKU Terjual', 'point' => 'Total Point', 'avg_ec' => 'AVG EC / Hari Kerja', 'avg_call' => 'AVG Call / Hari Kerja',
+        'avg_sales' => 'AVG Sales / Hari Kerja', 'avg_ipt' => 'AVG IPT', 'avg_hari_kerja' => 'AVG Hari Kerja / Motoris',
+        'avg_point' => 'AVG Point / Hari Kerja', 'visit_sk' => 'Total Visit SK', 'avg_visit_sk' => 'AVG Visit SK / Hari',
+        'total_sk' => 'Total SK Aktif', 'total_motoris' => 'Total Sales Motoris Aktif',
+    ];
 
     // ------------------------------------------------------------------
 

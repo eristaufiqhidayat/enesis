@@ -32,17 +32,35 @@ class SummaryDepoController extends Controller
         ]);
     }
 
+    /** Lihat Detail: halaman penuh, atau potongan HTML untuk modal bila ?partial=1. */
     public function detail(Request $request, int $depo): View
     {
         [$dari, $sampai] = self::rentang($request);
         $summary = new SummaryDepo($dari, $sampai, $request->user());
         $detail = $summary->detail($depo) ?? abort(404);
 
-        return view('motoris.summary-depo-detail', $detail + [
+        return view($request->boolean('partial') ? 'motoris._summary-detail' : 'motoris.summary-depo-detail', $detail + [
             'menu' => self::MENU,
             'judul' => $detail['depo']->nama,
             'summary' => $summary,
             'filter' => ['date_from' => $dari, 'date_to' => $sampai],
+        ]);
+    }
+
+    /** Detail EC & Penjualan satu depo (daftar transaksi), halaman penuh atau potongan modal. */
+    public function penjualan(Request $request, int $depo): View
+    {
+        [$dari, $sampai] = self::rentang($request);
+        $summary = new SummaryDepo($dari, $sampai, $request->user());
+        $detail = $summary->detail($depo) ?? abort(404);
+        $cari = trim((string) $request->query('q'));
+
+        return view($request->boolean('partial') ? 'motoris._summary-penjualan' : 'motoris.summary-depo-penjualan', $summary->penjualan($depo, $cari) + [
+            'menu' => self::MENU,
+            'judul' => 'Detail EC & Penjualan — '.$detail['depo']->nama,
+            'depo' => $detail['depo'],
+            'summary' => $summary,
+            'filter' => ['date_from' => $dari, 'date_to' => $sampai, 'q' => $cari],
         ]);
     }
 

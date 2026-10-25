@@ -117,6 +117,7 @@ Route::middleware(['auth', 'wajib-ganti-password'])->group(function () {
     // Summary All Depo (kartu per depo + detail per koordinator) dari tabel motoris + target nasional.
     Route::get('/summary_all_depo', [SummaryDepoController::class, 'index'])->middleware('hak:summary_all_depo')->name('summary-depo');
     Route::get('/summary_all_depo/{depo}', [SummaryDepoController::class, 'detail'])->middleware('hak:summary_all_depo')->whereNumber('depo')->name('summary-depo.detail');
+    Route::get('/summary_all_depo/{depo}/penjualan', [SummaryDepoController::class, 'penjualan'])->middleware('hak:summary_all_depo')->whereNumber('depo')->name('summary-depo.penjualan');
     Route::post('/summary_all_depo/target', [SummaryDepoController::class, 'simpanTarget'])->middleware('hak:summary_all_depo,ubah')->name('summary-depo.target');
 
     // Verifikasi outlet baru dari HP (menu All Outlet, tab Outlet Baru dari HP).

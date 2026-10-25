@@ -88,15 +88,36 @@ class SummaryDepoTest extends AdminTestCase
         $this->assertSame([5, 5, 2], [$tim->akumulasi->hari_kerja, $tim->akumulasi->call, $tim->akumulasi->ec]);
 
         $this->get('/summary_all_depo/46?date_from=2026-10-01&date_to=2026-10-03')->assertOk()
-            ->assertSeeInOrder(['Total keseluruhan depo', 'Koor Satu', 'AVG Visit / Day: 1,5', 'Rudi Hartono', 'Joko Lama', 'Non-aktif', 'Akumulasi']);
+            ->assertSeeInOrder(['Total keseluruhan depo', 'Koor Satu', 'AVG Visit / Day:', '1,5', 'Rudi Hartono', 'Joko Lama', 'Non-aktif', 'Akumulasi']);
+        // Modal memuat potongan HTML tanpa kerangka halaman.
+        $this->get('/summary_all_depo/46?date_from=2026-10-01&date_to=2026-10-03&partial=1')->assertOk()
+            ->assertSee('Koor Satu')->assertDontSee('<html', false);
         $this->get('/summary_all_depo/999')->assertNotFound();
+    }
+
+    public function test_detail_ec_dan_penjualan(): void
+    {
+        DB::table('mk_outlet')->insert(['id' => 7, 'kode' => 'OUT-7', 'nama' => 'Toko Rudi']);
+        DB::table('trx_penjualan')->where('kode', 'S1')->update(['outlet_id' => 7]);
+
+        $j = $this->summary()->penjualan(46);
+        $this->assertSame(['ec' => 2, 'sales' => 170000, 'sku' => 6, 'point' => 17], (array) $j['total']);
+        $this->assertSame(3, $j['baris']->total()); // S4 dibatalkan tidak tampil
+        $this->assertSame(1, $this->summary()->penjualan(46, 'toko rudi')['baris']->total());
+
+        $this->get('/summary_all_depo/46/penjualan?date_from=2026-10-01&date_to=2026-10-03&partial=1')->assertOk()
+            ->assertSeeInOrder(['Total EC: 2', 'Total Sales: Rp 170.000', 'Total SKU: 6', 'Total Point: 17', '01/10/2026', 'Tegar Mahendra', '02/10/2026', 'OUT-7', 'Toko Rudi'])
+            ->assertDontSee('<html', false);
+        $this->get('/summary_all_depo/46/penjualan?date_from=2026-10-01&date_to=2026-10-03')->assertOk()->assertSee('Detail EC &amp; Penjualan — Sidoarjo', false);
     }
 
     public function test_halaman_kartu_dan_cari_depo(): void
     {
         $this->get('/summary_all_depo?date_from=2026-10-01&date_to=2026-10-03')->assertOk()
-            ->assertSee('Target nasional Call 45 · EC 35 · IPT 3')
-            ->assertSeeInOrder(['Sidoarjo', 'DEPO SUPRALITA 1', 'Total Sales Motoris', 'Rp 170.000', 'AVG Hari Kerja', '2,5', 'Lihat Detail', 'Balaraja']);
+            ->assertSee('01 Oktober 2026 – 03 Oktober 2026')->assertSee('Call 45, EC 35, IPT 3')
+            ->assertSeeInOrder(['Sidoarjo', 'DEPO SUPRALITA 1', 'Total Sales Motoris', 'Rp 170.000', 'AVG Hari Kerja', '2,5', 'Call Achievement', '2,2%', 'Lihat Detail', 'Balaraja'])
+            ->assertSee('data-muat="'.e(route('summary-depo.detail', ['depo' => 46, 'date_from' => '2026-10-01', 'date_to' => '2026-10-03'])).'"', false)
+            ->assertSee('Chart Per Depo')->assertSee('Setting Target');
 
         $this->get('/summary_all_depo?date_from=2026-10-01&date_to=2026-10-03&q=bala')->assertOk()
             ->assertSee('Balaraja')->assertDontSee('DEPO SUPRALITA 1');
