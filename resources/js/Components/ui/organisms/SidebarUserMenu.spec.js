@@ -84,6 +84,72 @@ describe('SidebarUserMenu tombol', () => {
 
         expect(wrapper.find('.sidebar-user-btn').classes()).not.toContain('is-active');
     });
+
+    it('keeps the button highlighted while the popup is open', async () => {
+        currentSlug = 'master_depo';
+
+        const wrapper = mountMenu();
+        await wrapper.find('.sidebar-user-btn').trigger('click');
+
+        expect(popup(wrapper).classes()).not.toContain('hidden');
+        expect(wrapper.find('.sidebar-user-btn').classes()).toContain('is-active');
+    });
+
+    it('keeps name and role in the popup header, so the collapsed button can show only the avatar', () => {
+        const wrapper = mountMenu();
+
+        const header = wrapper.find('.sidebar-user-popup-header');
+        expect(header.find('.sidebar-user-name').text()).toBe('Admin Utama');
+        expect(header.find('.sidebar-user-role').text()).toBe('Super Admin');
+    });
+});
+
+describe('SidebarUserMenu tooltip (sidebar dipersempit)', () => {
+    const tooltip = () => document.body.querySelector('[data-tooltip]');
+
+    beforeEach(() => {
+        window.matchMedia = vi.fn(() => ({ matches: true, addEventListener() {}, removeEventListener() {} }));
+        document.body.classList.add('sidebar-collapsed');
+    });
+
+    afterEach(() => {
+        document.body.classList.remove('sidebar-collapsed');
+    });
+
+    it('shows the user name as a tooltip on hover when the sidebar is collapsed', async () => {
+        const wrapper = mountMenu();
+
+        await wrapper.find('.sidebar-user-btn').trigger('mouseenter');
+
+        expect(tooltip().dataset.tooltip).toBe('Admin Utama');
+    });
+
+    it('hides the tooltip on mouse leave', async () => {
+        const wrapper = mountMenu();
+        await wrapper.find('.sidebar-user-btn').trigger('mouseenter');
+
+        await wrapper.find('.sidebar-user-btn').trigger('mouseleave');
+
+        expect(tooltip()).toBeNull();
+    });
+
+    it('does not show the tooltip when the sidebar is not collapsed', async () => {
+        document.body.classList.remove('sidebar-collapsed');
+        const wrapper = mountMenu();
+
+        await wrapper.find('.sidebar-user-btn').trigger('mouseenter');
+
+        expect(tooltip()).toBeNull();
+    });
+
+    it('does not show the tooltip while the popup is open', async () => {
+        const wrapper = mountMenu();
+        await wrapper.find('.sidebar-user-btn').trigger('click');
+
+        await wrapper.find('.sidebar-user-btn').trigger('mouseenter');
+
+        expect(tooltip()).toBeNull();
+    });
 });
 
 describe('SidebarUserMenu popup', () => {

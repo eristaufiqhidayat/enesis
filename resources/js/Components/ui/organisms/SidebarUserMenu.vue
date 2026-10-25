@@ -30,6 +30,26 @@ const grupAktif = computed(() => entri.value.some((item) => item.aktif));
 const open = ref(false);
 const wrapper = ref(null);
 
+// Tooltip nama saat sidebar dipersempit (teks tombol disembunyikan di strip ikon). Dirender fixed di body,
+// karena .sidebar memotong overflow. Tidak ditampilkan saat popup terbuka, supaya tidak menutupi popup.
+const tip = ref(null);
+
+function showTip(e) {
+    if (open.value || !window.matchMedia('(min-width: 992px)').matches) return;
+    if (!document.body.classList.contains('sidebar-collapsed')) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    tip.value = { title: user.value.name, left: rect.right + 6, top: rect.top + rect.height / 2 };
+}
+
+function hideTip() {
+    tip.value = null;
+}
+
+function toggle() {
+    open.value = !open.value;
+    hideTip();
+}
+
 function closeOnOutsideClick(e) {
     if (wrapper.value && !wrapper.value.contains(e.target)) open.value = false;
 }
@@ -51,8 +71,9 @@ function keluar() {
             :class="{ 'is-active': grupAktif }"
             aria-haspopup="menu"
             :aria-expanded="open ? 'true' : 'false'"
-            :title="user.name"
-            @click="open = !open"
+            @click="toggle"
+            @mouseenter="showTip"
+            @mouseleave="hideTip"
         >
             <Icon name="circle-user" class="sidebar-user-avatar" />
             <span class="sidebar-user-text">
@@ -86,5 +107,8 @@ function keluar() {
                 </li>
             </ul>
         </div>
+        <Teleport to="body">
+            <div v-if="tip" class="tooltip-wrapper tooltip-right tooltip-floating" :style="{ left: `${tip.left}px`, top: `${tip.top}px` }" :data-tooltip="tip.title"></div>
+        </Teleport>
     </div>
 </template>
