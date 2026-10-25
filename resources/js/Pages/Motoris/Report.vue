@@ -13,6 +13,7 @@ import Tabs from '@/Components/ui/molecules/Tabs.vue';
 import Absensi from './partials/Absensi.vue';
 import Coverage from './partials/Coverage.vue';
 import Performance from './partials/Performance.vue';
+import { useAmbilData } from '@/Support/ambilData.js';
 import { bersihkanQuery } from '@/Support/query.js';
 
 // `laporan` ({ baris, total }) kosong saat masih ditunda (lihat <Deferred> di bawah).
@@ -47,12 +48,23 @@ function pindahTab(kode) {
     router.get('/motoris_report', { tab: kode, bulan: props.bulan }, { only: PROPS_LAPORAN });
 }
 
-function saring() {
-    const tambahan = props.tab === 'absensi'
-        ? { q: filterQ.value, depo: filterDepo.value, koordinator: filterKoordinator.value }
-        : {};
+// Hanya tab Absensi yang punya filter sales, depo, dan koordinator.
+const filterSaatIni = () => ({
+    bulan: filterBulan.value,
+    ...(props.tab === 'absensi' ? { q: filterQ.value, depo: filterDepo.value, koordinator: filterKoordinator.value } : {}),
+});
 
-    router.get('/motoris_report', bersihkanQuery({ tab: props.tab, bulan: filterBulan.value, ...tambahan }), { only: PROPS_LAPORAN });
+// Tombol Tampilkan aktif lagi hanya saat isian filter berbeda dari filter yang sedang tampil.
+const { memuat, berubah, ambil } = useAmbilData({
+    form: filterSaatIni,
+    diterapkan: () => ({
+        bulan: props.bulan,
+        ...(props.tab === 'absensi' ? { q: props.filter.q, depo: props.filter.depo, koordinator: props.filter.koordinator } : {}),
+    }),
+});
+
+function saring() {
+    ambil('/motoris_report', bersihkanQuery({ tab: props.tab, ...filterSaatIni() }), { only: PROPS_LAPORAN });
 }
 </script>
 
@@ -94,7 +106,7 @@ function saring() {
                             </Select>
                         </div>
                     </template>
-                    <Button type="submit">Tampilkan</Button>
+                    <Button type="submit" :loading="memuat" :disabled="!berubah">Tampilkan</Button>
                 </form>
             </template>
 

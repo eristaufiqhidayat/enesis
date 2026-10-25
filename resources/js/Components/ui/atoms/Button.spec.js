@@ -15,6 +15,22 @@ describe('Button', () => {
         expect(wrapper.text()).toBe('Simpan');
     });
 
+    it('shows a spinner in place of the label and disables itself while loading', () => {
+        const wrapper = mount(Button, { props: { loading: true }, slots: { default: 'Tampilkan' } });
+
+        expect(wrapper.attributes('disabled')).toBeDefined();
+        expect(wrapper.attributes('aria-busy')).toBe('true');
+        expect(wrapper.find('.btn-spinner').exists()).toBe(true);
+        expect(wrapper.find('.btn-label').classes()).toContain('btn-label-hidden');
+    });
+
+    it('is disabled without a spinner when only disabled', () => {
+        const wrapper = mount(Button, { props: { disabled: true }, slots: { default: 'Tampilkan' } });
+
+        expect(wrapper.attributes('disabled')).toBeDefined();
+        expect(wrapper.find('.btn-spinner').exists()).toBe(false);
+    });
+
     it('renders as the given tag without a type attribute', () => {
         const wrapper = mount(Button, {
             props: { tag: 'a' },

@@ -18,7 +18,11 @@
 
 body { background: var(--color-surface); font-size: .875rem; }
 /* Warna sidebar sama dengan Marketama (tema Falcon "navbar-vibrant"). */
-.sidebar { width: 260px; height: 100vh; position: fixed; top: 0; left: 0; display: flex; flex-direction: column; overflow: hidden; background-image: linear-gradient(rgba(0, 0, 0, .18), rgba(0, 0, 0, .18)), linear-gradient(-45deg, var(--color-brand-light), var(--color-brand-dark)); padding: 1rem .75rem 0; transition: width .15s ease; }
+/* z-index eksplisit: tanpa ini .sidebar diperlakukan sebagai z-index:0 di root stacking context (position:fixed
+   membentuk stacking context baru tapi z-index:auto ikut level "auto"), jadi flyout-nya (z-index:50 di dalam
+   context sidebar) tetap kalah dari elemen konten yang punya z-index eksplisit (topbar, dropdown, popover, dst.
+   semua ≤30). Nilainya tetap di bawah .modal-container (50) supaya modal masih bisa menutupi sidebar. */
+.sidebar { width: 260px; height: 100vh; position: fixed; top: 0; left: 0; z-index: 40; display: flex; flex-direction: column; overflow: hidden; background-image: linear-gradient(rgba(0, 0, 0, .18), rgba(0, 0, 0, .18)), linear-gradient(-45deg, var(--color-brand-light), var(--color-brand-dark)); padding: 1rem .75rem 0; transition: width .15s ease; }
 /* Hanya menu yang di-scroll; .brand (tombol di atasnya) tetap di tempat. */
 .sidebar .sidebar-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; padding-bottom: 2rem; scrollbar-color: rgba(255, 255, 255, .3) transparent; }
 .sidebar .brand { flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: .5rem; font-weight: 700; font-size: 1.1rem; color: #fff; padding: 0 .5rem 1rem; border-bottom: 1px solid rgba(255, 255, 255, .2); text-shadow: 0 1px 2px rgba(0, 0, 0, .35); }
@@ -241,6 +245,12 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     .btn-outline-danger { @apply border-red-300 bg-white text-red-600 hover:bg-red-50; }
     .btn-outline-warning { @apply border-amber-300 bg-white text-amber-600 hover:bg-amber-50; }
     .btn-outline-primary { @apply border-blue-300 bg-white text-blue-600 hover:bg-blue-50; }
+    .btn:disabled { @apply opacity-60 cursor-not-allowed pointer-events-none; }
+    /* Saat memuat, label tetap di tempatnya (lebar tombol stabil) tapi disembunyikan; spinner menimpanya di tengah. */
+    .btn-label { @apply inline-flex items-center justify-center gap-1; }
+    .btn-loading { @apply relative cursor-wait; }
+    .btn-label-hidden { @apply invisible; }
+    .btn-spinner { @apply absolute inset-0 m-auto h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent; }
 
     .card { @apply bg-white rounded-md border border-gray-200; }
     .card-header { @apply px-3 py-2.5 border-b border-gray-200; }

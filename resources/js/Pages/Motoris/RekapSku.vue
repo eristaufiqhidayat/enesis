@@ -15,6 +15,7 @@ import TableSkeleton from '@/Components/ui/molecules/TableSkeleton.vue';
 import Tabs from '@/Components/ui/molecules/Tabs.vue';
 import RekapSkuTabel from './partials/RekapSkuTabel.vue';
 import { angkaRingkas } from '@/Support/format.js';
+import { useAmbilData } from '@/Support/ambilData.js';
 import { bersihkanQuery } from '@/Support/query.js';
 
 // `hasil` kosong saat masih ditunda (lihat <Deferred> di bawah).
@@ -59,8 +60,14 @@ function query(tambahan = {}) {
     });
 }
 
+// Tombol Tampilkan aktif lagi hanya saat isian filter berbeda dari filter yang sedang tampil.
+const { memuat, berubah, ambil } = useAmbilData({
+    form: () => ({ date_from: filterDariTanggal.value, date_to: filterSampaiTanggal.value, warehouse_id: filterDepo.value, product_id: filterProduk.value }),
+    diterapkan: () => props.filter,
+});
+
 function tampilkan() {
-    router.get('/rekap_pencapaian_sku', { ...query(), warehouse_id: filterDepo.value, product_id: filterProduk.value }, { only: PROPS_REKAP });
+    ambil('/rekap_pencapaian_sku', { ...query(), warehouse_id: filterDepo.value, product_id: filterProduk.value }, { only: PROPS_REKAP });
 }
 
 function pindahTab(kode) {
@@ -109,7 +116,7 @@ function simpanTarget() {
                     <Label for="product_id">Produk <span class="text-gray-500">(kosong = semua)</span></Label>
                     <Combobox id="product_id" v-model="filterProduk" multiple :options="daftarProduk" placeholder="Cari produk..." />
                 </div>
-                <Button type="submit">Tampilkan</Button>
+                <Button type="submit" :loading="memuat" :disabled="!berubah">Tampilkan</Button>
                 <Button :tag="Link" variant="outline-secondary" :href="`/rekap_pencapaian_sku?tab=${tab}`">Reset Filter</Button>
                 <Button v-if="bolehUbah" type="button" variant="outline-secondary" class="ms-auto" @click="bukaModalTarget">Setting Target ({{ angkaRingkas(periode.target) }} /Hari)</Button>
             </form>

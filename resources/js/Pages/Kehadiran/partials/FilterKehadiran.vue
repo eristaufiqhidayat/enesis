@@ -1,10 +1,10 @@
 <script setup>
 import { computed, reactive, watch } from 'vue';
-import { router } from '@inertiajs/vue3';
 import Button from '@/Components/ui/atoms/Button.vue';
 import Input from '@/Components/ui/atoms/Input.vue';
 import Label from '@/Components/ui/atoms/Label.vue';
 import Select from '@/Components/ui/atoms/Select.vue';
+import { useAmbilData } from '@/Support/ambilData.js';
 import { bersihkanQuery } from '@/Support/query.js';
 
 // Filter kehadiran (padanan partial Blade kehadiran/_filter). Submit = GET ke URL yang sama tanpa full reload,
@@ -44,8 +44,22 @@ watch(() => [props.filter, props.cariOutlet], () => isiDariProps(props.filter));
 const adaKoordinator = computed(() => Object.keys(props.daftarKoordinator).length > 0);
 const labelOrangKecil = computed(() => props.labelOrang.toLowerCase());
 
+// Tombol Tampilkan aktif lagi hanya saat isian berbeda dari filter yang sedang tampil.
+const { memuat, berubah, ambil } = useAmbilData({
+    form: () => ({ ...form }),
+    diterapkan: () => ({
+        dari: props.filter.dari,
+        sampai: props.filter.sampai,
+        q: props.filter.q ?? '',
+        depo: props.filter.depo ?? '',
+        koordinator: props.filter.koordinator ?? '',
+        sumber: props.filter.sumber,
+        outlet: props.cariOutlet ?? '',
+    }),
+});
+
 function submit() {
-    router.get(props.action, bersihkanQuery({ ...form, status: props.status }), { preserveState: true, preserveScroll: true });
+    ambil(props.action, bersihkanQuery({ ...form, status: props.status }), { preserveState: true, preserveScroll: true });
 }
 </script>
 
@@ -87,6 +101,6 @@ function submit() {
                 <option v-for="(label, kode) in daftarSumber" :key="kode" :value="kode">{{ label }}</option>
             </Select>
         </div>
-        <Button type="submit">Tampilkan</Button>
+        <Button type="submit" :loading="memuat" :disabled="!berubah">Tampilkan</Button>
     </form>
 </template>
