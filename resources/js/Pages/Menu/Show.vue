@@ -8,6 +8,7 @@ import Select from '@/Components/ui/atoms/Select.vue';
 import Alert from '@/Components/ui/molecules/Alert.vue';
 import Card from '@/Components/ui/molecules/Card.vue';
 import TableSkeleton from '@/Components/ui/molecules/TableSkeleton.vue';
+import CariForm from './partials/CariForm.vue';
 import Tabs from '@/Components/ui/molecules/Tabs.vue';
 import DataTable from '@/Components/ui/organisms/DataTable.vue';
 
@@ -153,23 +154,24 @@ function pindahTab(key) {
             @update:model-value="pindahTab"
         />
 
-        <form v-if="adaTabelKonfig" class="flex items-center justify-end gap-2 mb-3" @submit.prevent="submitSearch">
+        <div v-if="adaTabelKonfig && (formDateFilter || adaPilihan('depo') || adaPilihan('koordinator'))" class="flex flex-wrap items-center justify-end gap-2 mb-3">
             <Input v-if="formDateFilter" v-model="tanggal" type="date" required aria-label="Tanggal data" class="w-auto" />
             <Select v-if="adaPilihan('depo')" v-model="depo" :options="pilihanFilter.depo" placeholder="Semua depo" aria-label="Depo" class="w-auto" />
             <Select v-if="adaPilihan('koordinator')" v-model="koordinator" :options="pilihanFilter.koordinator" placeholder="Semua koordinator" aria-label="Koordinator" class="w-auto max-w-[12rem]" />
-            <Input v-model="search" type="search" placeholder="Cari..." class="w-48 min-w-0" />
-            <Button type="submit">Cari</Button>
-        </form>
+        </div>
 
         <Deferred v-if="adaTabelKonfig" data="tables">
             <template #fallback>
                 <Card body-class="overflow-x-auto">
+                    <template #header>
+                        <CariForm v-model="search" class="justify-end" @submit="submitSearch" />
+                    </template>
                     <TableSkeleton />
                 </Card>
             </template>
 
             <template v-if="tables.length">
-                <template v-for="table in visibleTables" :key="table.name">
+                <template v-for="(table, index) in visibleTables" :key="table.name">
                     <Alert v-if="table.keterangan" variant="warning" class="mb-3">{{ table.keterangan }}</Alert>
 
                     <div v-if="kpiItems(table.kpi).length" :class="['grid grid-cols-1 gap-3 mb-3', kolomGridKpi[kpiItems(table.kpi).length] ?? 'sm:grid-cols-4']">
@@ -190,6 +192,13 @@ function pindahTab(key) {
                         :badge-columns="table.name === 'checkin_pagi' ? ['checkin_pertama_hari_ini'] : (table.aksi === 'verifikasi_outlet_baru' ? ['status'] : [])"
                         :badge-variants="table.aksi === 'verifikasi_outlet_baru' ? warnaStatusOutletBaru : (warnaBadge[table.name] ?? {})"
                     >
+                        <!-- Input cari hanya di header tabel pertama: pencarian berlaku untuk semua tabel di halaman ini. -->
+                        <template v-if="index === 0" #header>
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <span v-if="visibleTables.length > 1" class="font-semibold">{{ table.title }}</span>
+                                <CariForm v-model="search" class="ml-auto" @submit="submitSearch" />
+                            </div>
+                        </template>
                         <template v-if="table.aksi === 'verifikasi_outlet_baru'" #aksi="{ row }">
                             <div class="flex gap-1">
                                 <Button v-if="row.foto_toko_id" tag="a" variant="light" :href="`/foto/${row.foto_toko_id}`" target="_blank" rel="noopener">Foto toko</Button>

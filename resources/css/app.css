@@ -137,6 +137,23 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
 .breadcrumb-item { font-weight: 500; }
 .breadcrumb-item:last-child { font-weight: 600; }
 .breadcrumb-separator { color: var(--color-ink-muted); opacity: .6; }
+
+/* Panel navigasi anak (SettingsSideNav): kolom kiri di layar lebar, baris horizontal yang bisa digulir di layar sempit. */
+.settings-layout { display: flex; align-items: flex-start; gap: 1.5rem; }
+.settings-content { flex: 1 1 auto; min-width: 0; }
+/* Ukuran teks dan warna aktif disamakan dengan menu sidebar (.nav-link) dan tombol .btn-primary. */
+.settings-side-nav { flex: 0 0 12rem; position: sticky; top: 1rem; font-size: .75rem; line-height: 1rem; }
+.settings-side-nav ul { display: flex; flex-direction: column; gap: .125rem; list-style: none; margin: 0; padding: 0; }
+.settings-side-nav-link { display: block; padding: .35rem .5rem; border-radius: .25rem; color: var(--color-ink-muted); text-decoration: none; }
+.settings-side-nav-link:hover { background: rgba(0, 0, 0, .04); }
+.settings-side-nav-link.is-active { background: #2563eb; color: #fff; font-weight: 600; }
+.settings-side-nav-link.is-active:hover { background: #1d4ed8; }
+@media (max-width: 991px) {
+    .settings-layout { flex-direction: column; align-items: stretch; gap: .75rem; }
+    .settings-side-nav { flex: none; width: 100%; position: static; overflow-x: auto; }
+    .settings-side-nav ul { flex-direction: row; flex-wrap: nowrap; }
+    .settings-side-nav-link { white-space: nowrap; }
+}
 /* Tooltip: pengganti native title="...", styling konsisten di seluruh app (dipakai ganti-ganti lewat atribut position). */
 .tooltip-wrapper { position: relative; display: inline-flex; }
 .tooltip-wrapper::after {
