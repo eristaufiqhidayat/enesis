@@ -22,4 +22,7 @@ interface SumberTabel
 
     /** Kolom berkualifikasi yang dicari dengan ?q=, mis. ['o.nama', 'd.nama']. */
     public function kolomCari(): array;
+
+    /** Rapikan satu baris sebelum tampil (mis. jam UTC → WIB). */
+    public function ubahBaris(object $baris): object;
 }

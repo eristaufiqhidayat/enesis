@@ -19,6 +19,7 @@ class MigrasiTransaksi
     public const JENIS = [
         'absensi' => ['lap_absensi_sales', 'trx_absensi', ['karyawan_id', 'depo_id']],
         'checkin_depo' => ['lap_checkin_checkout', 'trx_checkin_depo', ['karyawan_id', 'depo_id']],
+        'join_visit' => ['lap_join_visit', 'trx_join_visit', ['karyawan_id', 'koordinator_id', 'depo_id', 'area_id', 'outlet_id']],
     ];
 
     private const POTONGAN = 1000;
@@ -100,8 +101,37 @@ class MigrasiTransaksi
         });
     }
 
+    /** Join visit lama: karyawan_id = sales yang didampingi. Boleh lebih dari satu per hari. */
+    private function joinVisit(string $lama, string $trx): array
+    {
+        return $this->pindahkan('join_visit', $lama, $trx, 'start_time', function (object $r) {
+            if (! $r->koordinator_id) {
+                return 'koordinator tidak dikenali';
+            }
+
+            $mulai = $this->waktu($r->start_time);
+            $selesai = $this->waktu($r->end_time);
+            $tanggal = $this->waktu($r->inspection_date)?->toDateString() ?? $mulai?->toDateString();
+
+            return [
+                'koordinator_id' => $r->koordinator_id,
+                'sales_id' => $r->karyawan_id,
+                'depo_id' => $r->depo_id ?? $this->depo($r->karyawan_id),
+                'outlet_id' => $r->outlet_id,
+                'area_id' => $r->area_id,
+                'tanggal' => $tanggal,
+                'mulai_at' => $mulai?->utc(),
+                'selesai_at' => $selesai?->utc(),
+                'durasi_detik' => $mulai && $selesai && $selesai->gte($mulai) ? (int) $mulai->diffInSeconds($selesai) : null,
+                'catatan' => $r->description,
+                'foto_lama' => $r->photo,
+                'recorded_at' => $mulai?->utc(),
+            ];
+        });
+    }
+
     /**
-     * @param  Closure(object): array<string, mixed>  $petakan
+     * @param  Closure(object): (array<string, mixed>|string)  $petakan  string = alasan baris dilewati
      */
     private function pindahkan(string $jenis, string $lama, string $trx, string $kolomWaktu, Closure $petakan): array
     {
@@ -136,6 +166,12 @@ class MigrasiTransaksi
                 }
 
                 $data = $petakan($r);
+
+                if (is_string($data)) {
+                    $lewati($data);
+
+                    continue;
+                }
 
                 if (! $data['tanggal']) {
                     $lewati('tanpa tanggal');

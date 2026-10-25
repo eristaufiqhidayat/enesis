@@ -1,11 +1,16 @@
 openapi: 3.1.0
 info:
   title: Enesis Mobile API
-  version: 1.0.0-tahap1
+  version: 1.1.0
   description: |
-    API aplikasi mobile Enesis, **tahap 1: sales motoris** (sesuai mockup: Beranda, Absen,
-    Terima barang, Rute, Kunjungan, Order, Outlet baru, Tutup hari). Endpoint koordinator, izin,
-    pengumuman, dan notifikasi menyusul di tahap 2.
+    API aplikasi mobile Enesis untuk **sales motoris** (Beranda, Absen, Terima barang, Rute, Kunjungan,
+    Order, Outlet baru, Tutup hari) dan **koordinator** (Absen, Tim hari ini, Join Visit, Tracking GPS).
+    Satu aplikasi; menu mengikuti `user.role` / `user.permissions` dari login. Izin, pengumuman, dan
+    notifikasi menyusul.
+
+    **Akses per role**: `config`, `uploads`, `attendances*`, `tracking/batch` untuk sales dan koordinator;
+    `team/today`, `coordinator/outlets/nearby`, `join-visits*` hanya koordinator; endpoint lain hanya sales.
+    Role lain mendapat `403 forbidden`.
 
     **Konvensi**
     - Semua permintaan membawa header `X-App-Version` (mis. `1.0.0`). Setiap respons membawa
@@ -44,13 +49,14 @@ tags:
   - name: Penjualan
   - name: Tracking
   - name: Kinerja
+  - name: Koordinator
 
 paths:
   /auth/login:
     post:
       tags: [Auth]
       summary: Login dan daftarkan perangkat
-      description: Hanya akun kategori `sales` yang aktif dan terhubung ke karyawan. Token lama milik akun ini dicabut.
+      description: Hanya akun kategori `sales` atau `koordinator` yang aktif dan terhubung ke karyawan; role lain `403 role_not_supported`. Token lama milik akun ini dicabut.
       security: []
       requestBody:
         required: true
@@ -295,7 +301,7 @@ paths:
     post:
       tags: [Absensi]
       summary: Absen pulang — Idempotency-Key
-      description: "409: not_checked_in, already_checked_out, visit_open."
+      description: "409: not_checked_in, already_checked_out, visit_open (sales), join_visit_open (koordinator)."
       parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
       requestBody:
         content:
@@ -941,6 +947,161 @@ paths:
                       new_outlets: { type: array, items: { type: string, format: uuid } }
                       tracking: { type: object, properties: { points: { type: integer }, last_recorded_at: { type: [string, 'null'], format: date-time } } }
 
+  /team/today:
+    get:
+      tags: [Koordinator]
+      summary: Sales bawahan koordinator dan kegiatan hari ini
+      description: Sales aktif dengan `koordinator_id` = koordinator yang login, urut nama.
+      parameters:
+        - { name: date, in: query, schema: { type: string, format: date }, description: Bawaan hari ini (WIB) }
+      responses:
+        '200':
+          description: Tim
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer }
+                        name: { type: string }
+                        phone: { type: [string, 'null'] }
+                        depot: { type: [string, 'null'] }
+                        attendance:
+                          type: [object, 'null']
+                          properties:
+                            checked_in_at: { type: string, format: date-time }
+                            checked_out_at: { type: [string, 'null'], format: date-time }
+                            is_late: { type: boolean }
+                        visits: { type: integer }
+                        visit_open: { type: boolean, description: Sedang di outlet (belum checkout) }
+                        invoices: { type: integer }
+                        ec: { type: integer }
+                        sales_amount: { type: integer }
+                        last_position:
+                          type: [object, 'null']
+                          properties: { lat: { type: number }, lng: { type: number }, at: { type: string, format: date-time } }
+                  meta:
+                    type: object
+                    properties: { date: { type: string }, total: { type: integer }, checked_in: { type: integer }, visits: { type: integer }, sales_amount: { type: integer } }
+
+  /coordinator/outlets/nearby:
+    get:
+      tags: [Koordinator]
+      summary: Outlet master terdekat dari posisi koordinator (pilih outlet untuk join visit)
+      parameters:
+        - { name: lat, in: query, required: true, schema: { type: number } }
+        - { name: lng, in: query, required: true, schema: { type: number } }
+        - { name: radius, in: query, schema: { type: integer, default: 300, minimum: 10, maximum: 2000 } }
+        - { name: q, in: query, schema: { type: string }, description: Cari nama/kode outlet }
+      responses:
+        '200':
+          description: Maks. 50 outlet, urut jarak
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer }
+                        code: { type: [string, 'null'] }
+                        name: { type: string }
+                        address: { type: [string, 'null'] }
+                        area: { type: [string, 'null'] }
+                        lat: { type: number }
+                        lng: { type: number }
+                        distance_m: { type: integer }
+
+  /join-visits:
+    get:
+      tags: [Koordinator]
+      summary: Riwayat join visit koordinator
+      parameters:
+        - { name: date, in: query, schema: { type: string, format: date }, description: Bawaan hari ini }
+        - { name: month, in: query, schema: { type: string, example: '2026-10' }, description: Satu bulan (mengganti date) }
+      responses:
+        '200':
+          description: Urut terbaru
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/JoinVisit' } }
+    post:
+      tags: [Koordinator]
+      summary: Mulai join visit di outlet bersama satu sales — Idempotency-Key
+      description: |
+        Syarat: sudah absen masuk dan belum absen pulang (409 not_checked_in / already_checked_out),
+        tidak ada join visit lain yang belum selesai (409 join_visit_open), sales anggota tim aktif
+        (422 not_your_team), posisi dalam radius outlet *(konfirmasi: 100 m)* (422 outside_outlet_radius;
+        outlet tanpa koordinat tidak diperiksa).
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/Umum'
+                - $ref: '#/components/schemas/Lokasi'
+                - type: object
+                  required: [sales_id, outlet_id]
+                  properties:
+                    sales_id: { type: integer, description: mk_karyawan.id sales }
+                    outlet_id: { type: integer, description: mk_outlet.id }
+      responses:
+        '201':
+          description: Dimulai
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: object, properties: { join_visit_id: { type: integer }, started_at: { type: string, format: date-time }, distance_to_outlet_m: { type: [integer, 'null'] } } }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+
+  /join-visits/{id}/finish:
+    post:
+      tags: [Koordinator]
+      summary: Selesaikan join visit dengan catatan + foto — Idempotency-Key
+      description: Catatan dan foto (upload_id) wajib. Sudah selesai → 409 already_finished.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/Umum'
+                - $ref: '#/components/schemas/LokasiOpsional'
+                - type: object
+                  required: [note, photo_id]
+                  properties:
+                    note: { type: string, maxLength: 2000 }
+                    photo_id: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Selesai
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: object, properties: { join_visit_id: { type: integer }, finished_at: { type: string, format: date-time }, duration_s: { type: integer } } }
+        '409': { $ref: '#/components/responses/Error' }
+
 components:
   securitySchemes:
     bearer:
@@ -978,6 +1139,19 @@ components:
         lng: { type: number, minimum: -180, maximum: 180 }
         accuracy_m: { type: number }
         is_mock_location: { type: boolean, description: Penanda lokasi palsu Android; disimpan untuk diperiksa }
+    JoinVisit:
+      type: object
+      properties:
+        id: { type: integer }
+        date: { type: string, format: date }
+        sales: { type: object, properties: { id: { type: integer }, name: { type: string } } }
+        outlet: { type: [object, 'null'], properties: { id: { type: integer }, code: { type: string }, name: { type: string }, address: { type: string } } }
+        started_at: { type: string, format: date-time }
+        finished_at: { type: [string, 'null'], format: date-time }
+        duration_s: { type: [integer, 'null'] }
+        distance_to_outlet_m: { type: [integer, 'null'] }
+        note: { type: [string, 'null'] }
+        status: { type: string, enum: [berlangsung, selesai] }
     LokasiOpsional:
       type: object
       properties:

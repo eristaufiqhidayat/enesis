@@ -38,7 +38,8 @@ class AuthMobileTest extends MobileApiTestCase
     public function test_login_ditolak(): void
     {
         $this->sales();
-        User::factory()->create(['username' => 'koor', 'password' => 'rahasia123', 'kategori' => 'koordinator', 'karyawan_id' => 137]);
+        // Koordinator sekarang boleh login HP (menu koordinator); staf "lainnya" tetap ditolak.
+        User::factory()->create(['username' => 'staf', 'password' => 'rahasia123', 'kategori' => 'lainnya', 'karyawan_id' => 137]);
         User::factory()->create(['username' => 'lepas', 'password' => 'rahasia123', 'kategori' => 'sales', 'karyawan_id' => null]);
         User::factory()->create(['username' => 'cek', 'password' => 'rahasia123', 'kategori' => 'sales', 'karyawan_id' => 2, 'perlu_keputusan' => true]);
         User::factory()->create(['username' => 'lama', 'password' => 'rahasia123', 'kategori' => 'sales', 'karyawan_id' => 2, 'aktif' => false]);
@@ -47,7 +48,7 @@ class AuthMobileTest extends MobileApiTestCase
 
         $this->assertError($kirim('andi', 'salah'), 401, 'invalid_credentials');
         $this->assertError($kirim('lama'), 401, 'invalid_credentials');
-        $this->assertError($kirim('koor'), 403, 'role_not_supported');
+        $this->assertError($kirim('staf'), 403, 'role_not_supported');
         $this->assertError($kirim('lepas'), 403, 'no_employee_link');
         $this->assertError($kirim('cek'), 403, 'account_under_review');
         $this->assertError($this->postJson('/api/mobile/v1/auth/login', ['username' => 'andi']), 422, 'validation_failed')

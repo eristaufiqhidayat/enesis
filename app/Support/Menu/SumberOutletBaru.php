@@ -38,6 +38,13 @@ class SumberOutletBaru implements SumberTabel
         return Akses::batasiKaryawan($query, $user);
     }
 
+    public function ubahBaris(object $baris): object
+    {
+        $baris->recorded_at = JamLokal::format($baris->recorded_at);
+
+        return $baris;
+    }
+
     public function kolomCari(): array
     {
         return ['b.id', 'b.status', 'b.nama', 'b.pemilik', 'b.no_hp', 'b.alamat', 'k.nama', 'd.nama', 'a.nama'];

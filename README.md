@@ -226,7 +226,10 @@ php artisan enesis:migrasi-transaksi absensi         # satu jenis
 php artisan enesis:migrasi-transaksi --tanpa-sambung # lewati pengisian ID karyawan/depo di tabel lama
 ```
 
-Aman diulang: hanya baris lama yang belum pernah dimigrasi yang ditambahkan. Satu sales satu baris
+Jenis: `absensi`, `checkin_depo`, `join_visit` (lap_join_visit → trx_join_visit; boleh beberapa per hari,
+baris dengan koordinator yang tidak dikenali dilewati).
+
+Aman diulang: hanya baris lama yang belum pernah dimigrasi yang ditambahkan. Absensi dan checkin depo: satu sales satu baris
 per tanggal; bila tanggal itu sudah ada (mis. sales sudah absen lewat motoris), baris lama dilewati dan
 data motoris tidak ditimpa. Waktu di data lama dibaca sebagai jam lokal (`MOBILE_ZONA_WAKTU`) lalu
 disimpan dalam UTC, sama seperti data dari HP.
@@ -236,6 +239,10 @@ Menu **Absensi Sales**, **Absensi Sales Terlambat**, **Lap. Absensi Sales**, **C
 tanggal (bawaan 7 hari terakhir, maks. 92 hari), depo, koordinator, nama sales, dan sumber data; jam
 ditampilkan dalam WIB; selfie absen dibuka lewat `/foto/{id}` (hanya untuk yang boleh melihat menu absensi
 dan sales itu ada dalam cakupan datanya).
+
+Koordinator absen di tabel yang sama (`trx_absensi`): menu absensi sales hanya menampilkan sales, menu
+**Absensi Koordinator** (`/absensi_koordinator`) hanya koordinator. Menu **Join Visit** membaca `trx_join_visit`
+(data HP koordinator + riwayat lama yang dimigrasi; tombol foto), **Lap. Join Visit** tetap `lap_join_visit`.
 
 ## Kelola akun & role (`/user_sales`, `/user_koordinator`, `/user_lainnya`, `/super_admin`, `/role`)
 
@@ -263,15 +270,15 @@ role dicatat di `riwayat_admin`. Akun tanpa kategori dan tanpa role (akun teknis
 
 ## API aplikasi mobile (`/api/mobile/v1`)
 
-Tahap 1 untuk **sales motoris**, mengikuti mockup aplikasi (Beranda, Absen, Terima barang, Rute,
-Kunjungan, Order, Outlet baru, Tutup hari). Kontrak lengkap: [`docs/api/mobile-v1.yaml`](docs/api/mobile-v1.yaml)
+Satu aplikasi untuk **sales motoris** (Beranda, Absen, Terima barang, Rute, Kunjungan, Order, Outlet baru,
+Tutup hari) dan **koordinator** (Absen, Tim hari ini, Join Visit, Tracking GPS); menu mengikuti role akun. Kontrak lengkap: [`docs/api/mobile-v1.yaml`](docs/api/mobile-v1.yaml)
 (OpenAPI 3.1; buka di editor.swagger.io).
 
 - Login `POST /auth/login` (username + password + `device_id`) → token Bearer per HP. Satu akun satu HP:
   login di HP lain mencabut token lama (`401 device_replaced`); token menganggur 30 hari dicabut.
   Akun dengan password awal harus `POST /auth/change-password` dulu.
 - Transaksi disimpan di tabel baru `trx_*` (`trx_absensi`, `trx_checkin_depo`, `trx_canvassing(_item)`,
-  `trx_kunjungan`, `trx_stok_outlet`, `trx_penjualan(_item)`, `trx_outlet_baru`, `trx_tracking`) dengan ID
+  `trx_kunjungan`, `trx_stok_outlet`, `trx_penjualan(_item)`, `trx_outlet_baru`, `trx_tracking`, `trx_join_visit`) dengan ID
   master `mk_*`. Foto di `mobile_uploads` (disk `local`, folder `mobile/<user>/<tahun>/<bulan>`).
 - POST transaksi wajib header `Idempotency-Key` (UUID) sehingga antrian offline aman dikirim ulang.
 - Aturan bisnis (radius depo/outlet/duplikat, jam aktif, batas masuk, minimal transaksi, poin) ada di
@@ -290,8 +297,8 @@ php artisan enesis:bersihkan-mobile   # dijadwalkan tiap 02:00 (perlu cron `sche
 Halaman `/tracking_koordinator_history_location` menampilkan rute GPS koordinator di peta
 Leaflet (pilih tanggal dan koordinator), sama seperti di Marketama: garis rute, ikon Start/End,
 titik-titik lokasi dengan alamat, lokasi depo, dan tombol Satelit / 2D Map / Garis Jalan.
-Datanya ada di tabel `tracking_koordinator` dan `tracking_koordinator_lokasi`, dimuat lewat
-`marketama:import` (file `tracking_koordinator.csv` dan `tracking_koordinator_lokasi.csv`).
+Datanya dari tabel lama `tracking_koordinator` dan `tracking_koordinator_lokasi` (dimuat lewat
+`marketama:import`) digabung dengan titik GPS aplikasi HP koordinator (`trx_tracking`, jam WIB).
 Peta memakai tile OpenStreetMap dan Esri, jadi butuh koneksi internet.
 
 ## Peta Tracking History Sales Location

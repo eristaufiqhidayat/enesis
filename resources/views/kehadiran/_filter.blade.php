@@ -10,8 +10,9 @@
         <x-ui.atoms.input type="date" id="sampai" name="sampai" value="{{ $filter['sampai'] }}" />
     </div>
     <div class="grow min-w-[12rem]">
-        <x-ui.atoms.label for="q">Nama sales</x-ui.atoms.label>
-        <x-ui.atoms.input type="search" id="q" name="q" value="{{ $filter['q'] }}" placeholder="Cari nama sales…" />
+        @php($orang = strtolower($labelOrang ?? 'Sales'))
+        <x-ui.atoms.label for="q">Nama {{ $orang }}</x-ui.atoms.label>
+        <x-ui.atoms.input type="search" id="q" name="q" value="{{ $filter['q'] }}" placeholder="Cari nama {{ $orang }}…" />
     </div>
     <div>
         <x-ui.atoms.label for="depo">Depo</x-ui.atoms.label>

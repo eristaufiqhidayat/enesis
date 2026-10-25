@@ -100,6 +100,28 @@ class MigrasiTransaksiTest extends TestCase
         $this->assertSame(2, DB::table('trx_checkin_depo')->count());
     }
 
+    public function test_join_visit_lama_masuk_ke_trx_join_visit(): void
+    {
+        DB::table('mk_karyawan')->insert(['id' => 137, 'kategori' => 'koordinator', 'nama' => 'Koor Satu', 'depo_id' => 46]);
+        DB::table('mk_outlet')->insert(['id' => 11, 'kode' => 'OUT-11', 'nama' => 'Toko Sebelas']);
+        $baris = fn ($src, $koor) => [
+            'source_id' => $src, 'koordinator_name' => $koor, 'sales_name' => 'Andi', 'warehouse_name' => 'Sidoarjo',
+            'inspection_date' => '2026-10-20 00:00:00', 'start_time' => '2026-10-20 10:00:00', 'end_time' => '2026-10-20 10:20:00',
+            'description' => 'Rak rapi', 'outlet_code' => 'OUT-11', 'photo' => 'jv_501.jpg',
+        ];
+        DB::table('lap_join_visit')->insert([$baris(501, 'Koor Satu'), $baris(502, 'Koor Tidak Ada')]);
+
+        $this->artisan('enesis:migrasi-transaksi join_visit')->assertSuccessful();
+        $this->artisan('enesis:migrasi-transaksi join_visit')->assertSuccessful(); // diulang: tidak dobel
+
+        $jv = DB::table('trx_join_visit')->sole();
+        $this->assertSame(['lama', 501, 137, 1, 11, 46], [$jv->sumber, (int) $jv->sumber_id, (int) $jv->koordinator_id, (int) $jv->sales_id, (int) $jv->outlet_id, (int) $jv->depo_id]);
+        $this->assertSame('2026-10-20', substr((string) $jv->tanggal, 0, 10));
+        $this->assertSame('2026-10-20 03:00:00', (string) $jv->mulai_at); // 10:00 WIB disimpan UTC
+        $this->assertSame(1200, (int) $jv->durasi_detik);
+        $this->assertSame(['Rak rapi', 'jv_501.jpg'], [$jv->catatan, $jv->foto_lama]);
+    }
+
     public function test_jenis_tidak_dikenal_ditolak(): void
     {
         $this->artisan('enesis:migrasi-transaksi penjualan')->assertFailed();

@@ -29,9 +29,12 @@ class ProfilController extends MobileController
             'depot' => $depo ? ['id' => (int) $depo->id, 'name' => $depo->nama] : null,
             'coordinator' => $koordinator ? ['id' => (int) $koordinator->id, 'name' => $koordinator->nama] : null,
             'must_change_password' => (bool) $user->wajib_ganti_password,
-            'permissions' => $user->kategori === 'sales'
-                ? ['attendance', 'depot_visit', 'canvassing', 'route', 'visit', 'sale', 'new_outlet', 'tracking']
-                : [],
+            // Menu aplikasi per role: sales motoris atau koordinator (tim, join visit).
+            'permissions' => match ($user->kategori) {
+                'sales' => ['attendance', 'depot_visit', 'canvassing', 'route', 'visit', 'sale', 'new_outlet', 'tracking'],
+                'koordinator' => ['attendance', 'team', 'join_visit', 'tracking'],
+                default => [],
+            },
         ];
     }
 
