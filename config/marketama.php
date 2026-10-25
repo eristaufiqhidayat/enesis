@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Menu\SumberCheckinPagi;
 use App\Support\Menu\SumberJoinVisit;
 use App\Support\Menu\SumberOutletBaru;
 use App\Support\Menu\SumberOutletMaster;
@@ -745,7 +746,7 @@ return [
                     'tab_key' => 'checkin_pagi',
                     'tab_label' => 'Sales Checkin Outlet Pagi',
                     'tables' => [
-                        ['table' => 'checkin_pagi', 'date_filter_column' => 'tanggal_data', 'kpi' => 'checkin_pagi'],
+                        ['table' => 'checkin_pagi', 'date_filter_column' => 'tanggal_data'],
                     ],
                 ],
                 [
@@ -2157,7 +2158,9 @@ return [
             ],
         ],
         'checkin_pagi' => [
-            'title' => 'checkin_pagi',
+            'title' => 'Sales Checkin Outlet Pagi',
+            // Dihitung dari trx_kunjungan + mk_karyawan untuk tanggal terpilih (tabel checkin_pagi = salinan lama Marketama).
+            'sumber' => SumberCheckinPagi::class,
             'columns' => [
                 'no' => 'No',
                 'depo' => 'Depo',

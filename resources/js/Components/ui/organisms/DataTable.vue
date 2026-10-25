@@ -11,7 +11,8 @@ const props = defineProps({
     total: { type: Number, default: 0 },
     links: { type: Array, default: () => [] },
     badgeColumns: { type: Array, default: () => [] },
-    // Warna badge per nilai, mis. { status: { menunggu: 'warning', ditolak: 'danger' } }. Tanpa peta: terisi = success.
+    // Warna badge per nilai, mis. { status: { menunggu: 'warning', ditolak: 'danger' } }; kunci '*' = nilai lain yang terisi.
+    // Tanpa peta: terisi = success.
     badgeVariants: { type: Object, default: () => ({}) },
 });
 
@@ -23,7 +24,9 @@ function formatTotal(total) {
 }
 
 function badgeVariant(column, value) {
-    return props.badgeVariants[column]?.[value] ?? (value ? 'success' : 'secondary');
+    const peta = props.badgeVariants[column];
+
+    return peta?.[value] ?? (value && peta?.['*']) ?? (value ? 'success' : 'secondary');
 }
 </script>
 
