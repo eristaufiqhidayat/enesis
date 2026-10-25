@@ -1,5 +1,12 @@
 <?php
 
+use App\Support\Menu\Motoris\SumberBarangTerbaikBulanan;
+use App\Support\Menu\Motoris\SumberBarangTerbaikHarian;
+use App\Support\Menu\Motoris\SumberBarangTerbaikMingguan;
+use App\Support\Menu\Motoris\SumberEffectiveCall;
+use App\Support\Menu\Motoris\SumberEffectiveCallItem;
+use App\Support\Menu\Motoris\SumberPenjualan;
+use App\Support\Menu\Motoris\SumberPenjualanItem;
 use App\Support\Menu\SumberCheckinPagi;
 use App\Support\Menu\SumberJoinVisit;
 use App\Support\Menu\SumberOutletBaru;
@@ -1065,21 +1072,21 @@ return [
         'lap_penjualan_barang_terbaik_harian' => [
             'title' => 'Lap. Barang Terbaik Harian',
             'tables' => [
-                'lap_penjualan_barang_terbaik_harian',
+                ['table' => 'lap_penjualan_barang_terbaik_harian', 'date_filter_column' => 'tanggal_data'],
             ],
             'same_as' => null,
         ],
         'lap_penjualan_barang_terbaik_mingguan' => [
             'title' => 'Lap. Barang Terbaik Mingguan',
             'tables' => [
-                'lap_penjualan_barang_terbaik_mingguan',
+                ['table' => 'lap_penjualan_barang_terbaik_mingguan', 'date_filter_column' => 'tanggal_data'],
             ],
             'same_as' => null,
         ],
         'lap_penjualan_barang_terbaik_bulanan' => [
             'title' => 'Lap. Barang Terbaik Bulanan',
             'tables' => [
-                'lap_penjualan_barang_terbaik_bulanan',
+                ['table' => 'lap_penjualan_barang_terbaik_bulanan', 'date_filter_column' => 'tanggal_data'],
             ],
             'same_as' => null,
         ],
@@ -1964,6 +1971,7 @@ return [
         ],
         'lap_penjualan_barang_terbaik_harian' => [
             'title' => 'Lap. Barang Terbaik Harian',
+            'sumber' => SumberBarangTerbaikHarian::class,
             'columns' => [
                 'tanggal_data' => 'Tanggal Data',
                 'product_id' => 'Product ID',
@@ -1980,6 +1988,7 @@ return [
         ],
         'lap_penjualan_barang_terbaik_mingguan' => [
             'title' => 'Lap. Barang Terbaik Mingguan',
+            'sumber' => SumberBarangTerbaikMingguan::class,
             'columns' => [
                 'product_id' => 'Product ID',
                 'product_name' => 'Product Name',
@@ -2005,6 +2014,7 @@ return [
         ],
         'lap_penjualan_barang_terbaik_bulanan' => [
             'title' => 'Lap. Barang Terbaik Bulanan',
+            'sumber' => SumberBarangTerbaikBulanan::class,
             'columns' => [
                 'product_id' => 'Product ID',
                 'product_name' => 'Product Name',
@@ -2737,6 +2747,7 @@ return [
         ],
         'lap_effective_call' => [
             'title' => 'Lap. Efective Call',
+            'sumber' => SumberEffectiveCall::class,
             'columns' => [
                 'source_id' => 'ID',
                 'trans_code' => 'Trans Code',
@@ -2761,10 +2772,12 @@ return [
                 'sales_latitude' => 'Sales Latitude',
                 'created_by_name' => 'Created By Name',
                 'created_at' => 'Created At',
+                'sumber' => 'Sumber',
             ],
         ],
         'lap_penjualan_barang' => [
             'title' => 'Lap. Penjualan Barang',
+            'sumber' => SumberPenjualan::class,
             'columns' => [
                 'source_id' => 'ID',
                 'trans_code' => 'Trans Code',
@@ -2790,6 +2803,7 @@ return [
                 'sales_latitude' => 'Sales Latitude',
                 'created_by_name' => 'Created By Name',
                 'created_at' => 'Created At',
+                'sumber' => 'Sumber',
             ],
         ],
         'lap_outlet_ac' => [
@@ -2868,6 +2882,7 @@ return [
         ],
         'lap_effective_call_barang' => [
             'title' => 'Lap. Efective Call Detail',
+            'sumber' => SumberEffectiveCallItem::class,
             'columns' => [
                 'source_id' => 'ID',
                 'trans_code' => 'Trans Code',
@@ -2896,10 +2911,12 @@ return [
                 'checkin_duration' => 'Checkin Duration',
                 'sales_longitude' => 'Sales Longitude',
                 'sales_latitude' => 'Sales Latitude',
+                'sumber' => 'Sumber',
             ],
         ],
         'lap_penjualan_barang_detail' => [
             'title' => 'Lap. Penjualan Barang Detail',
+            'sumber' => SumberPenjualanItem::class,
             'columns' => [
                 'source_id' => 'ID',
                 'trans_code' => 'Trans Code',
@@ -2929,6 +2946,7 @@ return [
                 'checkin_duration' => 'Checkin Duration',
                 'sales_longitude' => 'Sales Longitude',
                 'sales_latitude' => 'Sales Latitude',
+                'sumber' => 'Sumber',
             ],
         ],
         // 'sumber': kelas App\Support\Menu\SumberTabel yang membuat query (join ke master area/depo/karyawan).

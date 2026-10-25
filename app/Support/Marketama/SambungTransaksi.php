@@ -68,6 +68,13 @@ class SambungTransaksi
             'karyawan_id' => ['sales', 'salesperson_name'], 'depo_id' => ['depo', 'warehouse_name'],
             'area_id' => ['area', 'area_name'], 'produk_id' => ['produk', 'product_sku'],
         ],
+        'lap_stok_kompetitor' => [
+            'karyawan_id' => ['sales', 'salesperson_name'], 'koordinator_id' => ['koordinator', 'koordinator_name'],
+            'area_id' => ['area', 'area_name'], 'outlet_id' => ['outlet', 'outlet_code'],
+        ],
+        'lap_absensi_koordinator' => [
+            'karyawan_id' => ['koordinator', 'employee_name'], 'depo_id' => ['depo', 'warehouse_name'],
+        ],
         'lap_loading_barang' => [
             'koordinator_id' => ['koordinator', 'koordinator_name'], 'depo_id' => ['depo', 'warehouse_name'],
             'distributor_id' => ['distributor', 'distributor_name'],
@@ -139,9 +146,12 @@ class SambungTransaksi
             return "(SELECT MIN(o.id) FROM mk_outlet o WHERE o.kode = {$nilai})";
         }
 
-        $syaratDepo = in_array($jenis, ['sales', 'koordinator', 'distributor'], true)
-            ? " AND (p.depo = '' OR p.depo = LOWER(TRIM({$tabel}.warehouse_name)))"
-            : '';
+        // Nama kembar dibedakan dengan depo; tabel tanpa kolom depo (mis. lap_stok_kompetitor) hanya memakai nama unik.
+        $syaratDepo = match (true) {
+            ! in_array($jenis, ['sales', 'koordinator', 'distributor'], true) => '',
+            Schema::hasColumn($tabel, 'warehouse_name') => " AND (p.depo = '' OR p.depo = LOWER(TRIM({$tabel}.warehouse_name)))",
+            default => " AND p.depo = ''",
+        };
 
         return "(SELECT MIN(p.ref_id) FROM mk_peta_nama p WHERE p.jenis = '{$jenis}' AND p.nilai = {$nilai}{$syaratDepo})";
     }
