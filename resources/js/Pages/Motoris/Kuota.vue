@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue';
-import { Deferred, Head, router, usePage } from '@inertiajs/vue3';
+import { Deferred, Head, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Button from '@/Components/ui/atoms/Button.vue';
 import Input from '@/Components/ui/atoms/Input.vue';
@@ -9,6 +9,7 @@ import Card from '@/Components/ui/molecules/Card.vue';
 import PageHeader from '@/Components/ui/molecules/PageHeader.vue';
 import TableSkeleton from '@/Components/ui/molecules/TableSkeleton.vue';
 import KuotaDepoTabel from './partials/KuotaDepoTabel.vue';
+import { useAmbilData } from '@/Support/ambilData.js';
 
 // `depo` dan `riwayat` kosong saat masih ditunda (lihat <Deferred> di bawah).
 const props = defineProps({
@@ -28,8 +29,14 @@ const PROPS_KUOTA = ['bulan', 'namaBulan', 'depo', 'riwayat', 'bolehUbah'];
 
 const filterBulan = ref(props.bulan);
 
+// Tombol Tampilkan aktif lagi hanya saat bulan berbeda dari yang sedang tampil.
+const { memuat, berubah, ambil } = useAmbilData({
+    form: () => ({ bulan: filterBulan.value }),
+    diterapkan: () => ({ bulan: props.bulan }),
+});
+
 function tampilkan() {
-    router.get('/kuota_motoris', { bulan: filterBulan.value }, { only: PROPS_KUOTA });
+    ambil('/kuota_motoris', { bulan: filterBulan.value }, { only: PROPS_KUOTA });
 }
 </script>
 
@@ -48,7 +55,7 @@ function tampilkan() {
                         <Label for="bulan">Berlaku mulai bulan</Label>
                         <Input id="bulan" v-model="filterBulan" type="month" />
                     </div>
-                    <Button type="submit" variant="outline-secondary">Tampilkan</Button>
+                    <Button type="submit" variant="outline-secondary" :loading="memuat" :disabled="!berubah">Tampilkan</Button>
                 </form>
             </template>
 

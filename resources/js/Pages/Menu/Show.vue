@@ -12,6 +12,7 @@ import TableSkeleton from '@/Components/ui/molecules/TableSkeleton.vue';
 import CariForm from './partials/CariForm.vue';
 import Tabs from '@/Components/ui/molecules/Tabs.vue';
 import DataTable from '@/Components/ui/organisms/DataTable.vue';
+import { useAmbilData } from '@/Support/ambilData.js';
 
 const props = defineProps({
     slug: { type: String, required: true },
@@ -99,6 +100,22 @@ function tolakOutletBaru(row) {
     }
 }
 
+// Tombol Cari aktif lagi hanya saat isian berbeda dari pencarian yang sedang tampil.
+const { memuat, berubah, ambil } = useAmbilData({
+    form: () => ({
+        q: search.value.trim(),
+        tanggal: formDateFilter.value ? tanggal.value : '',
+        depo: pilihanFilter.value ? depo.value : '',
+        koordinator: pilihanFilter.value ? koordinator.value : '',
+    }),
+    diterapkan: () => ({
+        q: props.search.trim(),
+        tanggal: formDateFilter.value ? props.tanggal : '',
+        depo: pilihanFilter.value ? props.filter.depo : '',
+        koordinator: pilihanFilter.value ? props.filter.koordinator : '',
+    }),
+});
+
 function submitSearch() {
     const query = { q: search.value };
 
@@ -120,7 +137,7 @@ function submitSearch() {
         }
     }
 
-    router.get(`/${props.slug}`, query, { preserveState: true, replace: true, only: PROPS_MENU });
+    ambil(`/${props.slug}`, query, { preserveState: true, replace: true, only: PROPS_MENU });
 }
 
 function pindahTab(key) {
@@ -168,7 +185,7 @@ function pindahTab(key) {
             <template #fallback>
                 <Card body-class="overflow-x-auto">
                     <template #header>
-                        <CariForm v-model="search" class="justify-end" @submit="submitSearch" />
+                        <CariForm v-model="search" class="justify-end" :loading="memuat" :disabled="!berubah" @submit="submitSearch" />
                     </template>
                     <TableSkeleton />
                 </Card>
@@ -200,7 +217,7 @@ function pindahTab(key) {
                         <template v-if="index === 0" #header>
                             <div class="flex flex-wrap items-center justify-between gap-2">
                                 <span v-if="visibleTables.length > 1" class="font-semibold">{{ table.title }}</span>
-                                <CariForm v-model="search" class="ml-auto" @submit="submitSearch" />
+                                <CariForm v-model="search" class="ml-auto" :loading="memuat" :disabled="!berubah" @submit="submitSearch" />
                             </div>
                         </template>
                         <template v-if="table.aksi === 'verifikasi_outlet_baru'" #aksi="{ row }">

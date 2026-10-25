@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue';
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { Head, Link, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Badge from '@/Components/ui/atoms/Badge.vue';
 import Button from '@/Components/ui/atoms/Button.vue';
@@ -11,6 +11,7 @@ import Select from '@/Components/ui/atoms/Select.vue';
 import Card from '@/Components/ui/molecules/Card.vue';
 import PageHeader from '@/Components/ui/molecules/PageHeader.vue';
 import Pagination from '@/Components/ui/molecules/Pagination.vue';
+import { useAmbilData } from '@/Support/ambilData.js';
 import { angka } from '@/Support/format.js';
 
 const props = defineProps({
@@ -54,8 +55,14 @@ function tautan(ganti = {}) {
     return query ? `${base}?${query}` : base;
 }
 
+// Tombol Cari aktif lagi hanya saat isian berbeda dari pencarian yang sedang tampil.
+const { memuat, berubah, ambil } = useAmbilData({
+    form: () => ({ q: cari.value.q.trim(), depo: cari.value.depo, koordinator: tampilFilterKoordinator.value ? cari.value.koordinator : '' }),
+    diterapkan: () => ({ q: props.q, depo: props.depo, koordinator: tampilFilterKoordinator.value ? props.koordinator : '' }),
+});
+
 function kirimCari() {
-    router.get(base, bersih({
+    ambil(base, bersih({
         status: props.status !== 'semua' ? props.status : null,
         q: cari.value.q.trim(),
         depo: cari.value.depo,
@@ -111,7 +118,7 @@ function toggleAksi(id) {
                             <option v-for="(nama, id) in daftarKoordinator" :key="id" :value="id">{{ nama }}</option>
                         </Select>
                     </div>
-                    <Button type="submit">Cari</Button>
+                    <Button type="submit" :loading="memuat" :disabled="!berubah">Cari</Button>
                 </form>
             </template>
 

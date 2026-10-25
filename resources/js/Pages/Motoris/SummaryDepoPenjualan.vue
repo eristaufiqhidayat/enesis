@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue';
-import { Deferred, Head, Link, router, usePage } from '@inertiajs/vue3';
+import { Deferred, Head, Link, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Badge from '@/Components/ui/atoms/Badge.vue';
 import Button from '@/Components/ui/atoms/Button.vue';
@@ -8,6 +8,7 @@ import Input from '@/Components/ui/atoms/Input.vue';
 import PageHeader from '@/Components/ui/molecules/PageHeader.vue';
 import TableSkeleton from '@/Components/ui/molecules/TableSkeleton.vue';
 import DataTable from '@/Components/ui/organisms/DataTable.vue';
+import { useAmbilData } from '@/Support/ambilData.js';
 import { angka } from '@/Support/format.js';
 import { bersihkanQuery } from '@/Support/query.js';
 
@@ -35,8 +36,13 @@ const columns = {
 const cari = ref(props.filter.q);
 
 // Hanya total dan baris yang dimuat ulang, supaya tabel lama tetap tampil (tanpa skeleton).
+const { memuat, berubah, ambil } = useAmbilData({
+    form: () => ({ q: cari.value }),
+    diterapkan: () => ({ q: props.filter.q }),
+});
+
 function saring() {
-    router.get(`/summary_all_depo/${props.depo.id}/penjualan`, bersihkanQuery({
+    ambil(`/summary_all_depo/${props.depo.id}/penjualan`, bersihkanQuery({
         date_from: props.filter.date_from, date_to: props.filter.date_to, q: cari.value,
     }), { only: ['baris', 'total', 'filter'] });
 }
@@ -67,7 +73,7 @@ function saring() {
             <template #header>
                 <form class="flex justify-end gap-2" role="search" @submit.prevent="saring">
                     <Input v-model="cari" type="search" placeholder="Cari outlet atau sales…" aria-label="Cari outlet atau sales" class="max-w-xs" />
-                    <Button type="submit" variant="outline-secondary">Cari</Button>
+                    <Button type="submit" variant="outline-secondary" :loading="memuat" :disabled="!berubah">Cari</Button>
                 </form>
             </template>
 
