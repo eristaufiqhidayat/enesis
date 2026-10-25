@@ -87,15 +87,18 @@ class OutletAllTest extends TestCase
             );
     }
 
-    public function test_menu_laporan_outlet_all_tetap_membaca_lap_outlet_all(): void
+    public function test_menu_laporan_outlet_all_membaca_master_outlet(): void
     {
         DB::table('lap_outlet_all')->insert(['source_id' => 99, 'outlet_name' => 'Dari Laporan']);
+        DB::table('mk_outlet')->insert(['id' => 1, 'kode' => 'OUT-1', 'nama' => 'Toko Satu', 'area_id' => 70]);
 
         $this->get('/lap_outlet_all')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->where('tables.0.name', 'lap_outlet_all')
-                ->where('tables.0.rows.data.0.outlet_name', 'Dari Laporan')
+                ->where('tables.0.rows.total', 1)
+                ->where('tables.0.rows.data.0.outlet_name', 'Toko Satu')
+                ->where('tables.0.rows.data.0.warehouse_name', 'Depo Bekasi')
             );
     }
 }

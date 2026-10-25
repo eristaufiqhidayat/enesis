@@ -27,8 +27,10 @@ class MenuMotorisTest extends TestCase
     {
         $judul = $this->judul();
 
-        $this->assertSame('* Stok Kompetitor', $judul['stok_kompetitor']);
-        $this->assertSame('* Lap. Join Visit', $judul['lap_join_visit']);
+        $this->assertSame('* Loading Barang', $judul['loading_barang']);
+        $this->assertSame('* Outlet Duplikat / Fiktif', $judul['outlet_duplikat']);
+        $this->assertSame('Stok Kompetitor', $judul['stok_kompetitor']);
+        $this->assertSame('Lap. Join Visit', $judul['lap_join_visit']);
         $this->assertSame('Checkin Outlet', $judul['checkin_outlet']);
         $this->assertSame('Summary All Depo', $judul['summary_all_depo']);
         $this->assertSame('Join Visit', $judul['join_visit']);

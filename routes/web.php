@@ -97,7 +97,7 @@ Route::middleware(['auth', 'wajib-ganti-password'])->group(function () {
     }
 
     // Absensi sales/koordinator, checkin depo & checkin outlet dari tabel motoris (trx_*), termasuk riwayat aplikasi lama hasil migrasi.
-    foreach (['absensi_sales' => 'absensi', 'absensi_sales_terlambat' => 'absensi', 'lap_absensi_sales' => 'absensi', 'absensi_koordinator' => 'absensi',
+    foreach (['absensi_sales' => 'absensi', 'absensi_sales_terlambat' => 'absensi', 'lap_absensi_sales' => 'absensi', 'absensi_koordinator' => 'absensi', 'lap_absensi_koordinator' => 'absensi',
         'checkin_depo' => 'checkinDepo', 'lap_checkin_checkout' => 'checkinDepo',
         'checkin_outlet' => 'kunjungan', 'lap_checkin_outlet' => 'kunjungan'] as $slug => $aksi) {
         Route::get('/'.$slug, [KehadiranController::class, $aksi])->middleware("hak:{$slug}")

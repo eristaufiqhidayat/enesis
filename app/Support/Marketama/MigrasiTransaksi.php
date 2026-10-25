@@ -6,8 +6,10 @@ use App\Support\Mobile\Lokasi;
 use App\Support\Mobile\Pengaturan;
 use Carbon\CarbonImmutable;
 use Closure;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 // Migrasi data lama (lap_*) ke tabel motoris (trx_*) supaya riwayat aplikasi lama dan data
 // aplikasi motoris ada di satu tabel. Baris lama ditandai sumber = "lama" dan sumber_id =
@@ -22,6 +24,17 @@ class MigrasiTransaksi
         'checkin_depo' => ['lap_checkin_checkout', 'trx_checkin_depo', ['karyawan_id', 'depo_id']],
         'kunjungan' => ['lap_checkin_outlet', 'trx_kunjungan', ['karyawan_id', 'depo_id', 'outlet_id']],
         'join_visit' => ['lap_join_visit', 'trx_join_visit', ['karyawan_id', 'koordinator_id', 'depo_id', 'area_id', 'outlet_id']],
+        'absensi_koordinator' => ['lap_absensi_koordinator', 'trx_absensi', ['karyawan_id', 'depo_id']],
+        'penjualan' => ['lap_penjualan_barang', 'trx_penjualan', ['karyawan_id', 'depo_id', 'outlet_id']],
+        'stok_outlet' => ['lap_stok_outlet', 'trx_stok_outlet', ['karyawan_id', 'depo_id', 'outlet_id', 'produk_id']],
+        'stok_kompetitor' => ['lap_stok_kompetitor', 'trx_stok_outlet', ['karyawan_id', 'outlet_id']],
+        'canvassing' => ['lap_barang_canvassing', 'trx_canvassing_item', ['karyawan_id', 'depo_id', 'produk_id']],
+    ];
+
+    /** Tabel lama pendamping yang ID-nya juga perlu disambung: jenis => [tabel => kolom]. */
+    private const SAMBUNG_TAMBAHAN = [
+        'penjualan' => ['lap_penjualan_barang_detail' => ['produk_id']],
+        'canvassing' => ['lap_pengembalian_barang' => ['karyawan_id', 'produk_id']],
     ];
 
     private const POTONGAN = 1000;
@@ -49,13 +62,21 @@ class MigrasiTransaksi
         $laporan = [];
 
         foreach (self::JENIS as $nama => [$lama, $trx, $kolomId]) {
-            if (($jenis && ! in_array($nama, $jenis, true)) || ! Schema::hasTable($lama) || ! Schema::hasColumn($trx, 'sumber')) {
+            $siap = Schema::hasColumn($trx, 'sumber') || Schema::hasColumn($trx, 'sumber_id');
+
+            if (($jenis && ! in_array($nama, $jenis, true)) || ! Schema::hasTable($lama) || ! $siap) {
                 continue;
             }
 
             if ($sambung) {
                 ($this->log)("{$lama}: menyambungkan nama ke ID karyawan & depo…");
                 (new SambungTransaksi)->jalankan([$lama], $kolomId);
+
+                foreach (self::SAMBUNG_TAMBAHAN[$nama] ?? [] as $tabel => $kolom) {
+                    if (Schema::hasTable($tabel)) {
+                        (new SambungTransaksi)->jalankan([$tabel], $kolom);
+                    }
+                }
             }
 
             $laporan[] = $this->{str($nama)->camel()->toString()}($lama, $trx);
@@ -172,6 +193,389 @@ class MigrasiTransaksi
                 'recorded_at' => $masuk->utc(),
             ];
         }, 'sudah ada');
+    }
+
+    /** Absensi koordinator lama (kolom sama dengan absensi sales), batas masuk memakai jam koordinator. */
+    private function absensiKoordinator(string $lama, string $trx): array
+    {
+        return $this->pindahkan('absensi_koordinator', $lama, $trx, 'time_in', function (object $r) {
+            $masuk = $this->waktu($r->time_in);
+            $tanggal = $r->date ?? $masuk?->toDateString();
+
+            return [
+                'karyawan_id' => $r->karyawan_id,
+                'depo_id' => $r->depo_id ?? $this->depo($r->karyawan_id),
+                'tanggal' => $tanggal ? substr((string) $tanggal, 0, 10) : null,
+                'masuk_at' => $masuk?->utc(),
+                'terlambat' => $masuk ? $masuk->format('H:i') > Pengaturan::jamAktif($masuk, 'koordinator')['batas_masuk'] : false,
+                'pulang_at' => $this->waktu($r->time_out)?->utc(),
+                'recorded_at' => $masuk?->utc(),
+            ];
+        });
+    }
+
+    /**
+     * Penjualan lama (header lap_penjualan_barang + item lap_penjualan_barang_detail per trans_code) → trx_penjualan
+     * + trx_penjualan_item. Tiap penjualan disambung ke kunjungan lama (sales + outlet + jam checkin); bila kunjungan
+     * itu belum ada di trx_kunjungan, dibuat dari data penjualan. Poin tidak tercatat di data lama (0).
+     */
+    private function penjualan(string $lama, string $trx): array
+    {
+        $hasil = ['jenis' => 'penjualan', 'sumber' => 0, 'dipindah' => 0, 'sudah' => 0, 'lewati' => []];
+        $lewati = function (string $alasan, int $n = 1) use (&$hasil) {
+            $hasil['lewati'][$alasan] = ($hasil['lewati'][$alasan] ?? 0) + $n;
+        };
+
+        DB::table($lama)->orderBy('id')->chunkById(self::POTONGAN, function ($baris) use (&$hasil, $lewati) {
+            $hasil['sumber'] += $baris->count();
+            $sudah = DB::table('trx_penjualan')->whereIn('sumber_id', $baris->pluck('source_id')->filter())->pluck('sumber_id')->flip();
+            $kode = $baris->pluck('trans_code')->filter()->values();
+            $kodeAda = DB::table('trx_penjualan')->whereIn('kode', $kode)->pluck('kode')->flip();
+            $detail = Schema::hasTable('lap_penjualan_barang_detail')
+                ? DB::table('lap_penjualan_barang_detail')->whereIn('trans_code', $kode)->orderBy('id')->get()->groupBy('trans_code')
+                : collect();
+            $calon = [];
+
+            foreach ($baris as $r) {
+                $alasan = match (true) {
+                    $r->source_id === null => 'tanpa source_id',
+                    isset($sudah[$r->source_id]) => null,
+                    ! $r->karyawan_id => 'sales tidak dikenali',
+                    ! $r->outlet_id => 'outlet tidak dikenali',
+                    trim((string) $r->trans_code) === '' => 'tanpa kode transaksi',
+                    isset($kodeAda[$r->trans_code]) => 'kode transaksi sudah ada',
+                    default => false,
+                };
+
+                if ($alasan === null) {
+                    $hasil['sudah']++;
+
+                    continue;
+                }
+
+                if ($alasan !== false) {
+                    $lewati($alasan);
+
+                    continue;
+                }
+
+                $jam = $this->waktu($r->datetime_trans) ?? $this->waktu($r->datetime_checkin);
+                $masuk = $this->waktu($r->datetime_checkin) ?? $jam;
+                $tanggal = $r->date_trans ? substr((string) $r->date_trans, 0, 10) : $jam?->toDateString();
+
+                if (! $tanggal || ! $masuk) {
+                    $lewati('tanpa tanggal');
+
+                    continue;
+                }
+
+                $item = [];
+
+                foreach ($detail[$r->trans_code] ?? [] as $d) {
+                    if (! $d->produk_id) {
+                        $lewati('item: produk tidak dikenali');
+
+                        continue;
+                    }
+
+                    $item[] = [
+                        'produk_id' => (int) $d->produk_id,
+                        'qty' => $this->angka($d->quantity),
+                        'harga' => (int) round($this->angka($d->price)),
+                        'diskon' => (int) round($this->angka($d->total_discount ?? $d->discount)),
+                        'total' => (int) round($this->angka($d->total)),
+                        'poin' => 0,
+                    ];
+                }
+
+                [$lat, $lng] = $this->titik($r->sales_latitude, $r->sales_longitude);
+                $calon[] = [
+                    'kunjungan' => $this->kunciKunjungan((int) $r->karyawan_id, (int) $r->outlet_id, $r->depo_id, $masuk, $this->waktu($r->datetime_checkout), $lat, $lng, $tanggal),
+                    'baris' => [
+                        'kode' => mb_substr(trim($r->trans_code), 0, 50),
+                        'karyawan_id' => (int) $r->karyawan_id,
+                        'depo_id' => $r->depo_id ?? $this->depo($r->karyawan_id),
+                        'outlet_id' => (int) $r->outlet_id,
+                        'tanggal' => $tanggal,
+                        'jumlah_sku' => (int) ($this->angka($r->total_item) ?: count($item)),
+                        'total_qty' => $this->angka($r->total_qty) ?: array_sum(array_column($item, 'qty')),
+                        'total' => (int) round($this->angka($r->grand_total)),
+                        'total_diskon' => array_sum(array_column($item, 'diskon')),
+                        'poin' => 0,
+                        'is_effective_call' => HalamanParser::aktif($r->effective_call_status === null ? null : (string) $r->effective_call_status) === true,
+                        'recorded_at' => $jam?->utc(),
+                        'received_at' => now(),
+                        'sumber' => 'lama',
+                        'sumber_id' => $r->source_id,
+                    ],
+                    'item' => $item,
+                ];
+            }
+
+            if (! $calon) {
+                return;
+            }
+
+            $kunjungan = $this->kunjunganUntuk(array_column($calon, 'kunjungan'));
+            $kirim = array_map(fn ($c) => $c['baris'] + ['kunjungan_id' => $kunjungan[$c['kunjungan']['kunci']]], $calon);
+            $hasil['dipindah'] += DB::table('trx_penjualan')->insertOrIgnore($kirim);
+
+            $id = DB::table('trx_penjualan')->whereIn('sumber_id', array_column($kirim, 'sumber_id'))->pluck('id', 'sumber_id');
+            $adaItem = DB::table('trx_penjualan_item')->whereIn('penjualan_id', $id->values())->distinct()->pluck('penjualan_id')->flip();
+            $item = [];
+
+            foreach ($calon as $c) {
+                $pid = $id[$c['baris']['sumber_id']] ?? null;
+
+                if ($pid && ! isset($adaItem[$pid])) {
+                    foreach ($c['item'] as $i) {
+                        $item[] = $i + ['penjualan_id' => $pid];
+                    }
+                }
+            }
+
+            foreach (array_chunk($item, 500) as $potong) {
+                DB::table('trx_penjualan_item')->insert($potong);
+            }
+        });
+
+        return $hasil;
+    }
+
+    /** Stok produk sendiri yang dicatat saat kunjungan lama → trx_stok_outlet (sumber "lama"). */
+    private function stokOutlet(string $lama, string $trx): array
+    {
+        return $this->pindahkanStok('stok_outlet', $lama, 'lama', function (object $r) {
+            return $r->produk_id ? ['produk_id' => (int) $r->produk_id, 'produk_kompetitor' => null] : 'produk tidak dikenali';
+        });
+    }
+
+    /** Stok produk kompetitor saat kunjungan lama → trx_stok_outlet (sumber "lama_komp"). */
+    private function stokKompetitor(string $lama, string $trx): array
+    {
+        return $this->pindahkanStok('stok_kompetitor', $lama, 'lama_komp', function (object $r) {
+            $nama = trim((string) $r->product_name);
+
+            return $nama !== '' ? ['produk_id' => null, 'produk_kompetitor' => mb_substr($nama, 0, 255)] : 'tanpa nama produk';
+        });
+    }
+
+    /**
+     * @param  Closure(object): (array{produk_id: ?int, produk_kompetitor: ?string}|string)  $produk
+     */
+    private function pindahkanStok(string $jenis, string $lama, string $sumber, Closure $produk): array
+    {
+        $hasil = ['jenis' => $jenis, 'sumber' => 0, 'dipindah' => 0, 'sudah' => 0, 'lewati' => []];
+        $lewati = function (string $alasan) use (&$hasil) {
+            $hasil['lewati'][$alasan] = ($hasil['lewati'][$alasan] ?? 0) + 1;
+        };
+        $adaDepo = Schema::hasColumn($lama, 'depo_id');
+
+        DB::table($lama)->orderBy('id')->chunkById(self::POTONGAN, function ($baris) use (&$hasil, $lewati, $sumber, $produk, $adaDepo) {
+            $hasil['sumber'] += $baris->count();
+            $sudah = DB::table('trx_stok_outlet')->where('sumber', $sumber)->whereIn('sumber_id', $baris->pluck('source_id')->filter())
+                ->pluck('sumber_id')->flip();
+            $calon = [];
+
+            foreach ($baris as $r) {
+                if ($r->source_id === null) {
+                    $lewati('tanpa source_id');
+
+                    continue;
+                }
+
+                if (isset($sudah[$r->source_id])) {
+                    $hasil['sudah']++;
+
+                    continue;
+                }
+
+                $p = ! $r->karyawan_id ? 'sales tidak dikenali' : (! $r->outlet_id ? 'outlet tidak dikenali' : $produk($r));
+                $masuk = $this->waktu($r->datetime_checkin);
+
+                if (is_string($p) || ! $masuk) {
+                    $lewati(is_string($p) ? $p : 'tanpa jam checkin');
+
+                    continue;
+                }
+
+                $tanggal = $r->date_checkin ? substr((string) $r->date_checkin, 0, 10) : $masuk->toDateString();
+                $calon[] = [
+                    'kunjungan' => $this->kunciKunjungan((int) $r->karyawan_id, (int) $r->outlet_id, $adaDepo ? $r->depo_id : null, $masuk, $this->waktu($r->datetime_checkout), null, null, $tanggal),
+                    'baris' => $p + [
+                        'qty' => $this->angka($r->quantity),
+                        'created_at' => ($this->waktu($r->last_update) ?? $masuk)->utc(),
+                        'sumber' => $sumber,
+                        'sumber_id' => $r->source_id,
+                    ],
+                ];
+            }
+
+            if ($calon) {
+                $kunjungan = $this->kunjunganUntuk(array_column($calon, 'kunjungan'));
+                $kirim = array_map(fn ($c) => $c['baris'] + ['kunjungan_id' => $kunjungan[$c['kunjungan']['kunci']]], $calon);
+                $hasil['dipindah'] += DB::table('trx_stok_outlet')->insertOrIgnore($kirim);
+            }
+        });
+
+        return $hasil;
+    }
+
+    /**
+     * Barang canvassing lama (per item, lap_barang_canvassing) → trx_canvassing per canvassing_no + trx_canvassing_item;
+     * jam & jumlah kembali dari lap_pengembalian_barang. Penjualan lama sales itu pada tanggal yang sama disambung ke
+     * canvassing-nya supaya jumlah terjual bisa dihitung.
+     */
+    private function canvassing(string $lama, string $trx): array
+    {
+        $hasil = ['jenis' => 'canvassing', 'sumber' => 0, 'dipindah' => 0, 'sudah' => 0, 'lewati' => []];
+        $lewati = function (string $alasan) use (&$hasil) {
+            $hasil['lewati'][$alasan] = ($hasil['lewati'][$alasan] ?? 0) + 1;
+        };
+        $kembali = Schema::hasTable('lap_pengembalian_barang');
+
+        DB::table($lama)->orderBy('id')->chunkById(self::POTONGAN, function ($baris) use (&$hasil, $lewati, $kembali) {
+            $hasil['sumber'] += $baris->count();
+            $sudah = DB::table('trx_canvassing_item')->whereIn('sumber_id', $baris->pluck('source_id')->filter())->pluck('sumber_id')->flip();
+            $nomor = $baris->pluck('canvassing_no')->filter()->unique()->values();
+            $header = DB::table('trx_canvassing')->whereIn('nomor', $nomor)->get(['id', 'nomor', 'sumber'])->keyBy('nomor');
+            $retur = $kembali
+                ? DB::table('lap_pengembalian_barang')->whereIn('canvassing_no', $nomor)->get()->groupBy('canvassing_no')
+                : collect();
+            $item = [];
+
+            foreach ($baris as $r) {
+                $no = trim((string) $r->canvassing_no);
+                $alasan = match (true) {
+                    $r->source_id === null => 'tanpa source_id',
+                    isset($sudah[$r->source_id]) => null,
+                    $no === '' => 'tanpa nomor canvassing',
+                    ! $r->karyawan_id => 'sales tidak dikenali',
+                    ! $r->produk_id => 'produk tidak dikenali',
+                    isset($header[$no]) && $header[$no]->sumber !== 'lama' => 'nomor sudah dipakai aplikasi HP',
+                    default => false,
+                };
+
+                if ($alasan === null) {
+                    $hasil['sudah']++;
+
+                    continue;
+                }
+
+                if ($alasan !== false) {
+                    $lewati($alasan);
+
+                    continue;
+                }
+
+                $terima = $this->waktu($r->receive_datetime) ?? $this->waktu($r->receive_date);
+                $depo = $r->depo_id ?? $this->depo($r->karyawan_id);
+
+                if (! $terima || ! $depo) {
+                    $lewati(! $terima ? 'tanpa tanggal terima' : 'depo tidak dikenali');
+
+                    continue;
+                }
+
+                if (! isset($header[$no])) {
+                    $kembaliPertama = collect($retur[$no] ?? [])->map(fn ($x) => $this->waktu($x->return_datetime) ?? $this->waktu($x->return_date))->filter()->min();
+                    $id = DB::table('trx_canvassing')->insertGetId([
+                        'nomor' => mb_substr($no, 0, 50),
+                        'karyawan_id' => (int) $r->karyawan_id,
+                        'depo_id' => (int) $depo,
+                        'tanggal' => $r->receive_date ? substr((string) $r->receive_date, 0, 10) : $terima->toDateString(),
+                        'status' => $kembaliPertama || HalamanParser::aktif($r->returned === null ? null : (string) $r->returned) ? 'dikembalikan' : 'diterima',
+                        'disiapkan_at' => $terima->utc(),
+                        'diterima_at' => $terima->utc(),
+                        'dikembalikan_at' => $kembaliPertama?->utc(),
+                        'sumber' => 'lama',
+                        'received_at' => now(),
+                    ]);
+                    $header[$no] = (object) ['id' => $id, 'nomor' => $no, 'sumber' => 'lama'];
+                }
+
+                $qtyKembali = collect($retur[$no] ?? [])->where('produk_id', $r->produk_id)->sum(fn ($x) => $this->angka($x->return_qty));
+                $dikembalikan = isset($retur[$no]) || HalamanParser::aktif($r->returned === null ? null : (string) $r->returned);
+                $item[] = [
+                    'canvassing_id' => $header[$no]->id,
+                    'produk_id' => (int) $r->produk_id,
+                    'qty_bawa' => $this->angka($r->total_qty),
+                    'qty_diterima' => $this->angka($r->total_qty),
+                    'qty_kembali' => $dikembalikan ? ($qtyKembali ?: $this->angka($r->return_qty)) : null,
+                    'sumber_id' => $r->source_id,
+                ];
+            }
+
+            // Item ganda (nomor + produk sama) diabaikan database; yang pertama dipakai.
+            $hasil['dipindah'] += $item ? DB::table('trx_canvassing_item')->insertOrIgnore($item) : 0;
+        });
+
+        // Penjualan lama tanpa canvassing: sambungkan ke canvassing lama sales itu di tanggal yang sama.
+        DB::table('trx_canvassing')->where('sumber', 'lama')->orderBy('id')
+            ->each(fn ($c) => DB::table('trx_penjualan')->where('sumber', 'lama')->whereNull('canvassing_id')
+                ->where('karyawan_id', $c->karyawan_id)->where('tanggal', $c->tanggal)->update(['canvassing_id' => $c->id]));
+
+        return $hasil;
+    }
+
+    /**
+     * Kunci kunjungan lama: sales + outlet + jam checkin (UTC). Dipakai untuk mencari / membuat trx_kunjungan.
+     *
+     * @return array<string, mixed>
+     */
+    private function kunciKunjungan(int $karyawan, int $outlet, mixed $depo, CarbonImmutable $masuk, ?CarbonImmutable $keluar, ?float $lat, ?float $lng, string $tanggal): array
+    {
+        $jam = $masuk->utc()->format('Y-m-d H:i:s');
+
+        return [
+            'kunci' => "{$karyawan}|{$outlet}|{$jam}",
+            'karyawan_id' => $karyawan,
+            'outlet_id' => $outlet,
+            'depo_id' => $depo ? (int) $depo : $this->depo($karyawan),
+            'tanggal' => $tanggal,
+            'checkin_at' => $jam,
+            'checkout_at' => $keluar?->utc()->format('Y-m-d H:i:s'),
+            'durasi_detik' => $keluar && $keluar->gte($masuk) ? (int) $masuk->diffInSeconds($keluar) : null,
+            'lat' => $lat,
+            'lng' => $lng,
+        ];
+    }
+
+    /**
+     * ID trx_kunjungan untuk tiap kunci; kunjungan yang belum ada dibuat (sumber "lama", tanpa sumber_id).
+     *
+     * @param  list<array<string, mixed>>  $daftar
+     * @return array<string, int>
+     */
+    private function kunjunganUntuk(array $daftar): array
+    {
+        $unik = collect($daftar)->keyBy('kunci');
+        $cari = fn () => DB::table('trx_kunjungan')
+            ->whereIn('karyawan_id', $unik->pluck('karyawan_id')->unique()->values())
+            ->whereIn('checkin_at', $unik->pluck('checkin_at')->unique()->values())
+            ->get(['id', 'karyawan_id', 'outlet_id', 'checkin_at'])
+            ->mapWithKeys(fn ($k) => [$k->karyawan_id.'|'.$k->outlet_id.'|'.substr((string) $k->checkin_at, 0, 19) => (int) $k->id])
+            ->all();
+        $ada = $cari();
+        $baru = $unik->reject(fn ($k, $kunci) => isset($ada[$kunci]))->map(fn ($k) => Arr::except($k, ['kunci']) + [
+            'sumber' => 'lama', 'client_ref' => (string) Str::uuid(), 'recorded_at' => $k['checkin_at'], 'received_at' => now(),
+        ])->values();
+
+        foreach ($baru->chunk(500) as $potong) {
+            DB::table('trx_kunjungan')->insert($potong->all());
+        }
+
+        return $baru->isEmpty() ? $ada : $cari();
+    }
+
+    /** Angka dari kolom lama (numerik atau teks berformat Indonesia). */
+    private function angka(mixed $nilai): float
+    {
+        if ($nilai === null || $nilai === '') {
+            return 0.0;
+        }
+
+        return is_numeric($nilai) ? (float) $nilai : (float) (HalamanParser::angka((string) $nilai) ?? 0);
     }
 
     /**

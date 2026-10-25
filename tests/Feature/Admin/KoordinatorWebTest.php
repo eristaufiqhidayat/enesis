@@ -50,9 +50,9 @@ class KoordinatorWebTest extends AdminTestCase
                 ->where('tables.0.rows.data.1.sumber', 'Aplikasi lama')
             );
 
-        // Laporan lama tetap membaca lap_join_visit.
+        // Lap. Join Visit memakai data yang sama (HP + riwayat lama hasil migrasi).
         $this->get('/lap_join_visit')->assertOk()
-            ->assertInertia(fn (Assert $page) => $page->where('tables.0.name', 'lap_join_visit'));
+            ->assertInertia(fn (Assert $page) => $page->where('tables.0.name', 'trx_join_visit'));
     }
 
     public function test_koordinator_hanya_melihat_join_visit_miliknya(): void
