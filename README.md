@@ -309,7 +309,11 @@ Halaman `/tracking_sales_history_location` sama seperti peta koordinator, untuk 
 koordinator, daftar sales dengan jumlah titik GPS per tanggal, rute GPS dan lokasi depo.
 Datanya di tabel `tracking_sales` dan `tracking_sales_lokasi` (835 ribu titik, 1–22 Okt 2026),
 dimuat lewat seeder atau `marketama:import` (file `tracking_sales.csv` dan
-`tracking_sales_lokasi.csv.gz`).
+`tracking_sales_lokasi.csv.gz`), digabung dengan titik GPS aplikasi HP sales motoris
+(`trx_tracking`, jam WIB). Sales aktif di `mk_karyawan` yang belum ada di data lama ikut
+tampil di daftar (dengan nama koordinatornya), dan lokasi depo diambil dari `mk_depo` bila
+data lama tidak punya. Logika GPS HP dipakai bersama dengan peta koordinator
+(`App\Support\Tracking\TitikGps`).
 
 ## Menu kanan atas & Design Polygon Area
 

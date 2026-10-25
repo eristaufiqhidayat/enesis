@@ -2,8 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Support\Mobile\Pengaturan;
-use Carbon\CarbonImmutable;
+use App\Support\Tracking\TitikGps;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +13,7 @@ class TrackingKoordinatorController extends Controller
 {
     public function index(Request $request)
     {
-        $tanggal = $request->query('tanggal') ?? $this->tanggalTerakhir();
+        $tanggal = $request->query('tanggal') ?? TitikGps::tanggalTerakhir('tracking_koordinator_lokasi', 'koordinator');
 
         return view('tracking.history', [
             'page' => config('marketama.pages.tracking_koordinator_history_location'),
@@ -53,14 +52,14 @@ class TrackingKoordinatorController extends Controller
         $depo = $koordinator?->depo
             ? DB::table('master_depo')->where('nama', $koordinator->depo)->first(['nama', 'latitude', 'longitude'])
             : null;
-        $depo ??= $this->depoMaster($id);
+        $depo ??= TitikGps::depoMaster($id);
 
         $lama = DB::table('tracking_koordinator_lokasi')
             ->where('koordinator_id', $id)
             ->whereDate('tanggal', $data['tanggal'])
             ->get(['lat', 'lng', 'waktu', 'akurasi']);
 
-        $locations = $lama->concat($this->titikHp($id, $data['tanggal']))
+        $locations = $lama->concat(TitikGps::untuk($id, $data['tanggal']))
             ->sortBy('waktu')->values();
 
         return response()->json([
@@ -97,61 +96,6 @@ class TrackingKoordinatorController extends Controller
             ->map(fn ($total) => (int) $total)
             ->all();
 
-        [$dari, $sampai] = $this->rentangUtc($tanggal);
-        $hp = DB::table('trx_tracking as t')->join('mk_karyawan as k', 'k.id', '=', 't.karyawan_id')
-            ->where('k.kategori', 'koordinator')->whereBetween('t.recorded_at', [$dari, $sampai])
-            ->groupBy('t.karyawan_id')->selectRaw('t.karyawan_id, count(*) as total')
-            ->pluck('total', 'karyawan_id');
-
-        foreach ($hp as $id => $total) {
-            $hasil[$id] = ($hasil[$id] ?? 0) + (int) $total;
-        }
-
-        return $hasil;
-    }
-
-    /** Titik GPS dari HP pada satu tanggal (WIB), bentuknya sama dengan data lama. */
-    private function titikHp(int $karyawanId, string $tanggal): Collection
-    {
-        [$dari, $sampai] = $this->rentangUtc($tanggal);
-        $zona = Pengaturan::zona();
-
-        return DB::table('trx_tracking')->where('karyawan_id', $karyawanId)->whereBetween('recorded_at', [$dari, $sampai])
-            ->get(['lat', 'lng', 'recorded_at', 'akurasi_m'])
-            ->map(fn ($t) => (object) [
-                'lat' => $t->lat,
-                'lng' => $t->lng,
-                'waktu' => CarbonImmutable::parse($t->recorded_at, 'UTC')->setTimezone($zona)->format('Y-m-d H:i:s'),
-                'akurasi' => $t->akurasi_m,
-            ]);
-    }
-
-    /** @return array{0: string, 1: string} awal & akhir tanggal WIB dalam UTC (kolom recorded_at) */
-    private function rentangUtc(string $tanggal): array
-    {
-        $awal = CarbonImmutable::parse($tanggal, Pengaturan::zona())->startOfDay();
-
-        return [$awal->utc()->format('Y-m-d H:i:s'), $awal->endOfDay()->utc()->format('Y-m-d H:i:s')];
-    }
-
-    /** Tanggal terbaru yang punya data (lama atau HP); hari ini bila belum ada. */
-    private function tanggalTerakhir(): string
-    {
-        $lama = DB::table('tracking_koordinator_lokasi')->max('tanggal');
-        $hp = DB::table('trx_tracking as t')->join('mk_karyawan as k', 'k.id', '=', 't.karyawan_id')
-            ->where('k.kategori', 'koordinator')->max('t.recorded_at');
-        $hp = $hp ? CarbonImmutable::parse($hp, 'UTC')->setTimezone(Pengaturan::zona())->toDateString() : null;
-
-        return collect([$lama ? substr((string) $lama, 0, 10) : null, $hp])->filter()->max()
-            ?? CarbonImmutable::now(Pengaturan::zona())->toDateString();
-    }
-
-    /** Lokasi depo dari master (mk_depo) untuk koordinator yang tidak ada di data lama. */
-    private function depoMaster(int $karyawanId): ?object
-    {
-        $depoId = DB::table('mk_karyawan')->where('id', $karyawanId)->value('depo_id');
-        $depo = $depoId ? Pengaturan::depo((int) $depoId) : null;
-
-        return $depo && $depo['lat'] !== null ? (object) ['nama' => $depo['nama'], 'latitude' => $depo['lat'], 'longitude' => $depo['lng']] : null;
+        return TitikGps::tambahJumlah($hasil, 'koordinator', $tanggal);
     }
 }
