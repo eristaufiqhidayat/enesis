@@ -45,6 +45,9 @@ class MigrasiTransaksi
     /** @var array<int, string> batas jam masuk per hari (0 = Minggu) */
     private array $batasMasuk = [];
 
+    /** @var array<string, int> jumlah baris tabel lama (untuk laporan kemajuan) */
+    private array $totalBaris = [];
+
     /** @var array<int, ?int> depo karyawan */
     private array $depoKaryawan = [];
 
@@ -226,8 +229,9 @@ class MigrasiTransaksi
             $hasil['lewati'][$alasan] = ($hasil['lewati'][$alasan] ?? 0) + $n;
         };
 
-        DB::table($lama)->orderBy('id')->chunkById(self::POTONGAN, function ($baris) use (&$hasil, $lewati) {
+        DB::table($lama)->orderBy('id')->chunkById(self::POTONGAN, function ($baris) use (&$hasil, $lewati, $lama) {
             $hasil['sumber'] += $baris->count();
+            $this->kemajuan($lama, $hasil['sumber']);
             $sudah = DB::table('trx_penjualan')->whereIn('sumber_id', $baris->pluck('source_id')->filter())->pluck('sumber_id')->flip();
             $kode = $baris->pluck('trans_code')->filter()->values();
             $kodeAda = DB::table('trx_penjualan')->whereIn('kode', $kode)->pluck('kode')->flip();
@@ -371,8 +375,9 @@ class MigrasiTransaksi
         };
         $adaDepo = Schema::hasColumn($lama, 'depo_id');
 
-        DB::table($lama)->orderBy('id')->chunkById(self::POTONGAN, function ($baris) use (&$hasil, $lewati, $sumber, $produk, $adaDepo) {
+        DB::table($lama)->orderBy('id')->chunkById(self::POTONGAN, function ($baris) use (&$hasil, $lewati, $sumber, $produk, $adaDepo, $lama) {
             $hasil['sumber'] += $baris->count();
+            $this->kemajuan($lama, $hasil['sumber']);
             $sudah = DB::table('trx_stok_outlet')->where('sumber', $sumber)->whereIn('sumber_id', $baris->pluck('source_id')->filter())
                 ->pluck('sumber_id')->flip();
             $calon = [];
@@ -434,8 +439,9 @@ class MigrasiTransaksi
         };
         $kembali = Schema::hasTable('lap_pengembalian_barang');
 
-        DB::table($lama)->orderBy('id')->chunkById(self::POTONGAN, function ($baris) use (&$hasil, $lewati, $kembali) {
+        DB::table($lama)->orderBy('id')->chunkById(self::POTONGAN, function ($baris) use (&$hasil, $lewati, $kembali, $lama) {
             $hasil['sumber'] += $baris->count();
+            $this->kemajuan($lama, $hasil['sumber']);
             $sudah = DB::table('trx_canvassing_item')->whereIn('sumber_id', $baris->pluck('source_id')->filter())->pluck('sumber_id')->flip();
             $nomor = $baris->pluck('canvassing_no')->filter()->unique()->values();
             $header = DB::table('trx_canvassing')->whereIn('nomor', $nomor)->get(['id', 'nomor', 'sumber'])->keyBy('nomor');
@@ -568,6 +574,18 @@ class MigrasiTransaksi
         return $baru->isEmpty() ? $ada : $cari();
     }
 
+    /** Tulis kemajuan tiap 20.000 baris supaya proses panjang di hosting terlihat berjalan. */
+    private function kemajuan(string $lama, int $sudah): void
+    {
+        if ($sudah % (self::POTONGAN * 20) !== 0) {
+            return;
+        }
+
+        $total = $this->totalBaris[$lama] ??= DB::table($lama)->count();
+        ($this->log)(sprintf('  %s: %s / %s baris (%d%%)', $lama, number_format($sudah, 0, ',', '.'),
+            number_format($total, 0, ',', '.'), $total ? (int) floor($sudah / $total * 100) : 100));
+    }
+
     /** Angka dari kolom lama (numerik atau teks berformat Indonesia). */
     private function angka(mixed $nilai): float
     {
@@ -589,8 +607,9 @@ class MigrasiTransaksi
         };
         $sekarang = now();
 
-        DB::table($lama)->orderBy('id')->chunkById(self::POTONGAN, function ($baris) use ($trx, $petakan, $lewati, &$hasil, $sekarang, $bentrok) {
+        DB::table($lama)->orderBy('id')->chunkById(self::POTONGAN, function ($baris) use ($trx, $petakan, $lewati, &$hasil, $sekarang, $bentrok, $lama) {
             $hasil['sumber'] += $baris->count();
+            $this->kemajuan($lama, $hasil['sumber']);
             $sudah = DB::table($trx)->whereIn('sumber_id', $baris->pluck('source_id')->filter())->pluck('sumber_id')->flip();
             $kirim = [];
 
