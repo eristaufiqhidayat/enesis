@@ -7,6 +7,7 @@ import Input from '@/Components/ui/atoms/Input.vue';
 import Select from '@/Components/ui/atoms/Select.vue';
 import Alert from '@/Components/ui/molecules/Alert.vue';
 import Card from '@/Components/ui/molecules/Card.vue';
+import PageHeader from '@/Components/ui/molecules/PageHeader.vue';
 import TableSkeleton from '@/Components/ui/molecules/TableSkeleton.vue';
 import CariForm from './partials/CariForm.vue';
 import Tabs from '@/Components/ui/molecules/Tabs.vue';
@@ -15,6 +16,7 @@ import DataTable from '@/Components/ui/organisms/DataTable.vue';
 const props = defineProps({
     slug: { type: String, required: true },
     page: { type: Object, required: true },
+    subtitle: { type: String, default: null },
     tables: { type: Array, default: () => [] },
     activeTab: { type: String, default: null },
     search: { type: String, default: '' },
@@ -142,6 +144,8 @@ function pindahTab(key) {
 <template>
     <Head :title="`${page.title} · ${appName}`" />
     <AppLayout>
+        <PageHeader :title="page.title" :subtitle="subtitle" />
+
         <Alert v-if="page.same_as" variant="info" class="mb-3">
             Data menu ini sama dengan
             <Link :href="`/${page.same_as}`">{{ page.same_as_title }}</Link>.
