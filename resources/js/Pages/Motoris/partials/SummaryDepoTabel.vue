@@ -1,6 +1,5 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { Link } from '@inertiajs/vue3';
 import Card from '@/Components/ui/molecules/Card.vue';
 import Icon from '@/Components/ui/atoms/Icon.vue';
 import { angka } from '@/Support/format.js';
@@ -11,9 +10,9 @@ const props = defineProps({
     kartu: { type: Array, default: () => [] },
     target: { type: Object, required: true },
     hkKoordinator: { type: Number, default: 0 },
-    // Fungsi pembuat URL detail depo dan detail EC & penjualan (query tanggal dikelola halaman).
-    urlDetail: { type: Function, required: true },
-    urlPenjualan: { type: Function, required: true },
+    // Pembuka modal detail depo dan modal detail EC & penjualan (lihat Pages/Motoris/SummaryDepo.vue).
+    bukaDetail: { type: Function, required: true },
+    bukaPenjualan: { type: Function, required: true },
 });
 
 const semuaKolom = KELOMPOK_KOLOM.flatMap((g) => g.kolom);
@@ -121,11 +120,11 @@ onUnmounted(() => window.removeEventListener('resize', sesuaikanTinggi));
             <tbody>
                 <tr v-for="k in baris" :key="k.id">
                     <td class="kolom-sticky">
-                        <Link :href="urlDetail(k)" class="font-semibold text-blue-600 hover:underline">{{ k.kode ?? k.nama }}</Link>
+                        <button type="button" class="font-semibold text-blue-600 hover:underline" @click="bukaDetail(k)">{{ k.kode ?? k.nama }}</button>
                         <span class="block text-[0.7rem] uppercase text-gray-500">{{ [k.nama, k.distributor].filter(Boolean).join(' · ') }}</span>
                     </td>
                     <td v-for="kolom in semuaKolom" :key="kolom.kunci" class="text-right" :class="classAngka(kolom, k[kolom.kunci])" :title="HINT_GESER">
-                        <Link v-if="kolom.tautan" :href="urlPenjualan(k)" class="text-green-500 underline decoration-dotted underline-offset-2" title="Lihat data EC & penjualan">{{ formatSel(k[kolom.kunci], kolom.tipe) }}</Link>
+                        <button v-if="kolom.tautan" type="button" class="text-green-500 underline decoration-dotted underline-offset-2" title="Lihat data EC & penjualan" @click="bukaPenjualan(k)">{{ formatSel(k[kolom.kunci], kolom.tipe) }}</button>
                         <template v-else>{{ formatSel(k[kolom.kunci], kolom.tipe) }}</template>
                     </td>
                 </tr>

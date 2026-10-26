@@ -5,6 +5,8 @@ import { onMounted, onUnmounted } from 'vue';
 const props = defineProps({
     show: { type: Boolean, default: false },
     title: { type: String, required: true },
+    // 'md' (bawaan, lihat .modal-content) atau 'xl' (.modal-content-xl - tabel lebar, scroll sendiri, maks 92vh).
+    size: { type: String, default: 'md' },
 });
 
 const emit = defineEmits(['close']);
@@ -22,7 +24,7 @@ onUnmounted(() => document.removeEventListener('keydown', tutupDenganEsc));
     <Transition name="modal-backdrop">
         <div v-if="show" class="modal-container" @click.self="emit('close')">
             <Transition name="modal-content">
-                <div class="modal-content" role="dialog" aria-modal="true" :aria-label="title">
+                <div class="modal-content" :class="{ 'modal-content-xl': size === 'xl' }" role="dialog" aria-modal="true" :aria-label="title">
                     <div class="modal-header">
                         <h6 class="mb-0 font-semibold">{{ title }}</h6>
                         <button type="button" class="btn-close" aria-label="Tutup" @click="emit('close')">&times;</button>

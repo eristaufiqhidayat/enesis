@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Support\Akses\Akses;
 use App\Support\Mobile\Pengaturan;
 use App\Support\Motoris\SummaryDepo;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -38,14 +39,29 @@ class SummaryDepoController extends Controller
         ]);
     }
 
-    /** Lihat Detail: ringkasan depo + per koordinator dan sales. */
-    public function detail(Request $request, int $depo): Response
+    /**
+     * Lihat Detail: ringkasan depo + per koordinator dan sales.
+     * Dibuka sebagai modal dari Summary All Depo (lihat Modal "detail" di SummaryDepo.vue) lewat fetch JSON
+     * (Accept: application/json); halaman Inertia penuh tetap tersedia untuk kunjungan langsung/bookmark.
+     */
+    public function detail(Request $request, int $depo): Response|JsonResponse
     {
         [$dari, $sampai] = self::rentang($request);
         $summary = new SummaryDepo($dari, $sampai, $request->user());
         $identitas = $summary->depo($depo) ?? abort(404);
-        // Ringkasan tim dihitung sekali, lalu dibagi ke dua prop yang ditunda (total dan tim).
-        $ringkasan = fn () => once(fn () => $summary->detail($depo));
+        $ringkasan = once(fn () => $summary->detail($depo));
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'slug' => self::MENU,
+                'judul' => $identitas->nama,
+                'depo' => $identitas,
+                'periode' => self::periode($summary),
+                'filter' => ['date_from' => $dari, 'date_to' => $sampai],
+                'total' => $ringkasan['total'],
+                'tim' => $ringkasan['tim'],
+            ]);
+        }
 
         return Inertia::render('Motoris/SummaryDepoDetail', [
             'slug' => self::MENU,
@@ -53,18 +69,37 @@ class SummaryDepoController extends Controller
             'depo' => $identitas,
             'periode' => self::periode($summary),
             'filter' => ['date_from' => $dari, 'date_to' => $sampai],
-            'total' => Inertia::defer(fn () => $ringkasan()['total'], 'detail'),
-            'tim' => Inertia::defer(fn () => $ringkasan()['tim'], 'detail'),
+            'total' => Inertia::defer(fn () => $ringkasan['total'], 'detail'),
+            'tim' => Inertia::defer(fn () => $ringkasan['tim'], 'detail'),
         ]);
     }
 
-    /** Detail EC & Penjualan satu depo (daftar transaksi, dipaginasi). */
-    public function penjualan(Request $request, int $depo): Response
+    /**
+     * Detail EC & Penjualan satu depo (daftar transaksi, dipaginasi).
+     * Dibuka sebagai modal dari Summary All Depo lewat fetch JSON (Accept: application/json), termasuk saat
+     * pindah halaman/cari di dalam modal; halaman Inertia penuh tetap tersedia untuk kunjungan langsung/bookmark.
+     */
+    public function penjualan(Request $request, int $depo): Response|JsonResponse
     {
         [$dari, $sampai] = self::rentang($request);
         $summary = new SummaryDepo($dari, $sampai, $request->user());
         $identitas = $summary->depo($depo) ?? abort(404);
         $cari = trim((string) $request->query('q'));
+
+        if ($request->wantsJson()) {
+            $hasil = $summary->penjualan($depo, $cari);
+
+            return response()->json([
+                'slug' => self::MENU,
+                'judul' => 'Detail EC & Penjualan — '.$identitas->nama,
+                'depo' => $identitas,
+                'periode' => self::periode($summary),
+                'filter' => ['date_from' => $dari, 'date_to' => $sampai, 'q' => $cari],
+                'total' => $hasil['total'],
+                'baris' => $hasil['baris'],
+            ]);
+        }
+
         // Daftar transaksi dan total dihitung sekali, lalu dibagi ke dua prop yang ditunda.
         $hasil = fn () => once(fn () => $summary->penjualan($depo, $cari));
 
