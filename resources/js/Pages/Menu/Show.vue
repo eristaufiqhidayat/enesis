@@ -175,17 +175,16 @@ function pindahTab(key) {
             @update:model-value="pindahTab"
         />
 
-        <div v-if="adaTabelKonfig && (formDateFilter || adaPilihan('depo') || adaPilihan('koordinator'))" class="flex flex-wrap items-center justify-end gap-2 mb-3">
-            <Input v-if="formDateFilter" v-model="tanggal" type="date" required aria-label="Tanggal data" class="w-auto" />
-            <Select v-if="adaPilihan('depo')" v-model="depo" :options="pilihanFilter.depo" placeholder="Semua depo" aria-label="Depo" class="w-auto" />
-            <Select v-if="adaPilihan('koordinator')" v-model="koordinator" :options="pilihanFilter.koordinator" placeholder="Semua koordinator" aria-label="Koordinator" class="w-auto max-w-[12rem]" />
-        </div>
-
         <Deferred v-if="adaTabelKonfig" data="tables">
             <template #fallback>
                 <Card body-class="overflow-x-auto">
                     <template #header>
-                        <CariForm v-model="search" class="justify-end" :loading="memuat" :disabled="!berubah" @submit="submitSearch" />
+                        <div class="flex flex-wrap items-center justify-end gap-2">
+                            <Input v-if="formDateFilter" v-model="tanggal" type="date" required aria-label="Tanggal data" class="w-auto" />
+                            <Select v-if="adaPilihan('depo')" v-model="depo" :options="pilihanFilter.depo" placeholder="Semua depo" aria-label="Depo" class="w-auto" />
+                            <Select v-if="adaPilihan('koordinator')" v-model="koordinator" :options="pilihanFilter.koordinator" placeholder="Semua koordinator" aria-label="Koordinator" class="w-auto max-w-[12rem]" />
+                            <CariForm v-model="search" :loading="memuat" :disabled="!berubah" @submit="submitSearch" />
+                        </div>
                     </template>
                     <TableSkeleton />
                 </Card>
@@ -217,7 +216,12 @@ function pindahTab(key) {
                         <template v-if="index === 0" #header>
                             <div class="flex flex-wrap items-center justify-between gap-2">
                                 <span v-if="visibleTables.length > 1" class="font-semibold">{{ table.title }}</span>
-                                <CariForm v-model="search" class="ml-auto" :loading="memuat" :disabled="!berubah" @submit="submitSearch" />
+                                <div class="flex flex-wrap items-center gap-2 ml-auto">
+                                    <Input v-if="formDateFilter" v-model="tanggal" type="date" required aria-label="Tanggal data" class="w-auto" />
+                                    <Select v-if="adaPilihan('depo')" v-model="depo" :options="pilihanFilter.depo" placeholder="Semua depo" aria-label="Depo" class="w-auto" />
+                                    <Select v-if="adaPilihan('koordinator')" v-model="koordinator" :options="pilihanFilter.koordinator" placeholder="Semua koordinator" aria-label="Koordinator" class="w-auto max-w-[12rem]" />
+                                    <CariForm v-model="search" :loading="memuat" :disabled="!berubah" @submit="submitSearch" />
+                                </div>
                             </div>
                         </template>
                         <template v-if="table.aksi === 'verifikasi_outlet_baru'" #aksi="{ row }">
