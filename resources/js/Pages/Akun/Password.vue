@@ -8,7 +8,7 @@ import Card from '@/Components/ui/molecules/Card.vue';
 
 // Halaman ini hanya hasil langsung dari POST (tidak disimpan di session), jadi password tampil sekali.
 const props = defineProps({
-    menu: { type: String, required: true },
+    slug: { type: String, required: true },
     judul: { type: String, required: true },
     akun: { type: Object, required: true },
     password: { type: String, required: true },
@@ -35,7 +35,7 @@ function tutup() {
 
 <template>
     <Head :title="`Password awal ${akun.username} · ${appName}`" />
-    <AppLayout :breadcrumb-slug="menu">
+    <AppLayout :breadcrumb-slug="slug">
         <div class="max-w-md mx-auto mt-4">
             <Card>
                 <template #header>
@@ -52,7 +52,7 @@ function tutup() {
                 </label>
                 <template #footer>
                     <div class="flex justify-end">
-                        <Button v-if="sudahDicatat" :tag="Link" :href="`/${menu}/${akun.id}`" @click="tutup">Tutup</Button>
+                        <Button v-if="sudahDicatat" :tag="Link" :href="`/${slug}/${akun.id}`" @click="tutup">Tutup</Button>
                         <Button v-else variant="outline-secondary" class="opacity-50 pointer-events-none" aria-disabled="true">Tutup</Button>
                     </div>
                 </template>

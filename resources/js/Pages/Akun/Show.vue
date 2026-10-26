@@ -17,7 +17,7 @@ import SalesBawahan from './partials/SalesBawahan.vue';
 import { angka } from '@/Support/format.js';
 
 const props = defineProps({
-    menu: { type: String, required: true },
+    slug: { type: String, required: true },
     judul: { type: String, required: true },
     akun: { type: Object, required: true },
     karyawan: { type: Object, default: null },
@@ -38,7 +38,7 @@ const props = defineProps({
 
 const page = usePage();
 const appName = page.props.appName;
-const base = `/${props.menu}/${props.akun.id}`;
+const base = `/${props.slug}/${props.akun.id}`;
 const modal = ref(null);
 
 // Dibuka dari menu aksi di daftar akun: /{menu}/{id}?buka=modal-password dst.
@@ -72,7 +72,7 @@ function ubahStatus() {
 }
 
 function hapusAkun() {
-    formHapus.delete(`/${props.menu}/${props.akun.id}`);
+    formHapus.delete(`/${props.slug}/${props.akun.id}`);
 }
 
 function pakai() {
@@ -82,7 +82,7 @@ function pakai() {
 
 <template>
     <Head :title="`${akun.username} · ${judul} · ${appName}`" />
-    <AppLayout :breadcrumb-slug="menu">
+    <AppLayout :breadcrumb-slug="slug">
         <Card class="mb-3">
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <div class="flex items-center gap-3">

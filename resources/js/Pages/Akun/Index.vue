@@ -15,7 +15,7 @@ import { useAmbilData } from '@/Support/ambilData.js';
 import { angka } from '@/Support/format.js';
 
 const props = defineProps({
-    menu: { type: String, required: true },
+    slug: { type: String, required: true },
     judul: { type: String, required: true },
     akun: { type: Object, required: true },
     jumlah: { type: Object, required: true },
@@ -33,9 +33,9 @@ const props = defineProps({
 });
 
 const appName = usePage().props.appName;
-const base = `/${props.menu}`;
-const tampilKoordinator = computed(() => props.menu === 'user_koordinator');
-const tampilFilterKoordinator = computed(() => props.menu === 'user_sales' && Object.keys(props.daftarKoordinator).length > 0);
+const base = `/${props.slug}`;
+const tampilKoordinator = computed(() => props.slug === 'user_koordinator');
+const tampilFilterKoordinator = computed(() => props.slug === 'user_sales' && Object.keys(props.daftarKoordinator).length > 0);
 const jumlahKolom = computed(() => (tampilKoordinator.value ? 9 : 8));
 
 const cari = ref({ q: props.q, depo: props.depo ?? '', koordinator: props.koordinator ?? '' });
@@ -77,7 +77,7 @@ function toggleAksi(id) {
 
 <template>
     <Head :title="`${judul} · ${appName}`" />
-    <AppLayout :breadcrumb-slug="menu">
+    <AppLayout :breadcrumb-slug="slug">
         <PageHeader :title="judul" :subtitle="`Akun login web & aplikasi HP · ${angka(jumlah.semua)} akun · ${angka(jumlah.aktif)} aktif`">
             <template #actions>
                 <Button v-if="bisaTambah" :tag="Link" :href="`${base}/tambah`"><Icon name="plus" class="me-1" /> Tambah akun</Button>
