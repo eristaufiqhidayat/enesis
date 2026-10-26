@@ -15,6 +15,7 @@ class SummaryDepoTest extends AdminTestCase
 
         // 1–3 Okt 2026 = Kamis–Sabtu → hari kerja koordinator (Senin–Jumat) = 2.
         $this->travelTo(now()->setTimezone('Asia/Jakarta')->setDate(2026, 10, 3)->setTime(12, 0));
+        DB::table('mk_depo')->where('id', 46)->update(['kode' => 'DEPO SIDOARJO']);
         DB::table('mk_distributor')->insert(['id' => 1, 'nama' => 'DEPO SUPRALITA 1', 'depo_id' => 46]);
 
         DB::table('trx_absensi')->insert([
@@ -138,7 +139,7 @@ class SummaryDepoTest extends AdminTestCase
                 ->missing('kartu')
                 ->where('bolehUbah', true)
                 ->loadDeferredProps(fn (Assert $page) => $page
-                    ->where('kartu.0.nama', 'Sidoarjo')->where('kartu.0.distributor', 'DEPO SUPRALITA 1')
+                    ->where('kartu.0.nama', 'Sidoarjo')->where('kartu.0.kode', 'DEPO SIDOARJO')->where('kartu.0.distributor', 'DEPO SUPRALITA 1')
                     ->where('kartu.0.sales', 170000)->where('kartu.0.avg_hari_kerja', 2.5)->where('kartu.0.call_achievement', 2.2)
                     ->where('kartu.1.nama', 'Balaraja')));
 
@@ -147,6 +148,16 @@ class SummaryDepoTest extends AdminTestCase
                 ->missing('kartu')
                 ->loadDeferredProps(fn (Assert $page) => $page
                     ->where('kartu', fn ($kartu) => collect($kartu)->pluck('nama')->all() === ['Balaraja'])));
+    }
+
+    public function test_tampilan_tabel_lewat_query_dan_nilai_tidak_valid_jatuh_ke_kartu(): void
+    {
+        $tampilan = fn (string $query) => $this->get('/summary_all_depo?date_from=2026-10-01&date_to=2026-10-03'.$query)->assertOk();
+
+        $tampilan('')->assertInertia(fn (Assert $page) => $page->where('filter.tampilan', 'kartu'));
+        $tampilan('&tampilan=tabel')->assertInertia(fn (Assert $page) => $page->where('filter.tampilan', 'tabel')
+            ->loadDeferredProps(fn (Assert $page) => $page->where('kartu.0.nama', 'Sidoarjo')));
+        $tampilan('&tampilan=ngawur')->assertInertia(fn (Assert $page) => $page->where('filter.tampilan', 'kartu'));
     }
 
     public function test_admin_mengubah_target_nasional(): void
