@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AkunController;
+use App\Http\Controllers\Admin\BackupDataController;
 use App\Http\Controllers\Admin\KehadiranController;
 use App\Http\Controllers\Admin\KuotaMotorisController;
 use App\Http\Controllers\Admin\MotorisReportController;
@@ -115,6 +116,14 @@ Route::middleware(['auth', 'wajib-ganti-password'])->group(function () {
     Route::get('/motoris_report', [MotorisReportController::class, 'index'])->middleware('hak:motoris_report')->name('motoris-report');
     Route::get('/kuota_motoris', [KuotaMotorisController::class, 'index'])->middleware('hak:kuota_motoris')->name('kuota-motoris.index');
     Route::post('/kuota_motoris', [KuotaMotorisController::class, 'simpan'])->middleware('hak:kuota_motoris,ubah')->name('kuota-motoris.simpan');
+
+    // Backup data per tabel (CSV / SQL); buat & unduh butuh hak ekspor.
+    Route::prefix('backup_data')->name('backup-data.')->controller(BackupDataController::class)->group(function () {
+        Route::get('/', 'index')->middleware('hak:backup_data')->name('index');
+        Route::post('/', 'store')->middleware('hak:backup_data,ekspor')->name('store');
+        Route::get('/{id}/unduh', 'unduh')->middleware('hak:backup_data,ekspor')->whereNumber('id')->name('unduh');
+        Route::delete('/{id}', 'destroy')->middleware('hak:backup_data,hapus')->whereNumber('id')->name('destroy');
+    });
 
     // Rekap Pencapaian SKU (Per Motoris & Per Depo) dihitung dari penjualan aplikasi motoris + target global.
     Route::get('/rekap_pencapaian_sku', [RekapPencapaianSkuController::class, 'index'])->middleware('hak:rekap_pencapaian_sku')->name('rekap-sku');
