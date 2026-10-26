@@ -9,3 +9,6 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('enesis:bersihkan-mobile')->dailyAt('02:00');
+
+// Backup data: proses yang menunggu (cadangan bila proses setelah respons halaman terhenti) dan hapus file kedaluwarsa.
+Schedule::command('enesis:backup')->everyMinute()->withoutOverlapping();

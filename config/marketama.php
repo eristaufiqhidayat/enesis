@@ -60,6 +60,8 @@ return [
         'outlet_noo', 'lap_outlet_noo', 'outlet_ac', 'lap_outlet_ac', 'outlet_ec', 'lap_outlet_ec', 'outlet_ro', 'lap_outlet_ro',
         'outlet_oss', 'lap_outlet_oss', 'lap_outlet_all',
         'lap_join_visit', 'lap_absensi_koordinator', 'login_session', 'lap_insentif_sales',
+        // Mencadangkan tabel motoris (trx_*, mk_*) bersama tabel lain.
+        'backup_data',
     ],
 
     'menu' => [
@@ -631,6 +633,11 @@ return [
                     'icon' => 'megaphone',
                 ],
                 [
+                    'slug' => 'backup_data',
+                    'title' => 'Backup Data',
+                    'icon' => 'database',
+                ],
+                [
                     'title' => 'Manajemen Produk',
                     'icon' => 'boxes',
                     'id' => 'produk_group',
@@ -786,6 +793,12 @@ return [
     ],
 
     'pages' => [
+        // Halaman sendiri (BackupDataController); entri ini untuk judul, breadcrumb dan hak menu.
+        'backup_data' => [
+            'title' => 'Backup Data',
+            'tables' => [],
+            'same_as' => null,
+        ],
         'home' => [
             'title' => 'Beranda',
             'tables' => [],
