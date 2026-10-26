@@ -32,7 +32,8 @@ class SummaryDepoController extends Controller
             'kartu' => Inertia::defer(fn () => $summary->kartu($cari), 'kartu'),
             'target' => $summary->target,
             'metrikGrafik' => collect(SummaryDepo::METRIK_GRAFIK)->map(fn ($label, $kunci) => ['key' => $kunci, 'label' => $label])->values(),
-            'filter' => ['date_from' => $dari, 'date_to' => $sampai, 'q' => $cari],
+            'filter' => ['date_from' => $dari, 'date_to' => $sampai, 'q' => $cari,
+                'tampilan' => $request->query('tampilan') === 'tabel' ? 'tabel' : 'kartu'],
             'bolehUbah' => Akses::bisa($request->user(), self::MENU, 'ubah'),
         ]);
     }

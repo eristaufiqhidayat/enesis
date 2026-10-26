@@ -24,7 +24,7 @@ const resolvedIcon = computed(() => props.icon ?? cariIkonMenu(page.props.menu, 
         <div class="flex items-center gap-2">
             <span v-if="resolvedIcon" class="page-header-icon"><Icon :name="resolvedIcon" /></span>
             <div>
-                <h5 class="mb-0 font-semibold">{{ title }}</h5>
+                <h5 class="mb-0 font-semibold">{{ title }}<slot name="info" /></h5>
                 <p v-if="subtitle" class="mb-0 text-xs text-gray-500">{{ subtitle }}</p>
             </div>
         </div>

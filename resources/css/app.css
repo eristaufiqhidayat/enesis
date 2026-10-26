@@ -278,6 +278,9 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
 
     .data-table { @apply w-full text-xs border-collapse; }
     .data-table thead { @apply bg-gray-50; }
+    /* Latar eksplisit per sel (bukan cuma di <thead>), supaya tetap solid saat sel header jadi sticky
+       (lihat .tabel-header-sticky) — background pada <thead>/<tr> tidak selalu konsisten dibawa ke sel sticky. */
+    .data-table thead th { @apply bg-gray-50; }
     .data-table th, .data-table td { @apply px-3 py-2 text-left border-b border-gray-100 whitespace-nowrap; }
     .data-table tbody tr:nth-child(odd) { @apply bg-gray-50/60; }
     .data-table tbody tr:hover { @apply bg-blue-50/50; }
@@ -298,6 +301,31 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     .data-table .filter-angka { @apply flex items-center gap-1; }
     .data-table .filter-angka .col-filter { @apply min-w-[4rem] flex-1; }
     .data-table .col-filter-op { @apply w-auto font-normal; }
+    /* Tabel ringkasan (Summary All Depo): kolom pertama menempel di kiri saat digeser, header kelompok di tengah, baris total tebal. */
+    .data-table .kolom-sticky { @apply sticky left-0 z-10 bg-white border-r border-gray-200; }
+    .data-table thead .kolom-sticky { @apply bg-gray-50; }
+    /* Sel sticky harus berwarna solid (tidak transparan), jadi warna zebra baris disalin ke sini. */
+    .data-table tbody tr:nth-child(odd) .kolom-sticky { @apply bg-gray-50; }
+    .data-table tbody tr:hover .kolom-sticky { @apply bg-blue-50; }
+    .data-table .th-grup { @apply text-center text-gray-500 border-l border-gray-200; }
+    .data-table .baris-total th, .data-table .baris-total td { @apply bg-gray-100 font-semibold border-t border-gray-300; }
+    /* Header tabel ringkasan tetap terlihat saat scroll (kedua baris header: kelompok + nama kolom), supaya user
+       tahu kolom mana yang sedang dilihat. Kontainernya (.tabel-geser-horizontal) scroll vertikal SENDIRI,
+       dibatasi tingginya lewat JS (sesuaikanTinggi() di SummaryDepoTabel.vue) — position:sticky vertikal cuma
+       bekerja kalau kontainer terdekat yang scroll-nya non-"visible" benar-benar discroll; div overflow-x-auto
+       tanpa batas tinggi membuat overflow-y ikut terhitung "auto" tapi TIDAK PERNAH benar-benar discroll
+       (tingginya selalu mengikuti isi), jadi sticky top tidak pernah nempel kalau cuma mengandalkan scroll
+       halaman. top baris pertama = 0 (nempel di atas kontainer), top baris kedua dihitung di JS dari tinggi
+       baris pertama (lihat barisGrup). border-collapse: separate (bukan collapse bawaan .data-table) wajib di
+       sini — border-collapse + sticky (kolom Depo di kiri, kedua baris header di atas) membuat Chrome salah
+       menghitung tinggi baris sticky, sehingga baris tbody kelihatan tumpang tindih dengan header. */
+    .tabel-header-sticky { border-collapse: separate; border-spacing: 0; }
+    .tabel-header-sticky thead tr:first-child > th { position: sticky; z-index: 15; top: 0; }
+    .tabel-header-sticky thead tr:last-child > th { position: sticky; z-index: 15; }
+    /* Sel pojok kiri-atas (header Depo) sticky di DUA arah (atas + kiri, lewat .kolom-sticky), sedangkan sel
+       header lain cuma sticky ke atas — jadi saat digeser horizontal, sel header lain ikut lewat di "bawah"
+       posisi sel pojok. z-index lebih tinggi di sini memastikan sel pojok selalu menang (tidak ketimpa). */
+    .tabel-header-sticky thead tr:first-child > th.kolom-sticky { z-index: 20; }
 
     .pagination { @apply flex items-center gap-1; }
     .page-link { @apply inline-flex min-w-[1.75rem] items-center justify-center rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50; }

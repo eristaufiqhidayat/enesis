@@ -100,14 +100,15 @@ class SummaryDepo
             ->when($cakupan !== null, fn ($q) => $q->whereIn('id', $cakupan ?: [0]))->pluck('id')->map(fn ($id) => (int) $id);
 
         return DB::table('mk_depo')->whereIn('id', $ids->merge($aktif)->unique()->values()->all() ?: [0])
-            ->when($cari !== '', fn ($q) => $q->whereRaw('LOWER(nama) LIKE ?', ['%'.mb_strtolower($cari).'%']))
-            ->get(['id', 'nama'])
+            ->when($cari !== '', fn ($q) => $q->where(fn ($w) => $w->whereRaw('LOWER(nama) LIKE ?', ['%'.mb_strtolower($cari).'%'])
+                ->orWhereRaw('LOWER(kode) LIKE ?', ['%'.mb_strtolower($cari).'%'])))
+            ->get(['id', 'kode', 'nama'])
             ->map(function ($d) use ($sales, $koordinator, $visitDepo) {
                 $baris = $sales[$d->id] ?? collect();
                 $v = $visitDepo[$d->id] ?? collect();
 
                 return (object) array_merge(
-                    ['id' => (int) $d->id, 'nama' => $d->nama, 'distributor' => $this->distributor()[$d->id] ?? null,
+                    ['id' => (int) $d->id, 'kode' => $d->kode, 'nama' => $d->nama, 'distributor' => $this->distributor()[$d->id] ?? null,
                         'total_sk' => count($koordinator[$d->id] ?? []), 'total_motoris' => $baris->where('aktif', true)->count()],
                     (array) $this->ringkas($baris),
                     ['sk_visit' => $v->pluck('koordinator_id')->unique()->count(), 'visit_sk' => $v->count(),

@@ -8,11 +8,19 @@ import Icon from '@/Components/ui/atoms/Icon.vue';
 import Input from '@/Components/ui/atoms/Input.vue';
 import Label from '@/Components/ui/atoms/Label.vue';
 import Card from '@/Components/ui/molecules/Card.vue';
+import InfoPopover from '@/Components/ui/molecules/InfoPopover.vue';
 import Modal from '@/Components/ui/molecules/Modal.vue';
 import PageHeader from '@/Components/ui/molecules/PageHeader.vue';
+import Select from '@/Components/ui/atoms/Select.vue';
+import StatLabel from '@/Components/ui/atoms/StatLabel.vue';
+import StatRow from '@/Components/ui/molecules/StatRow.vue';
+import Tabs from '@/Components/ui/molecules/Tabs.vue';
 import KartuDepoSkeleton from './partials/KartuDepoSkeleton.vue';
+import SummaryDepoTabel from './partials/SummaryDepoTabel.vue';
 import { angka, angkaRingkas } from '@/Support/format.js';
 import { bersihkanQuery } from '@/Support/query.js';
+import { rupiah, warnaCapai } from '@/Support/summaryDepo.js';
+import { useAmbilData } from '@/Support/ambilData.js';
 
 const props = defineProps({
     slug: { type: String, required: true },
@@ -30,12 +38,28 @@ const appName = usePage().props.appName;
 
 const subtitle = computed(() => (props.periode.sama ? props.periode.dari : `${props.periode.dari} – ${props.periode.sampai}`));
 
-// Grafik dibaca dari kartu, jadi tombol Chart baru aktif setelah kartu tiba (prop ditunda belum ada di page.props).
+// Grafik dibaca dari kartu, jadi tombol Grafik baru aktif setelah kartu tiba (prop ditunda belum ada di page.props).
 const kartuDimuat = computed(() => Object.hasOwn(usePage().props, 'kartu'));
 
-// Warna achievement sama dengan Marketama: ≥ 100% hijau, 75–<100% kuning, < 75% merah.
-const warnaCapai = (n) => (n >= 100 ? 'text-green-500' : (n >= 75 ? 'text-yellow-600' : 'text-rose-500'));
-const rupiah = (n) => `Rp ${angka(n)}`;
+// Tampilan kartu (desain asli Marketama) atau tabel; dibawa di query ?tampilan= supaya bisa di-bookmark.
+const TAB_TAMPILAN = [{ key: 'kartu', label: 'Kartu' }, { key: 'tabel', label: 'Tabel' }];
+const tampilan = ref(props.filter.tampilan);
+
+// Ganti tampilan hanya mengubah query tampilan; tanggal yang belum dikirim lewat tombol Tampilkan tidak ikut terkirim.
+function pindahTampilan(key) {
+    tampilan.value = key;
+    router.get('/summary_all_depo', bersihkanQuery({
+        date_from: props.filter.date_from, date_to: props.filter.date_to, q: props.filter.q,
+        tampilan: key === 'tabel' ? 'tabel' : null,
+    }), { only: ['filter'], preserveState: true, preserveScroll: true, replace: true });
+}
+
+function queryFilter() {
+    return bersihkanQuery({
+        date_from: filterDari.value, date_to: filterSampai.value, q: cari.value,
+        tampilan: tampilan.value === 'tabel' ? 'tabel' : null,
+    });
+}
 
 function urlDetail(k) {
     return `/summary_all_depo/${k.id}?${new URLSearchParams(bersihkanQuery({ date_from: filterDari.value, date_to: filterSampai.value }))}`;
@@ -45,13 +69,19 @@ function urlPenjualan(k) {
     return `/summary_all_depo/${k.id}/penjualan?${new URLSearchParams(bersihkanQuery({ date_from: filterDari.value, date_to: filterSampai.value }))}`;
 }
 
-// Tanggal berubah → muat ulang dengan rentang baru; q ikut dibawa.
+// Tanggal dan pencarian baru dimuat saat tombol Tampilkan diklik; filter yang sedang tampil dibawa lewat props.filter.
 const filterDari = ref(props.filter.date_from);
 const filterSampai = ref(props.filter.date_to);
 
 // Hanya prop yang berubah oleh filter yang dimuat ulang, supaya kartu lama tetap tampil (tanpa skeleton).
+// Tombol Tampilkan aktif lagi hanya saat tanggal atau pencarian berbeda dari yang sedang tampil (seperti Rekap SKU).
+const { memuat, berubah, ambil } = useAmbilData({
+    form: () => ({ date_from: filterDari.value, date_to: filterSampai.value, q: cari.value }),
+    diterapkan: () => ({ date_from: props.filter.date_from, date_to: props.filter.date_to, q: props.filter.q }),
+});
+
 function tampilkan() {
-    router.get('/summary_all_depo', bersihkanQuery({ date_from: filterDari.value, date_to: filterSampai.value, q: cari.value }), {
+    ambil('/summary_all_depo', queryFilter(), {
         only: ['kartu', 'periode', 'filter'],
     });
 }
@@ -61,7 +91,7 @@ const cari = ref(props.filter.q);
 const kartuTampil = computed(() => {
     const kata = cari.value.trim().toLowerCase();
 
-    return kata ? props.kartu.filter((k) => k.nama.toLowerCase().includes(kata)) : props.kartu;
+    return kata ? props.kartu.filter((k) => `${k.kode ?? ''} ${k.nama}`.toLowerCase().includes(kata)) : props.kartu;
 });
 
 const modal = ref(null);
@@ -70,6 +100,7 @@ const tutup = () => { modal.value = null; };
 // Grafik batang per depo (SVG sederhana, tanpa pustaka), dari kartu yang sedang tampil di server (sesuai filter q saat dimuat).
 const LEBAR_BATANG = 40, JARAK = 14, TINGGI = 320, ATAS = 24, BAWAH = 90, KIRI = 8;
 const metrik = ref(props.metrikGrafik[0]?.key ?? '');
+const opsiMetrik = computed(() => props.metrikGrafik.map((m) => ({ value: m.key, label: m.label })));
 const metrikLabel = computed(() => props.metrikGrafik.find((m) => m.key === metrik.value)?.label ?? '');
 const grafikLebar = computed(() => KIRI + props.kartu.length * (LEBAR_BATANG + JARAK));
 const grafikBars = computed(() => {
@@ -95,22 +126,47 @@ function simpanTarget() {
     <Head :title="`${judul} · ${appName}`" />
     <AppLayout :breadcrumb-slug="slug">
         <PageHeader :title="judul" :subtitle="subtitle">
+            <template #info>
+                <InfoPopover title="Cara Hitung" class="ms-1 align-middle">
+                    <ul class="list-disc ps-4 space-y-1">
+                        <li>Dihitung dari data aplikasi motoris, diurutkan dari EC Achievement tertinggi.</li>
+                        <li><strong>Hari Kerja</strong> sales = tanggal dengan absen atau kunjungan.</li>
+                        <li><strong>AVG</strong> per hari = total ÷ hari kerja depo.</li>
+                        <li><strong>AVG IPT</strong> = SKU ÷ EC.</li>
+                        <li><strong>AVG Hari Kerja</strong> = hari kerja depo ÷ sales motoris aktif.</li>
+                        <li><strong>Achievement</strong> = AVG ÷ target nasional (Call {{ angkaRingkas(target.call, 1) }}, EC {{ angkaRingkas(target.ec, 1) }}, IPT {{ angkaRingkas(target.ipt, 1) }}).</li>
+                        <li><strong>AVG Visit SK/Day</strong> = join visit ÷ {{ periode.hkKoordinator }} hari kerja koordinator (Senin–Jumat, tanpa libur).</li>
+                    </ul>
+                </InfoPopover>
+            </template>
             <template #actions>
                 <form class="flex flex-wrap items-center gap-2" role="search" @submit.prevent="tampilkan">
-                    <Input id="date_from" v-model="filterDari" type="date" aria-label="Dari tanggal" class="w-36" @change="tampilkan" />
-                    <Input id="date_to" v-model="filterSampai" type="date" aria-label="Sampai tanggal" class="w-36" @change="tampilkan" />
-                    <Button type="button" :disabled="!kartuDimuat" @click="modal = 'grafik'"><Icon name="chart-bar" class="w-3.5 h-3.5" /> Chart</Button>
+                    <Input id="date_from" v-model="filterDari" type="date" aria-label="Dari tanggal" class="w-36" />
+                    <Input id="date_to" v-model="filterSampai" type="date" aria-label="Sampai tanggal" class="w-36" />
                     <Input id="cari-depo" v-model="cari" type="search" placeholder="Cari depo…" aria-label="Cari depo" class="w-40" />
-                    <Button v-if="bolehUbah" type="button" variant="outline-primary" @click="modal = 'target'"><Icon name="settings" class="w-3.5 h-3.5" /> Setting Target</Button>
+                    <Button type="submit" :loading="memuat" :disabled="!kartuDimuat || !berubah"><Icon name="search" class="me-1 w-3.5 h-3.5" />Tampilkan</Button>
                 </form>
             </template>
         </PageHeader>
+
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <Tabs :tabs="TAB_TAMPILAN" :model-value="tampilan" @update:model-value="pindahTampilan" />
+            <div class="mb-3 flex items-center gap-2">
+                <Button type="button" variant="outline-secondary" :disabled="!kartuDimuat" @click="modal = 'grafik'"><Icon name="chart-bar" class="me-1 w-3.5 h-3.5" />Grafik</Button>
+                <Button v-if="bolehUbah" type="button" variant="outline-secondary" @click="modal = 'target'"><Icon name="settings" class="me-1 w-3.5 h-3.5" />Atur Target</Button>
+            </div>
+        </div>
 
         <Deferred data="kartu">
         <template #fallback>
             <KartuDepoSkeleton />
         </template>
-        <div class="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+        <SummaryDepoTabel
+            v-if="tampilan === 'tabel'"
+            :kartu="kartuTampil" :target="target" :hk-koordinator="periode.hkKoordinator"
+            :url-detail="urlDetail" :url-penjualan="urlPenjualan"
+        />
+        <div v-else class="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
             <Card v-for="k in kartuTampil" :key="k.id" class="shadow-sm text-xs" header-class="card-header-primary" body-class="px-3 pb-1">
                 <template #header>
                     <Link :href="urlDetail(k)" class="flex items-center justify-between gap-2">
@@ -124,47 +180,47 @@ function simpanTarget() {
                     </Link>
                 </template>
 
-                <div class="stat-label">Personil aktif</div>
-                <div class="stat-row">
-                    <span class="flex items-center gap-1 text-gray-600"><Icon name="user" class="w-3.5 h-3.5" /> Total SK</span>
-                    <span class="font-semibold text-gray-900">{{ angka(k.total_sk) }}</span>
-                </div>
-                <div class="stat-row">
-                    <span class="flex items-center gap-1 text-gray-600"><Icon name="bike" class="w-3.5 h-3.5" /> Total Sales Motoris</span>
-                    <span class="font-semibold text-gray-900">{{ angka(k.total_motoris) }}</span>
-                </div>
+                <StatLabel>Personil aktif</StatLabel>
+                <StatRow>
+                    <template #label><Icon name="user" class="me-1 w-3.5 h-3.5" />Total SK</template>
+                    {{ angka(k.total_sk) }}
+                </StatRow>
+                <StatRow>
+                    <template #label><Icon name="bike" class="me-1 w-3.5 h-3.5" />Total Sales Motoris</template>
+                    {{ angka(k.total_motoris) }}
+                </StatRow>
 
-                <div class="stat-label">Aktivitas periode</div>
-                <div class="stat-row">
-                    <span class="flex items-center gap-1 text-gray-600"><Icon name="banknote" class="w-3.5 h-3.5" /> Total Sales</span>
-                    <Link :href="urlPenjualan(k)" class="font-semibold text-green-500 underline decoration-dotted underline-offset-2" title="Klik untuk lihat data EC & penjualan">{{ rupiah(k.sales) }}</Link>
-                </div>
+                <StatLabel>Aktivitas periode</StatLabel>
+                <StatRow value-class="text-green-500">
+                    <template #label><Icon name="banknote" class="me-1 w-3.5 h-3.5" />Total Sales</template>
+                    <Link :href="urlPenjualan(k)" class="underline decoration-dotted underline-offset-2" title="Klik untuk lihat data EC & penjualan">{{ rupiah(k.sales) }}</Link>
+                </StatRow>
 
-                <div class="stat-label">Rata-rata / hari kerja</div>
-                <div class="stat-row"><span class="text-gray-600">AVG Hari Kerja</span><span class="font-semibold text-gray-900">{{ angkaRingkas(k.avg_hari_kerja, 1) }}</span></div>
-                <div class="stat-row"><span class="text-gray-600">AVG Call / Day</span><span class="font-semibold text-sky-500">{{ angkaRingkas(k.avg_call, 1) }}</span></div>
-                <div class="stat-row"><span class="text-gray-600">Call Achievement</span><span class="font-semibold" :class="warnaCapai(k.call_achievement)">{{ angkaRingkas(k.call_achievement, 1) }}%</span></div>
-                <div class="stat-row"><span class="text-gray-600">AVG EC / Day</span><span class="font-semibold text-green-500">{{ angkaRingkas(k.avg_ec, 1) }}</span></div>
-                <div class="stat-row"><span class="text-gray-600">EC Achievement</span><span class="font-semibold" :class="warnaCapai(k.ec_achievement)">{{ angkaRingkas(k.ec_achievement, 1) }}%</span></div>
-                <div class="stat-row"><span class="text-gray-600">AVG Sales / Day</span><span class="font-semibold text-green-500">{{ rupiah(k.avg_sales) }}</span></div>
-                <div class="stat-row"><span class="text-gray-600">AVG IPT / Day</span><span class="font-semibold text-gray-900">{{ angkaRingkas(k.avg_ipt, 1) }}</span></div>
-                <div class="stat-row"><span class="text-gray-600">IPT Achievement</span><span class="font-semibold" :class="warnaCapai(k.ipt_achievement)">{{ angkaRingkas(k.ipt_achievement, 1) }}%</span></div>
-                <div class="stat-row"><span class="text-gray-600">AVG Point / Day</span><span class="font-semibold text-orange-500">{{ angkaRingkas(k.avg_point, 1) }}</span></div>
+                <StatLabel>Rata-rata / hari kerja</StatLabel>
+                <StatRow label="AVG Hari Kerja">{{ angkaRingkas(k.avg_hari_kerja, 1) }}</StatRow>
+                <StatRow label="AVG Call / Day" value-class="text-sky-500">{{ angkaRingkas(k.avg_call, 1) }}</StatRow>
+                <StatRow label="Call Achievement" :value-class="warnaCapai(k.call_achievement)">{{ angkaRingkas(k.call_achievement, 1) }}%</StatRow>
+                <StatRow label="AVG EC / Day" value-class="text-green-500">{{ angkaRingkas(k.avg_ec, 1) }}</StatRow>
+                <StatRow label="EC Achievement" :value-class="warnaCapai(k.ec_achievement)">{{ angkaRingkas(k.ec_achievement, 1) }}%</StatRow>
+                <StatRow label="AVG Sales / Day" value-class="text-green-500">{{ rupiah(k.avg_sales) }}</StatRow>
+                <StatRow label="AVG IPT / Day">{{ angkaRingkas(k.avg_ipt, 1) }}</StatRow>
+                <StatRow label="IPT Achievement" :value-class="warnaCapai(k.ipt_achievement)">{{ angkaRingkas(k.ipt_achievement, 1) }}%</StatRow>
+                <StatRow label="AVG Point / Day" value-class="text-orange-500">{{ angkaRingkas(k.avg_point, 1) }}</StatRow>
 
-                <div class="stat-label">Kunjungan SK</div>
-                <div class="stat-row">
-                    <span class="flex items-center gap-1 text-gray-600"><Icon name="user-check" class="w-3.5 h-3.5" /> SK yang Visit</span>
-                    <span class="font-semibold text-sky-500">{{ angka(k.sk_visit) }}</span>
-                </div>
-                <div class="stat-row">
-                    <span class="flex items-center gap-1 text-gray-600"><Icon name="user" class="w-3.5 h-3.5" /> Total Visit SK</span>
-                    <span class="font-semibold text-sky-500">{{ angka(k.visit_sk) }}</span>
-                </div>
-                <div class="stat-row"><span class="text-gray-600">AVG Visit SK / Day</span><span class="font-semibold text-sky-500">{{ angkaRingkas(k.avg_visit_sk, 1) }}</span></div>
+                <StatLabel>Kunjungan SK</StatLabel>
+                <StatRow value-class="text-sky-500">
+                    <template #label><Icon name="user-check" class="me-1 w-3.5 h-3.5" />SK yang Visit</template>
+                    {{ angka(k.sk_visit) }}
+                </StatRow>
+                <StatRow value-class="text-sky-500">
+                    <template #label><Icon name="user" class="me-1 w-3.5 h-3.5" />Total Visit SK</template>
+                    {{ angka(k.visit_sk) }}
+                </StatRow>
+                <StatRow label="AVG Visit SK / Day" value-class="text-sky-500">{{ angkaRingkas(k.avg_visit_sk, 1) }}</StatRow>
 
                 <template #footer>
                     <div class="text-end">
-                        <Button :tag="Link" variant="outline-primary" :href="urlDetail(k)"><Icon name="users" class="w-3.5 h-3.5" /> Lihat Detail</Button>
+                        <Button :tag="Link" variant="outline-primary" :href="urlDetail(k)"><Icon name="users" class="me-1 w-3.5 h-3.5" />Lihat Detail</Button>
                     </div>
                 </template>
             </Card>
@@ -172,34 +228,25 @@ function simpanTarget() {
         </div>
         </Deferred>
 
-        <p class="mt-3 text-xs text-gray-500">
-            Dihitung dari data aplikasi motoris, diurutkan dari EC Achievement tertinggi. Hari kerja sales = tanggal dengan absen atau kunjungan;
-            AVG per hari = total ÷ hari kerja depo; AVG IPT = SKU ÷ EC; AVG Hari Kerja = hari kerja depo ÷ sales motoris aktif.
-            Achievement = AVG ÷ target nasional (Call {{ angkaRingkas(target.call, 1) }}, EC {{ angkaRingkas(target.ec, 1) }}, IPT {{ angkaRingkas(target.ipt, 1) }}).
-            AVG Visit SK/Day = join visit ÷ {{ periode.hkKoordinator }} hari kerja koordinator (Senin–Jumat, tanpa libur).
-        </p>
-
-        <Modal :show="modal === 'grafik'" title="Chart Per Depo" @close="tutup">
+        <Modal :show="modal === 'grafik'" title="Grafik Per Depo" @close="tutup">
             <div class="flex flex-wrap items-center gap-2 mb-3">
                 <Label for="metrik-grafik" class="mb-0">Metrik</Label>
-                <select id="metrik-grafik" v-model="metrik" aria-label="Metrik grafik" class="form-control form-control-sm w-56">
-                    <option v-for="m in metrikGrafik" :key="m.key" :value="m.key">{{ m.label }}</option>
-                </select>
+                <Select id="metrik-grafik" v-model="metrik" :options="opsiMetrik" aria-label="Metrik grafik" class="w-56" />
             </div>
             <div class="overflow-x-auto">
                 <svg v-if="grafikBars.length" :width="grafikLebar" :height="TINGGI + ATAS + BAWAH" role="img" :aria-label="`${metrikLabel} per depo`">
-                    <line :x1="0" :x2="grafikLebar" :y1="ATAS + TINGGI" :y2="ATAS + TINGGI" stroke="#d1d5db" />
+                    <line :x1="0" :x2="grafikLebar" :y1="ATAS + TINGGI" :y2="ATAS + TINGGI" class="stroke-gray-300" />
                     <g v-for="b in grafikBars" :key="b.nama">
-                        <rect :x="b.x" :y="b.y" :width="LEBAR_BATANG" :height="b.h" rx="3" fill="#4ade80" stroke="#22c55e"><title>{{ b.nama }}: {{ angkaRingkas(b.v, 1) }}</title></rect>
-                        <text :x="b.x + LEBAR_BATANG / 2" :y="b.y - 6" text-anchor="middle" font-size="10" font-weight="600" fill="#374151">{{ angkaRingkas(b.v, 1) }}</text>
-                        <text :x="b.x + LEBAR_BATANG / 2" :y="ATAS + TINGGI + 12" text-anchor="end" font-size="10" fill="#4b5563" :transform="`rotate(-35 ${b.x + LEBAR_BATANG / 2} ${ATAS + TINGGI + 12})`">{{ b.nama }}</text>
+                        <rect :x="b.x" :y="b.y" :width="LEBAR_BATANG" :height="b.h" rx="3" class="fill-green-400 stroke-green-500"><title>{{ b.nama }}: {{ angkaRingkas(b.v, 1) }}</title></rect>
+                        <text :x="b.x + LEBAR_BATANG / 2" :y="b.y - 6" text-anchor="middle" font-size="10" font-weight="600" class="fill-gray-700">{{ angkaRingkas(b.v, 1) }}</text>
+                        <text :x="b.x + LEBAR_BATANG / 2" :y="ATAS + TINGGI + 12" text-anchor="end" font-size="10" class="fill-gray-600" :transform="`rotate(-35 ${b.x + LEBAR_BATANG / 2} ${ATAS + TINGGI + 12})`">{{ b.nama }}</text>
                     </g>
                 </svg>
                 <p v-else class="text-gray-500">Tidak ada depo.</p>
             </div>
         </Modal>
 
-        <Modal v-if="bolehUbah" :show="modal === 'target'" title="Setting Target" @close="tutup">
+        <Modal v-if="bolehUbah" :show="modal === 'target'" title="Atur Target" @close="tutup">
             <form @submit.prevent="simpanTarget">
                 <p class="text-xs text-gray-500">Nilai ini berlaku sebagai target nasional (sama untuk semua depo aktif).</p>
                 <div v-for="(label, kunci) in { call: 'Target Call', ec: 'Target EC', ipt: 'Target IPT' }" :key="kunci" class="mb-3">
