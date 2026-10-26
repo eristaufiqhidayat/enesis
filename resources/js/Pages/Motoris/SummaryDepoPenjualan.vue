@@ -9,7 +9,7 @@ import PageHeader from '@/Components/ui/molecules/PageHeader.vue';
 import TableSkeleton from '@/Components/ui/molecules/TableSkeleton.vue';
 import DataTable from '@/Components/ui/organisms/DataTable.vue';
 import { useAmbilData } from '@/Support/ambilData.js';
-import { angka } from '@/Support/format.js';
+import { angka, tanggalPendek } from '@/Support/format.js';
 import { bersihkanQuery } from '@/Support/query.js';
 
 // total dan baris kosong saat masih ditunda (lihat <Deferred> di bawah).
@@ -26,7 +26,11 @@ const props = defineProps({
 const appName = usePage().props.appName;
 const periodeText = computed(() => (props.periode.sama ? props.periode.dari : `${props.periode.dari} – ${props.periode.sampai}`));
 const rupiah = (n) => `Rp ${angka(n)}`;
-const tgl = (t) => { const [y, m, d] = t.slice(0, 10).split('-'); return `${d}/${m}/${y}`; };
+const tgl = tanggalPendek;
+
+// URLSearchParams tidak boleh dipanggil langsung di template (bukan global yang diizinkan Vue di sana,
+// "_ctx.URLSearchParams is not a constructor" - lihat juga SummaryDepoDetail.vue).
+const kembaliHref = computed(() => `/summary_all_depo?${new URLSearchParams({ date_from: props.filter.date_from, date_to: props.filter.date_to })}`);
 
 const columns = {
     tanggal: 'Tanggal', kode_outlet: 'Kode Outlet', nama_outlet: 'Nama Outlet', sales: 'Sales',
@@ -53,7 +57,7 @@ function saring() {
     <AppLayout :breadcrumb-slug="slug">
         <PageHeader :title="judul" :subtitle="`Periode ${periodeText}`">
             <template #actions>
-                <Button :tag="Link" variant="outline-secondary" :href="`/summary_all_depo?${new URLSearchParams({ date_from: filter.date_from, date_to: filter.date_to })}`">Kembali ke Summary All Depo</Button>
+                <Button :tag="Link" variant="outline-secondary" :href="kembaliHref">Kembali ke Summary All Depo</Button>
             </template>
         </PageHeader>
 
