@@ -17,7 +17,7 @@ import OutletSales from './partials/OutletSales.vue';
 import SalesBawahan from './partials/SalesBawahan.vue';
 
 const props = defineProps({
-    menu: { type: String, required: true },
+    slug: { type: String, required: true },
     judul: { type: String, required: true },
     akun: { type: Object, default: null },
     karyawan: { type: Object, default: null },
@@ -31,7 +31,7 @@ const props = defineProps({
 });
 
 const appName = usePage().props.appName;
-const base = `/${props.menu}`;
+const base = `/${props.slug}`;
 const isEdit = computed(() => props.akun !== null);
 const judulHalaman = computed(() => (isEdit.value ? `Edit akun ${props.akun.username}` : 'Tambah akun'));
 const batal = computed(() => (isEdit.value ? `${base}/${props.akun.id}` : base));
@@ -107,7 +107,7 @@ function simpan() {
 
 <template>
     <Head :title="`${judulHalaman} · ${appName}`" />
-    <AppLayout :breadcrumb-slug="menu">
+    <AppLayout :breadcrumb-slug="slug">
         <PageHeader :title="judulHalaman" :subtitle="`${judul}${isEdit ? '' : ' · password awal ditampilkan sekali setelah disimpan'}`" />
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
