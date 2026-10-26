@@ -281,6 +281,23 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     .data-table th, .data-table td { @apply px-3 py-2 text-left border-b border-gray-100 whitespace-nowrap; }
     .data-table tbody tr:nth-child(odd) { @apply bg-gray-50/60; }
     .data-table tbody tr:hover { @apply bg-blue-50/50; }
+    .data-table th.sortable { @apply cursor-pointer select-none hover:bg-gray-100; }
+    .data-table .sort-button { @apply inline-flex items-center gap-1; }
+    .data-table .sort-icon { @apply inline-block w-3 h-3 text-gray-400; }
+    .data-table th.sort-aktif .sort-icon { @apply text-blue-600; }
+    .data-table th.sort-asc .sort-icon { @apply rotate-180; }
+    .data-table thead th { @apply relative; }
+    .data-table .th-isi { @apply inline-flex items-center gap-1; }
+    .data-table .filter-button { @apply inline-flex items-center justify-center rounded p-0.5 text-gray-400 hover:bg-gray-200 hover:text-gray-700; }
+    .data-table .filter-button.filter-aktif { @apply text-blue-600; }
+    .data-table .filter-icon { @apply inline-block w-3 h-3; }
+    .data-table .filter-flyout { @apply absolute left-0 top-full z-20 mt-1 flex w-64 flex-col gap-2 whitespace-normal rounded-md border border-gray-200 bg-white p-3 font-normal shadow-lg; }
+    .data-table .filter-flyout-judul { @apply font-semibold text-gray-700; }
+    .data-table .filter-flyout-aksi { @apply flex justify-end; }
+    .data-table .col-filter { @apply w-full min-w-[6rem] font-normal; }
+    .data-table .filter-angka { @apply flex items-center gap-1; }
+    .data-table .filter-angka .col-filter { @apply min-w-[4rem] flex-1; }
+    .data-table .col-filter-op { @apply w-auto font-normal; }
 
     .pagination { @apply flex items-center gap-1; }
     .page-link { @apply inline-flex min-w-[1.75rem] items-center justify-center rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50; }

@@ -156,6 +156,51 @@ function pindahTab(key) {
 
     router.get(`/${props.slug}`, query, { preserveScroll: true, only: PROPS_MENU });
 }
+
+// Sort dan filter disimpan di query string per tabel (sort[<tabel>], arah[<tabel>], filter[<tabel>][<kolom>]).
+// Query lain dan tab tetap dari URL. Mengubah sort atau filter mengembalikan tabel itu ke halaman 1.
+function ubahQueryTabel(table, ubah) {
+    const query = Object.fromEntries(new URLSearchParams(window.location.search));
+    const awalan = [`sort[${table.name}]`, `arah[${table.name}]`, `filter[${table.name}][`, `operator[${table.name}][`];
+
+    delete query[`page_${table.name}`];
+
+    for (const kunci of Object.keys(query)) {
+        if (awalan.some((a) => kunci.startsWith(a))) {
+            delete query[kunci];
+        }
+    }
+
+    ubah(query);
+
+    router.get(window.location.pathname, query, { preserveScroll: true, only: PROPS_TABEL });
+}
+
+function urutkan(table, { kolom, arah }) {
+    ubahQueryTabel(table, (query) => {
+        if (arah) {
+            query[`sort[${table.name}]`] = kolom;
+            query[`arah[${table.name}]`] = arah;
+        }
+    });
+}
+
+function filterTabel(table, { nilai, operator }) {
+    ubahQueryTabel(table, (query) => {
+        for (const [kolom, teks] of Object.entries(nilai)) {
+            if (teks) {
+                query[`filter[${table.name}][${kolom}]`] = teks;
+            }
+        }
+
+        // Operator '=' adalah bawaan, jadi hanya operator lain yang masuk query string.
+        for (const [kolom, op] of Object.entries(operator)) {
+            if (nilai[kolom] && op !== '=') {
+                query[`operator[${table.name}][${kolom}]`] = op;
+            }
+        }
+    });
+}
 </script>
 
 <template>
@@ -211,6 +256,15 @@ function pindahTab(key) {
                         :pagination-only="PROPS_TABEL"
                         :badge-columns="table.name === 'checkin_pagi' ? ['checkin_pertama_hari_ini'] : (table.aksi === 'verifikasi_outlet_baru' ? ['status'] : [])"
                         :badge-variants="table.aksi === 'verifikasi_outlet_baru' ? warnaStatusOutletBaru : (warnaBadge[table.name] ?? {})"
+                        :sortable="table.sortable_columns"
+                        :sort="table.sort"
+                        @sort="urutkan(table, $event)"
+                        :filterable="table.filterable_columns"
+                        :filter-values="table.filter_kolom"
+                        :filter-angka="table.filter_angka"
+                        :filter-operator="table.filter_operator"
+                        :filter-tanggal="table.filter_tanggal"
+                        @filter="filterTabel(table, $event)"
                     >
                         <!-- Input cari hanya di header tabel pertama: pencarian berlaku untuk semua tabel di halaman ini. -->
                         <template v-if="index === 0" #header>
