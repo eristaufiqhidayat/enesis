@@ -43,6 +43,8 @@ SQL;
 
         $this->prov = $prov;
         $this->kota = $kota;
+        // Uji alur dataset Kemendagri; sumber BIG diuji di BatasWilayahBigTest.
+        config(['batas_wilayah.sumber' => BatasWilayah::SUMBER, 'batas_wilayah.cadangan' => null]);
         Http::preventStrayRequests();
     }
 

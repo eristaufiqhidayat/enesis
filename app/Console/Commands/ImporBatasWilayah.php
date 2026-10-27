@@ -13,6 +13,8 @@ class ImporBatasWilayah extends Command
                             {--kota=* : Kode kota/kabupaten 4 digit (mis. 3171)}
                             {--provinsi=* : Kode provinsi 2 digit; semua kota di tabel kota_kabupaten provinsi itu}
                             {--semua : Semua kota di tabel kota_kabupaten}
+                            {--sumber= : big (layanan peta BIG) | kemendagri-2025 (dataset); bawaan BATAS_WILAYAH_SUMBER}
+                            {--tanpa-cadangan : Jangan isi kelurahan yang tidak ada di sumber utama dari sumber cadangan}
                             {--dir= : Folder "db" hasil git clone cahyadsn/wilayah_boundaries (tanpa internet)}
                             {--paksa : Ambil ulang walaupun sudah ada}';
 
@@ -22,6 +24,12 @@ class ImporBatasWilayah extends Command
     {
         if ($this->option('dir')) {
             config(['batas_wilayah.direktori' => $this->option('dir')]);
+        }
+        if ($this->option('sumber')) {
+            config(['batas_wilayah.sumber' => $this->option('sumber')]);
+        }
+        if ($this->option('tanpa-cadangan')) {
+            config(['batas_wilayah.cadangan' => null]);
         }
 
         $kota = collect($this->option('kota'))->map(fn ($k) => preg_replace('/\D/', '', $k));
@@ -59,9 +67,9 @@ class ImporBatasWilayah extends Command
         $bar->finish();
         $this->newLine();
 
-        $this->table(['Tingkat', 'Jumlah batas'], DB::table('batas_wilayah')
-            ->selectRaw('tingkat, count(*) as jumlah')->groupBy('tingkat')->orderBy('tingkat')->get()
-            ->map(fn ($r) => [$r->tingkat, number_format($r->jumlah, 0, ',', '.')])->all());
+        $this->table(['Tingkat', 'Sumber', 'Jumlah batas'], DB::table('batas_wilayah')
+            ->selectRaw('tingkat, sumber, count(*) as jumlah')->groupBy('tingkat', 'sumber')->orderBy('tingkat')->orderBy('sumber')->get()
+            ->map(fn ($r) => [$r->tingkat, $r->sumber, number_format($r->jumlah, 0, ',', '.')])->all());
 
         return $gagal ? self::FAILURE : self::SUCCESS;
     }
