@@ -66,6 +66,9 @@ SQL;
                 ->has('provinsi', 1, fn (Assert $p) => $p->where('nama', 'DKI Jakarta')->etc())
                 ->has('depo', 1, fn (Assert $d) => $d->where('warehouse_id', 48)->etc())
                 ->where('bisaTambah', true)
+                ->where('bisaUbah', true)
+                ->where('bisaHapus', true)
+                ->where('hapusUrl', url('master_area/design_area/areas'))
             );
 
         $this->getJson('/master_area/kelurahan_polygon/opsi?tingkat=kota&provinsi_id='.$this->prov)

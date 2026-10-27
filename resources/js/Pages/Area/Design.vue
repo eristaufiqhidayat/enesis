@@ -15,6 +15,7 @@ import PageHeader from '@/Components/ui/molecules/PageHeader.vue';
 import { useLeafletMap } from '@/Composables/useLeafletMap.js';
 import { bersihkanQuery } from '@/Support/query.js';
 import { escapeHtml, ikonDepo, ikonLingkaran, ikonSvg, multiKeLatLng } from '@/Support/peta.js';
+import { MAKS_PENANDA, buatEditorPolygon } from '@/Pages/Area/partials/editorPolygon.js';
 
 const props = defineProps({
     slug: { type: String, required: true },
@@ -28,6 +29,9 @@ const props = defineProps({
     areasUrl: { type: String, required: true },
     storeUrl: { type: String, required: true },
     destroyUrl: { type: String, required: true },
+    updateUrl: { type: String, required: true },
+    // Area yang langsung dibuka (?area=<id>): { id, province, city, district, village }.
+    fokus: { type: Object, default: null },
     generateUrl: { type: String, default: null },
     autoGridUrl: { type: String, default: null },
 });
@@ -37,6 +41,8 @@ const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
 
 const levels = ['province', 'city', 'district', 'village'];
 const warna = ['#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4', '#42d4f4', '#f032e6', '#469990', '#9A6324', '#800000', '#808000', '#000075'];
+const ikonPensil = ikonSvg('<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>');
+const ikonBentuk = ikonSvg('<path d="M12 3 3 9l3 11h12l3-11z"/><circle cx="12" cy="3" r="1.5"/><circle cx="3" cy="9" r="1.5"/><circle cx="21" cy="9" r="1.5"/>');
 const ikonTempatSampah = ikonSvg('<path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>');
 
 // Filter wilayah & opsi dropdown bertingkat (kota per provinsi, kecamatan per kota, kelurahan per kecamatan).
@@ -63,8 +69,16 @@ const pesanGambar = computed(() => {
     return `${n} titik. ` + (n < 3 ? 'Klik peta untuk menambah titik (minimal 3).' : 'Klik "Selesai" atau klik dua kali di peta untuk menyimpan.');
 });
 
+// Modal data area dipakai untuk area baru (hasil gambar) dan untuk mengubah data area yang ada.
 const modalSimpan = ref(false);
+const areaDiubah = ref(null);
 const formSimpan = reactive({ name: '', warehouse_id: '', info: '' });
+
+// Mengubah bentuk area yang sudah ada.
+const mengedit = ref(null);
+const infoEdit = reactive({ titik: 0, tampil: true, bisaUrung: false });
+const menyimpanBentuk = ref(false);
+const sibuk = computed(() => menggambar.value || !!mengedit.value);
 const wilayahSimpan = computed(() => levels.map((l) => filter[l]).filter(Boolean).join(', ') || '-');
 
 // Layer & instance Leaflet bukan state reaktif Vue: disimpan di luar ref supaya tidak di-proxy.
@@ -73,6 +87,7 @@ let peta = null;
 let lapisanArea = null;
 let lapisanDepo = null;
 let lapisanGambar = null;
+let editor = null;
 const overlay = new Map();
 
 const wadah = ref(null);
@@ -85,6 +100,7 @@ useLeafletMap(wadah, {
         lapisanArea = L.featureGroup().addTo(map);
         lapisanDepo = L.layerGroup().addTo(map);
         lapisanGambar = L.layerGroup().addTo(map);
+        editor = buatEditorPolygon(L, map, (info) => Object.assign(infoEdit, info));
 
         map.on('click', (e) => {
             if (!menggambar.value) return;
@@ -101,12 +117,17 @@ useLeafletMap(wadah, {
             if (menggambar.value && titik.value.length >= 3) selesaiGambar();
         });
 
-        // Hapus area dari popup. Tombol ada di HTML popup Leaflet, jadi listener dipasang saat popup dibuka.
+        // Tombol Ubah / Ubah Bentuk / Hapus ada di HTML popup Leaflet, jadi listener dipasang saat popup dibuka.
         map.on('popupopen', (e) => {
-            const tombol = e.popup.getElement().querySelector('.btn-delete-area');
-            if (!tombol) return;
-            tombol.addEventListener('click', () => hapusArea(Number(tombol.dataset.id)));
+            const el = e.popup.getElement();
+            const aksi = { '.btn-edit-area': ubahData, '.btn-shape-area': ubahBentuk, '.btn-delete-area': hapusArea };
+            Object.entries(aksi).forEach(([kelas, fn]) => {
+                const tombol = el.querySelector(kelas);
+                tombol?.addEventListener('click', () => fn(Number(tombol.dataset.id)));
+            });
         });
+
+        if (props.fokus) bukaFokus(props.fokus);
     },
 });
 
@@ -120,8 +141,11 @@ function popupArea(a) {
         + '<div><b>Jumlah Toko:</b> ' + (a.outlet_count ?? 0) + '</div>'
         + '<div><b>Sales:</b> ' + escapeHtml(a.salesperson || '-') + '</div>'
         + (a.info ? '<div><b>Info:</b> ' + escapeHtml(a.info) + '</div>' : '')
-        + (props.bisaHapus ? '<button type="button" class="btn btn-sm btn-outline-danger mt-2 btn-delete-area" data-id="' + a.id + '">' + ikonTempatSampah + 'Hapus</button>' : '')
-        + '</div>';
+        + '<div class="flex flex-wrap gap-1 mt-2">'
+        + (props.bisaUbah ? '<button type="button" class="btn btn-sm btn-outline-primary btn-edit-area" data-id="' + a.id + '">' + ikonPensil + 'Ubah Data</button>'
+            + '<button type="button" class="btn btn-sm btn-outline-primary btn-shape-area" data-id="' + a.id + '">' + ikonBentuk + 'Ubah Bentuk</button>' : '')
+        + (props.bisaHapus ? '<button type="button" class="btn btn-sm btn-outline-danger btn-delete-area" data-id="' + a.id + '">' + ikonTempatSampah + 'Hapus</button>' : '')
+        + '</div></div>';
 }
 
 function gambarArea() {
@@ -137,7 +161,7 @@ function gambarArea() {
         // Popup dibuka manual: bindPopup menghentikan klik di polygon, sehingga saat menggambar titik di atas
         // area lama tidak bertambah dan peta bergeser karena popup. Saat menggambar, klik diteruskan ke peta.
         const poly = L.polygon(latlngs, { color: warnaArea, weight: 2, fillOpacity: 0.25 })
-            .on('click', (e) => { if (!menggambar.value) bukaPopup(a, e.latlng); });
+            .on('click', (e) => { if (!sibuk.value) bukaPopup(a, e.latlng); });
         poly.addTo(lapisanArea);
         overlay.set(a.id, poly);
     });
@@ -211,14 +235,91 @@ async function muatArea() {
     }
 }
 
+// Buka area dari ?area=<id>: isi filter wilayahnya, muat, lalu fokus.
+async function bukaFokus(f) {
+    if (!f.province) return;
+    for (const [i, l] of levels.entries()) {
+        if (!f[l]) break;
+        await ubahWilayah(i, f[l]);
+    }
+    await muatArea();
+    const a = areas.value.find((x) => x.id === f.id);
+    if (a) fokusArea(a);
+}
+
 // ---------- Hapus area ----------
 async function hapusArea(id) {
-    if (!confirm('Hapus area ini?')) return;
-    const res = await fetch(props.destroyUrl + '/' + id, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': csrf } });
+    const a = areas.value.find((x) => x.id === id);
+    const catatan = a && (a.outlet_count || a.salesperson) ? `\nArea ini punya ${a.outlet_count ?? 0} toko${a.salesperson ? ' dan sales ' + a.salesperson : ''}.` : '';
+    if (!confirm(`Hapus area ${a ? a.name + ' (' + a.code + ')' : 'ini'}?${catatan}`)) return;
+    const res = await fetch(props.destroyUrl + '/' + id, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': csrf, Accept: 'application/json' } });
     if (!res.ok) { alert('Gagal menghapus area.'); return; }
     peta.closePopup();
-    areas.value = areas.value.filter((a) => a.id !== id);
+    areas.value = areas.value.filter((x) => x.id !== id);
     gambarArea();
+    statusGambar.value = 'Area ' + (a?.code ?? '') + ' dihapus.';
+}
+
+// ---------- Ubah data area ----------
+function ubahData(id) {
+    const a = areas.value.find((x) => x.id === id);
+    if (!a) return;
+    peta.closePopup();
+    areaDiubah.value = a;
+    Object.assign(formSimpan, { name: a.name, warehouse_id: a.warehouse_id ?? '', info: a.info ?? '' });
+    modalSimpan.value = true;
+}
+
+async function kirimUbah(a, tambahan = {}) {
+    const res = await fetch(props.updateUrl + '/' + a.id, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrf },
+        body: JSON.stringify({ name: a.name, warehouse_id: a.warehouse_id || null, info: a.info || null, ...tambahan }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+        alert(data.message || 'Gagal menyimpan perubahan area.');
+        return null;
+    }
+    areas.value = areas.value.map((x) => (x.id === data.id ? data : x));
+    gambarArea();
+    return data;
+}
+
+// ---------- Ubah bentuk area ----------
+function ubahBentuk(id) {
+    const a = areas.value.find((x) => x.id === id);
+    if (!a) return;
+    peta.closePopup();
+    const multi = a.geometri?.coordinates ?? [[[...(a.polygon || []), a.polygon?.[0]].filter(Boolean)]];
+    mengedit.value = a;
+    overlay.get(a.id)?.remove();
+    editor.mulai(multi);
+}
+
+function urungkanBentuk() {
+    editor?.urungkan();
+}
+
+function batalBentuk() {
+    editor.batal();
+    mengedit.value = null;
+    gambarArea();
+}
+
+async function simpanBentuk() {
+    const a = mengedit.value;
+    menyimpanBentuk.value = true;
+    try {
+        const hasil = await kirimUbah(a, { geometri: editor.hasil() });
+        if (!hasil) return;
+        editor.batal();
+        mengedit.value = null;
+        gambarArea();
+        statusGambar.value = 'Bentuk area ' + hasil.code + ' tersimpan.';
+    } finally {
+        menyimpanBentuk.value = false;
+    }
 }
 
 // ---------- Gambar polygon baru ----------
@@ -229,11 +330,12 @@ function gambarTitik() {
 }
 
 // Area tersimpan jadi lebih transparan saat mode menggambar, supaya titik baru terlihat jelas.
-watch(menggambar, (on) => {
+watch(sibuk, (on) => {
     lapisanArea?.eachLayer((l) => l.setStyle({ fillOpacity: on ? 0.08 : 0.25, opacity: on ? 0.4 : 1 }));
 });
 
 function mulaiGambar() {
+    if (mengedit.value) return;
     if (!filter.province) { alert('Pilih Provinsi dulu supaya area tersimpan di wilayah yang benar.'); return; }
     peta.closePopup();
     titik.value = [];
@@ -250,10 +352,28 @@ function batalGambar() {
 
 function selesaiGambar() {
     if (titik.value.length < 3) { alert('Polygon minimal 3 titik.'); return; }
+    areaDiubah.value = null;
     modalSimpan.value = true;
 }
 
+function tutupModal() {
+    modalSimpan.value = false;
+    if (areaDiubah.value) {
+        areaDiubah.value = null;
+        Object.assign(formSimpan, { name: '', warehouse_id: '', info: '' });
+    }
+}
+
 async function simpan() {
+    if (areaDiubah.value) {
+        const hasil = await kirimUbah({ ...areaDiubah.value, ...formSimpan });
+        if (!hasil) return;
+        modalSimpan.value = false;
+        areaDiubah.value = null;
+        Object.assign(formSimpan, { name: '', warehouse_id: '', info: '' });
+        statusGambar.value = 'Data area ' + hasil.code + ' tersimpan.';
+        return;
+    }
     const body = {
         ...bersihkanQuery({ ...filter }),
         name: formSimpan.name,
@@ -370,9 +490,14 @@ function cariAlamat(e) {
         </div>
 
         <Card class="mb-2" body-class="card-body card-body-compact flex items-center gap-2 flex-wrap">
-            <template #header><h6 class="mb-0 font-semibold"><Icon name="shapes" class="me-1" />Gambar Polygon Baru</h6></template>
+            <template #header><h6 class="mb-0 font-semibold"><Icon name="shapes" class="me-1" />{{ mengedit ? 'Ubah Bentuk Area' : 'Gambar Polygon Baru' }}</h6></template>
 
-            <template v-if="bisaUbah">
+            <template v-if="mengedit">
+                <Button variant="primary" id="btn_save_shape" :disabled="menyimpanBentuk" @click="simpanBentuk"><Icon name="check" class="me-1" />Simpan Bentuk</Button>
+                <Button variant="outline-warning" id="btn_undo_shape" :disabled="!infoEdit.bisaUrung" @click="urungkanBentuk"><Icon name="undo" class="me-1" />Urungkan</Button>
+                <Button variant="outline-danger" id="btn_cancel_shape" @click="batalBentuk"><Icon name="x" class="me-1" />Batal</Button>
+            </template>
+            <template v-else-if="bisaUbah">
                 <Button v-if="!menggambar" variant="success" id="btn_start_draw" @click="mulaiGambar"><Icon name="pen" class="me-1" />Mulai Gambar</Button>
                 <template v-else>
                     <Button variant="primary" id="btn_finish_draw" @click="selesaiGambar"><Icon name="check" class="me-1" />Selesai</Button>
@@ -380,8 +505,13 @@ function cariAlamat(e) {
                     <Button variant="outline-danger" id="btn_cancel_draw" @click="batalGambar"><Icon name="x" class="me-1" />Batal</Button>
                 </template>
             </template>
-            <Badge :variant="menggambar ? 'danger' : 'secondary'" id="map_mode_badge">{{ menggambar ? 'Mode: Menggambar' : 'Mode: Lihat' }}</Badge>
-            <small class="text-gray-500" id="draw_status">{{ pesanGambar }}</small>
+            <Badge :variant="sibuk ? 'danger' : 'secondary'" id="map_mode_badge">{{ mengedit ? 'Mode: Ubah Bentuk' : menggambar ? 'Mode: Menggambar' : 'Mode: Lihat' }}</Badge>
+            <small v-if="mengedit" class="text-gray-500" id="draw_status">
+                <b>{{ mengedit.name }}</b> · {{ infoEdit.titik.toLocaleString('id-ID') }} titik.
+                <template v-if="infoEdit.tampil">Seret titik untuk memindah, klik titik untuk menghapus, seret/klik titik tengah untuk menambah.</template>
+                <span v-else class="text-amber-700">Lebih dari {{ MAKS_PENANDA }} titik di layar: perbesar peta untuk mengedit titik.</span>
+            </small>
+            <small v-else class="text-gray-500" id="draw_status">{{ pesanGambar }}</small>
         </Card>
 
         <Card body-class="card-body p-2">
@@ -391,7 +521,7 @@ function cariAlamat(e) {
             </div>
         </Card>
 
-        <Modal :show="modalSimpan" title="Simpan Area Baru" @close="modalSimpan = false">
+        <Modal :show="modalSimpan" :title="areaDiubah ? `Ubah Data Area ${areaDiubah.code}` : 'Simpan Area Baru'" @close="tutupModal">
             <form id="save_form" @submit.prevent="simpan">
                 <div class="mb-2">
                     <Label>Nama Area <span class="text-red-600">*</span></Label>
@@ -408,10 +538,11 @@ function cariAlamat(e) {
                     <Label>Keterangan</Label>
                     <Textarea v-model="formSimpan.info" rows="2" />
                 </div>
-                <small class="text-gray-500">Wilayah mengikuti filter: <span id="save_region">{{ wilayahSimpan }}</span></small>
+                <small v-if="areaDiubah" class="text-gray-500">Wilayah: {{ [areaDiubah.village, areaDiubah.district, areaDiubah.city, areaDiubah.province].filter(Boolean).join(', ') }}</small>
+                <small v-else class="text-gray-500">Wilayah mengikuti filter: <span id="save_region">{{ wilayahSimpan }}</span></small>
             </form>
             <template #footer>
-                <Button variant="light" @click="modalSimpan = false">Batal</Button>
+                <Button variant="light" @click="tutupModal">Batal</Button>
                 <Button variant="primary" type="submit" form="save_form">Simpan</Button>
             </template>
         </Modal>

@@ -57,6 +57,7 @@ Route::middleware(['auth', 'wajib-ganti-password'])->group(function () {
         Route::get('/options', 'options')->middleware('hak:master_area')->name('options');
         Route::get('/areas', 'areas')->middleware('hak:master_area')->name('areas');
         Route::post('/areas', 'store')->middleware('hak:master_area,ubah')->name('store');
+        Route::put('/areas/{id}', 'update')->middleware('hak:master_area,ubah')->whereNumber('id')->name('update');
         Route::delete('/areas/{id}', 'destroy')->middleware('hak:master_area,hapus')->whereNumber('id')->name('destroy');
     });
 
