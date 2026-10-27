@@ -2,6 +2,7 @@
 
 namespace App\Support\Wilayah;
 
+use App\Support\Database\Sql;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -237,10 +238,10 @@ class SinkronWilayah
             $namaProv = DB::table('provinsi')->whereIn('kode', array_map('intval', $provinsi))->pluck('nama_provinsi')->all();
             $q->where(function ($q) use ($provinsi, $namaProv, $t) {
                 foreach ($provinsi as $p) {
-                    $q->orWhere('kode', 'like', $p.'%');
+                    $q->orWhereRaw(Sql::teks('kode').' LIKE ?', [$p.'%']);
                 }
                 if ($t !== 'provinsi') {
-                    $q->orWhere(fn ($q) => $q->where(fn ($q) => $q->whereNull('kode')->orWhere('kode', ''))->whereIn('provinsi', $namaProv));
+                    $q->orWhere(fn ($q) => $q->where(fn ($q) => $q->whereNull('kode')->orWhereRaw(Sql::teks('kode')." = ''"))->whereIn('provinsi', $namaProv));
                 }
             });
         }
@@ -335,7 +336,7 @@ class SinkronWilayah
                     }
                     $q->where($kolomIni, $r->{$meta['nama']});
                 })
-                ->where(fn ($q) => $q->whereNull('kode')->orWhere('kode', '')->orWhere('kode', 'like', $kode.'%'))
+                ->where(fn ($q) => $q->whereNull('kode')->orWhereRaw(Sql::teks('kode')." = ''")->orWhereRaw(Sql::teks('kode').' LIKE ?', [$kode.'%']))
                 ->update(array_merge(array_intersect_key($baru, array_flip($meta['induk'])), [$kolomIni => $baru[$meta['nama']]]));
         }
 
