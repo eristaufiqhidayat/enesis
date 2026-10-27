@@ -26,3 +26,4 @@
 | 022 | [ ] | Ubah tampilan komponen Tabs (menu tab horisontal di atas halaman) jadi gaya tombol (pill/button), bukan garis bawah seperti sekarang | [docs/backlog_items/022-tabs-gaya-tombol/spec.md](backlog_items/022-tabs-gaya-tombol/spec.md) |
 | 023 | [ ] | Filter & sort per kolom di organism DataTable | [docs/backlog_items/023-filter-sort-per-kolom-datatable/spec.md](backlog_items/023-filter-sort-per-kolom-datatable/spec.md) |
 | 024 | [ ] | Tampilan tabel (depo di baris, metrik di kolom) untuk Summary All Depo sebagai tab "Tabel" di samping tab "Kartu" | [docs/backlog_items/024-summary-all-depo-tampilan-tabel/spec.md](backlog_items/024-summary-all-depo-tampilan-tabel/spec.md) |
+| 025 | [x] | Generate Polygon Kelurahan: area per kelurahan dari batas resmi Kemendagri (pengganti alur OSM Marketama) | [docs/backlog_items/025-generate-polygon-kelurahan/spec.md](backlog_items/025-generate-polygon-kelurahan/spec.md) |

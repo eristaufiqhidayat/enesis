@@ -28,6 +28,7 @@ const props = defineProps({
     areasUrl: { type: String, required: true },
     storeUrl: { type: String, required: true },
     destroyUrl: { type: String, required: true },
+    generateUrl: { type: String, default: null },
 });
 
 const appName = usePage().props.appName;
@@ -117,8 +118,11 @@ function gambarArea() {
     lapisanArea.clearLayers();
     overlay.clear();
     areas.value.forEach((a, i) => {
-        const latlngs = (a.polygon || []).map(([lng, lat]) => [lat, lng]);
-        if (latlngs.length < 3) return;
+        // Area hasil Generate Polygon Kelurahan punya geometri utuh (MultiPolygon, semua pulau); area lain satu cincin.
+        const latlngs = a.geometri?.coordinates
+            ? a.geometri.coordinates.map((poly) => poly.map((ring) => ring.map(([lng, lat]) => [lat, lng])))
+            : (a.polygon || []).map(([lng, lat]) => [lat, lng]);
+        if (!a.geometri && latlngs.length < 3) return;
         const warnaArea = warna[(a.warehouse_id || i) % warna.length];
         const poly = L.polygon(latlngs, { color: warnaArea, weight: 2, fillOpacity: 0.25 }).bindPopup(popupArea(a));
         poly.addTo(lapisanArea);
@@ -266,6 +270,7 @@ function cariAlamat(e) {
     <AppLayout :breadcrumb-slug="slug">
         <PageHeader :title="title">
             <template #actions>
+                <Button v-if="generateUrl" :tag="Link" :href="generateUrl" variant="outline-primary"><Icon name="layers" class="me-1" />Generate Polygon Kelurahan</Button>
                 <Link :href="kembaliUrl" class="text-gray-500 hover:underline">Kembali</Link>
             </template>
         </PageHeader>
