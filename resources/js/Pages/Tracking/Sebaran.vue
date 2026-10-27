@@ -1,6 +1,9 @@
 <script setup>
-// Peta Sebaran Sales: posisi GPS terakhir semua sales aktif se-Indonesia.
-// Peta diperkecil (zoom < 9): satu lingkaran per depo berisi jumlah sales; diperbesar: satu titik per sales.
+// Peta Sebaran Sales: polygon Master Area se-Indonesia dan nama sales di dalam tiap area.
+// - zoom < 11: satu lingkaran per depo (jumlah area; tooltip jumlah sales & area tanpa sales).
+// - zoom ≥ 11: polygon area di layar diambil dari server (kotak batas), warna menurut penugasan sales.
+// - zoom ≥ 13: nama sales tampil di dalam tiap area.
+// Lapisan tambahan: posisi GPS terakhir sales (Tracking Last Seen).
 import { computed, onMounted, ref, watch } from 'vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
@@ -14,28 +17,37 @@ import Alert from '@/Components/ui/molecules/Alert.vue';
 import Card from '@/Components/ui/molecules/Card.vue';
 import PageHeader from '@/Components/ui/molecules/PageHeader.vue';
 import { useLeafletMap } from '@/Composables/useLeafletMap.js';
-import { escapeHtml, ikonDepo, ikonLingkaran } from '@/Support/peta.js';
+import { escapeHtml, multiKeLatLng } from '@/Support/peta.js';
 import { angka } from '@/Support/format.js';
 
 const props = defineProps({
     slug: { type: String, required: true },
     title: { type: String, required: true },
     dataUrl: { type: String, required: true },
+    areaUrl: { type: String, required: true },
     lastSeenUrl: { type: String, required: true },
+    masterAreaUrl: { type: String, required: true },
+    designUrl: { type: String, required: true },
 });
 
 const appName = usePage().props.appName;
+const ZOOM_AREA = 11;
+const ZOOM_LABEL = 13;
+const MAKS_DAFTAR = 300;
 
-const STATUS = [
+const WARNA_AREA = {
+    aktif: { color: '#1d4ed8', fillColor: '#3b82f6', fillOpacity: 0.28 },
+    nonaktif: { color: '#b45309', fillColor: '#f59e0b', fillOpacity: 0.2 },
+    kosong: { color: '#6b7280', fillColor: '#d1d5db', fillOpacity: 0.12, dashArray: '4 3' },
+};
+const STATUS_GPS = [
     { id: 'hari_ini', label: 'Terlihat hari ini', warna: '#16a34a' },
     { id: 'minggu', label: '1–7 hari lalu', warna: '#f59e0b' },
     { id: 'lama', label: 'Lebih dari 7 hari', warna: '#6b7280' },
-    { id: 'belum', label: 'Belum ada lokasi', warna: null },
 ];
-const warnaStatus = Object.fromEntries(STATUS.map((s) => [s.id, s.warna]));
-const ZOOM_TITIK = 9;
-const MAKS_DAFTAR = 300;
+const warnaGps = Object.fromEntries(STATUS_GPS.map((s) => [s.id, s.warna]));
 
+// ---------- Data ringkasan ----------
 const sales = ref([]);
 const depo = ref([]);
 const diperbarui = ref(null);
@@ -44,22 +56,20 @@ const galat = ref(null);
 
 const cari = ref('');
 const depoDipilih = ref('');
-const statusDipilih = ref(['hari_ini', 'minggu', 'lama']);
+const tampilGps = ref(false);
+const salesDipilih = ref(null);
 
-const hitung = computed(() => Object.fromEntries(STATUS.map((s) => [s.id, sales.value.filter((x) => x.status === s.id).length])));
-const opsiDepo = computed(() => {
-    const ada = new Map();
-    sales.value.forEach((s) => { if (s.depoId) ada.set(s.depoId, s.depo ?? `Depo #${s.depoId}`); });
-    return [...ada].sort((a, b) => a[1].localeCompare(b[1])).map(([value, label]) => ({ value, label }));
-});
+const info = ref('');
+const memuatArea = ref(false);
 
-const tersaring = computed(() => {
+const opsiDepo = computed(() => depo.value.filter((d) => d.id !== null).sort((a, b) => a.nama.localeCompare(b.nama)).map((d) => ({ value: d.id ?? '', label: `${d.nama} (${angka(d.jumlahArea)} area)` })));
+const totalArea = computed(() => depo.value.reduce((n, d) => n + d.jumlahArea, 0));
+const totalTanpaSales = computed(() => depo.value.reduce((n, d) => n + d.tanpaSales, 0));
+const daftarSales = computed(() => {
     const q = cari.value.trim().toLowerCase();
-    return sales.value.filter((s) => statusDipilih.value.includes(s.status)
-        && (!depoDipilih.value || String(s.depoId) === String(depoDipilih.value))
-        && (!q || [s.nama, s.depo, s.koordinator, s.telepon].filter(Boolean).join(' ').toLowerCase().includes(q)));
+    return sales.value.filter((s) => (!depoDipilih.value || String(s.depoId) === String(depoDipilih.value))
+        && (!q || [s.nama, s.depo, s.koordinator].filter(Boolean).join(' ').toLowerCase().includes(q)));
 });
-const diPeta = computed(() => tersaring.value.filter((s) => s.lat !== null && s.lng !== null));
 
 async function muat() {
     memuat.value = true;
@@ -71,9 +81,12 @@ async function muat() {
         sales.value = data.sales;
         depo.value = data.depo;
         diperbarui.value = data.diperbarui;
-        gambar(true);
+        gambarDepo();
+        gambarGps();
+        if (petaLeaflet && depo.value.length) petaLeaflet.fitBounds(batasDepo(depo.value), { padding: [20, 20] });
+        muatAreaLayar();
     } catch {
-        galat.value = 'Gagal memuat posisi sales.';
+        galat.value = 'Gagal memuat data peta.';
     } finally {
         memuat.value = false;
     }
@@ -83,11 +96,14 @@ onMounted(muat);
 // ---------- Peta ----------
 let L = null;
 let petaLeaflet = null;
-let lapisKlaster = null;
-let lapisTitik = null;
 let lapisDepo = null;
+let lapisArea = null;
+let lapisLabel = null;
+let lapisGps = null;
+let lapisSorot = null;
 let kanvas = null;
-const penanda = new Map();
+let pengendali = null;
+let jedaGeser = null;
 
 const wadah = ref(null);
 useLeafletMap(wadah, {
@@ -96,110 +112,175 @@ useLeafletMap(wadah, {
     onSiap(map, Lib) {
         L = Lib;
         petaLeaflet = map;
-        kanvas = L.canvas({ padding: 0.5 });
-        lapisKlaster = L.layerGroup().addTo(map);
-        lapisTitik = L.layerGroup();
-        lapisDepo = L.layerGroup();
-        map.on('zoomend', tampilSesuaiZoom);
-        gambar(true);
+        kanvas = L.canvas({ padding: 0.3 });
+        lapisDepo = L.layerGroup().addTo(map);
+        lapisArea = L.layerGroup().addTo(map);
+        lapisLabel = L.layerGroup().addTo(map);
+        lapisGps = L.layerGroup();
+        lapisSorot = L.layerGroup().addTo(map);
+        map.on('moveend', () => {
+            clearTimeout(jedaGeser);
+            jedaGeser = setTimeout(muatAreaLayar, 250);
+        });
+        gambarDepo();
+        gambarGps();
+        if (depo.value.length) map.fitBounds(batasDepo(depo.value), { padding: [20, 20] });
     },
 });
 
-function popupSales(s) {
-    const status = STATUS.find((x) => x.id === s.status);
-    return '<div style="min-width:220px;font-size:12px">'
-        + '<strong style="font-size:13px">' + escapeHtml(s.nama) + '</strong>'
-        + '<br><span style="color:' + status.warna + '">● ' + escapeHtml(status.label) + '</span><hr class="my-1">'
-        + '<div><b>Depo:</b> ' + escapeHtml(s.depo ?? '-') + '</div>'
-        + '<div><b>Koordinator:</b> ' + escapeHtml(s.koordinator ?? '-') + '</div>'
-        + '<div><b>Terakhir terlihat:</b> ' + escapeHtml(s.waktu ?? '-') + (s.sejak ? ' (' + escapeHtml(s.sejak) + ')' : '') + '</div>'
-        + '<div><b>Sumber:</b> ' + escapeHtml(s.sumber ?? '-') + (s.baterai ? ' · baterai ' + escapeHtml(s.baterai) : '') + '</div>'
-        + (s.lokasiPalsu ? '<div class="text-red-600"><b>Lokasi palsu terdeteksi</b></div>' : '')
-        + (s.telepon ? '<div><b>HP:</b> <a href="tel:' + escapeHtml(s.telepon) + '">' + escapeHtml(s.telepon) + '</a></div>' : '')
-        + '</div>';
-}
+const batasDepo = (daftar) => L.latLngBounds(daftar.map((d) => [[d.kotak[1], d.kotak[0]], [d.kotak[3], d.kotak[2]]]).flat());
 
-// Klaster per depo: lokasi depo bila ada, selain itu titik tengah sales depo itu.
-function klaster() {
-    const per = new Map();
-    diPeta.value.forEach((s) => {
-        const k = s.depoId ?? 0;
-        if (!per.has(k)) per.set(k, []);
-        per.get(k).push(s);
-    });
-    const lokasiDepo = new Map(depo.value.map((d) => [d.id, d]));
-    return [...per].map(([id, daftar]) => {
-        const d = lokasiDepo.get(id);
-        const lat = d?.lat ?? daftar.reduce((n, s) => n + s.lat, 0) / daftar.length;
-        const lng = d?.lng ?? daftar.reduce((n, s) => n + s.lng, 0) / daftar.length;
-        return { id, nama: d?.nama ?? daftar[0].depo ?? 'Tanpa depo', lat, lng, daftar };
-    });
-}
-
-function gambar(fokus = false) {
-    if (!petaLeaflet) return;
-    lapisKlaster.clearLayers();
-    lapisTitik.clearLayers();
+function gambarDepo() {
+    if (!lapisDepo) return;
     lapisDepo.clearLayers();
-    penanda.clear();
-
-    klaster().forEach((k) => {
-        const n = k.daftar.length;
-        const ukuran = Math.round(26 + Math.min(34, Math.sqrt(n) * 4));
-        const perStatus = STATUS.filter((s) => s.warna).map((s) => [s, k.daftar.filter((x) => x.status === s.id).length]).filter(([, j]) => j);
-        // Warna klaster = status terbanyak (hijau bila ada yang terlihat hari ini di depo itu).
-        const utama = k.daftar.some((x) => x.status === 'hari_ini') ? 'hari_ini' : perStatus.sort((a, b) => b[1] - a[1])[0][0].id;
-        L.marker([k.lat, k.lng], {
+    depo.value.filter((d) => !depoDipilih.value || String(d.id) === String(depoDipilih.value)).forEach((d) => {
+        const ukuran = Math.round(28 + Math.min(34, Math.sqrt(d.jumlahArea)));
+        L.marker([d.lat, d.lng], {
             icon: L.divIcon({
                 className: '',
                 iconSize: [ukuran, ukuran],
                 iconAnchor: [ukuran / 2, ukuran / 2],
-                html: '<div class="klaster-peta" style="width:' + ukuran + 'px;height:' + ukuran + 'px;background:' + warnaStatus[utama] + '">' + n + '</div>',
+                html: '<div class="klaster-peta klaster-peta-area" style="width:' + ukuran + 'px;height:' + ukuran + 'px">' + angka(d.jumlahArea) + '</div>',
             }),
         })
-            .bindTooltip('<b>' + escapeHtml(k.nama) + '</b><br><small>' + perStatus.map(([s, j]) => j + ' ' + s.label.toLowerCase()).join('<br>') + '</small>')
-            .on('click', () => petaLeaflet.fitBounds(L.latLngBounds(k.daftar.map((s) => [s.lat, s.lng])).pad(0.2), { maxZoom: 13 }))
-            .addTo(lapisKlaster);
-    });
-
-    diPeta.value.forEach((s) => {
-        const m = L.circleMarker([s.lat, s.lng], { renderer: kanvas, radius: 6, color: '#ffffff', weight: 1.5, fillColor: warnaStatus[s.status], fillOpacity: 0.95 })
-            .bindTooltip(escapeHtml(s.nama))
-            .on('click', (e) => L.popup().setLatLng(e.latlng).setContent(popupSales(s)).openOn(petaLeaflet));
-        m.addTo(lapisTitik);
-        penanda.set(s.id, m);
-    });
-
-    depo.value.forEach((d) => {
-        if (d.lat === null || d.lng === null) return;
-        L.marker([d.lat, d.lng], { icon: ikonLingkaran('#6f42c1', ikonDepo), zIndexOffset: -100 })
-            .bindTooltip('<b>' + escapeHtml(d.nama) + '</b><br><small>Depo</small>')
+            .bindTooltip('<b>' + escapeHtml(d.nama) + '</b><br><small>' + angka(d.jumlahArea) + ' area · ' + angka(d.jumlahSales) + ' sales bertugas<br>'
+                + angka(d.tanpaSales) + ' area belum ada sales<br>Klik untuk memperbesar</small>')
+            .on('click', () => petaLeaflet.fitBounds(batasDepo([d]), { padding: [20, 20] }))
             .addTo(lapisDepo);
     });
+    aturLapisZoom();
+}
 
-    tampilSesuaiZoom();
-    if (fokus && diPeta.value.length) {
-        petaLeaflet.fitBounds(L.latLngBounds(diPeta.value.map((s) => [s.lat, s.lng])).pad(0.05), { maxZoom: 12 });
+function aturLapisZoom() {
+    if (!petaLeaflet) return;
+    const z = petaLeaflet.getZoom();
+    const tampil = (lapis, on) => {
+        if (on && !petaLeaflet.hasLayer(lapis)) lapis.addTo(petaLeaflet);
+        if (!on && petaLeaflet.hasLayer(lapis)) petaLeaflet.removeLayer(lapis);
+    };
+    tampil(lapisDepo, z < ZOOM_AREA);
+    tampil(lapisArea, z >= ZOOM_AREA);
+    tampil(lapisLabel, z >= ZOOM_LABEL);
+    tampil(lapisGps, tampilGps.value);
+}
+
+function jenisArea(a) {
+    if (a.sales.some((s) => s.aktif)) return 'aktif';
+    return a.sales.length ? 'nonaktif' : 'kosong';
+}
+
+function popupArea(a) {
+    const daftar = a.sales.length
+        ? a.sales.map((s) => '<li>' + escapeHtml(s.nama) + (s.aktif ? '' : ' <span class="text-gray-500">(tidak aktif)</span>') + '</li>').join('')
+        : '<li class="text-gray-500">Belum ada sales</li>';
+    return '<div style="min-width:230px;font-size:12px">'
+        + '<strong style="font-size:13px">' + escapeHtml(a.nama) + '</strong><br><span class="text-gray-500">Master Area: ' + escapeHtml(a.kode) + '</span><hr class="my-1">'
+        + '<div><b>Depo:</b> ' + escapeHtml(a.depo ?? '-') + '</div>'
+        + (a.wilayah ? '<div><b>Wilayah:</b> ' + escapeHtml(a.wilayah) + '</div>' : '')
+        + '<div class="mt-1"><b>Sales:</b><ul class="ms-4 list-disc">' + daftar + '</ul></div>'
+        + '<div class="flex flex-wrap gap-1 mt-2">'
+        + '<a class="btn btn-sm btn-outline-primary" href="' + props.masterAreaUrl + '?q=' + encodeURIComponent(a.kode) + '">Buka di Master Area</a>'
+        + '<a class="btn btn-sm btn-outline-primary" href="' + props.designUrl + '?area=' + a.id + '">Lihat di Design Area</a>'
+        + '</div></div>';
+}
+
+function labelSales(a) {
+    if (!a.sales.length) return null;
+    const nama = a.sales.slice(0, 2).map((s) => escapeHtml(s.nama)).join('<br>');
+    return nama + (a.sales.length > 2 ? '<br>+' + (a.sales.length - 2) + ' lainnya' : '');
+}
+
+function gambarArea(area, lapis, sorot = false) {
+    area.forEach((a) => {
+        const gaya = sorot
+            ? { color: '#dc2626', weight: 3, fillColor: '#ef4444', fillOpacity: 0.25 }
+            : { ...WARNA_AREA[jenisArea(a)], weight: 1.2, renderer: kanvas };
+        const poly = L.polygon(multiKeLatLng(a.geometri), gaya)
+            .bindTooltip('<b>' + escapeHtml(a.kode) + '</b> · ' + escapeHtml(a.nama) + '<br><small>' + (a.sales.length ? a.sales.map((s) => escapeHtml(s.nama)).join(', ') : 'Belum ada sales') + '</small>', { sticky: true })
+            .on('click', (e) => L.popup().setLatLng(e.latlng).setContent(popupArea(a)).openOn(petaLeaflet));
+        poly.addTo(lapis);
+        const teks = labelSales(a);
+        if (teks && !sorot) {
+            L.marker(poly.getBounds().getCenter(), {
+                interactive: false,
+                icon: L.divIcon({ className: 'label-area-peta', html: '<span>' + teks + '</span>', iconSize: null }),
+            }).addTo(lapisLabel);
+        }
+    });
+}
+
+async function muatAreaLayar() {
+    if (!petaLeaflet) return;
+    if (petaLeaflet.getZoom() < ZOOM_AREA) {
+        lapisArea.clearLayers();
+        lapisLabel.clearLayers();
+        info.value = `Perbesar peta (zoom ${ZOOM_AREA}+) untuk melihat polygon area; zoom ${ZOOM_LABEL}+ untuk nama sales.`;
+        aturLapisZoom();
+        return;
+    }
+    const b = petaLeaflet.getBounds();
+    const bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()].map((n) => n.toFixed(5)).join(',');
+    pengendali?.abort();
+    pengendali = new AbortController();
+    memuatArea.value = true;
+    try {
+        const res = await fetch(props.areaUrl + '?' + new URLSearchParams({ bbox }), { headers: { Accept: 'application/json' }, signal: pengendali.signal });
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        lapisArea.clearLayers();
+        lapisLabel.clearLayers();
+        if (data.terlaluBanyak) {
+            info.value = `${angka(data.jumlah)} area di layar — perbesar peta sedikit lagi.`;
+        } else {
+            gambarArea(data.area, lapisArea);
+            const kosong = data.area.filter((a) => !a.sales.length).length;
+            info.value = `${angka(data.area.length)} area di layar · ${angka(kosong)} belum ada sales.`
+                + (petaLeaflet.getZoom() < ZOOM_LABEL ? ` Perbesar ke zoom ${ZOOM_LABEL}+ untuk nama sales.` : '');
+        }
+        aturLapisZoom();
+    } catch (e) {
+        if (e.name !== 'AbortError') info.value = 'Gagal memuat area.';
+    } finally {
+        memuatArea.value = false;
     }
 }
 
-function tampilSesuaiZoom() {
-    const dekat = petaLeaflet.getZoom() >= ZOOM_TITIK;
-    [[lapisKlaster, !dekat], [lapisTitik, dekat], [lapisDepo, dekat]].forEach(([lapis, tampil]) => {
-        if (tampil && !petaLeaflet.hasLayer(lapis)) lapis.addTo(petaLeaflet);
-        if (!tampil && petaLeaflet.hasLayer(lapis)) petaLeaflet.removeLayer(lapis);
+function gambarGps() {
+    if (!lapisGps) return;
+    lapisGps.clearLayers();
+    sales.value.forEach((s) => {
+        if (s.lat === null || s.lng === null || !warnaGps[s.status]) return;
+        L.circleMarker([s.lat, s.lng], { renderer: kanvas, radius: 5, color: '#ffffff', weight: 1.5, fillColor: warnaGps[s.status], fillOpacity: 0.95 })
+            .bindTooltip('<b>' + escapeHtml(s.nama) + '</b><br><small>GPS terakhir: ' + escapeHtml(s.waktu ?? '-') + (s.sejak ? ' (' + escapeHtml(s.sejak) + ')' : '') + '</small>')
+            .addTo(lapisGps);
     });
+    aturLapisZoom();
 }
 
-watch([cari, depoDipilih, statusDipilih], () => gambar(false));
+watch(tampilGps, aturLapisZoom);
 watch(depoDipilih, () => {
-    if (petaLeaflet && diPeta.value.length) petaLeaflet.fitBounds(L.latLngBounds(diPeta.value.map((s) => [s.lat, s.lng])).pad(0.1), { maxZoom: 13 });
+    gambarDepo();
+    const d = depo.value.find((x) => String(x.id) === String(depoDipilih.value));
+    if (d && petaLeaflet) petaLeaflet.fitBounds(batasDepo([d]), { padding: [20, 20] });
 });
 
-function fokusSales(s) {
-    if (s.lat === null || !petaLeaflet) return;
-    petaLeaflet.setView([s.lat, s.lng], Math.max(petaLeaflet.getZoom(), 14));
-    L.popup().setLatLng([s.lat, s.lng]).setContent(popupSales(s)).openOn(petaLeaflet);
+// Pilih sales di daftar: ambil semua areanya, sorot merah, dan perbesar ke sana.
+async function pilihSales(s) {
+    salesDipilih.value = s;
+    lapisSorot.clearLayers();
+    const res = await fetch(props.areaUrl + '?' + new URLSearchParams({ karyawan_id: s.id }), { headers: { Accept: 'application/json' } });
+    const data = res.ok ? await res.json() : { area: [] };
+    if (!data.area.length) {
+        info.value = `${s.nama} belum punya area dengan polygon.`;
+        return;
+    }
+    gambarArea(data.area, lapisSorot, true);
+    petaLeaflet.fitBounds(L.featureGroup(lapisSorot.getLayers()).getBounds(), { padding: [30, 30], maxZoom: 15 });
+}
+
+function lepasSorot() {
+    salesDipilih.value = null;
+    lapisSorot?.clearLayers();
 }
 </script>
 
@@ -209,11 +290,11 @@ function fokusSales(s) {
         <PageHeader
             :title="title"
             icon="map"
-            :subtitle="diperbarui ? `Posisi GPS terakhir ${angka(sales.length)} sales aktif · diperbarui ${diperbarui}` : 'Posisi GPS terakhir semua sales aktif se-Indonesia'"
+            :subtitle="diperbarui ? `${angka(totalArea)} area Master Area · ${angka(totalTanpaSales)} belum ada sales · ${angka(sales.length)} sales aktif` : 'Polygon Master Area se-Indonesia dan sales yang ditugaskan di dalamnya'"
         >
             <template #actions>
                 <Button variant="outline-primary" :loading="memuat" @click="muat"><Icon name="undo" class="me-1" />Muat ulang</Button>
-                <Button :tag="Link" :href="lastSeenUrl" variant="outline-secondary"><Icon name="clipboard-list" class="me-1" />Tabel Last Seen</Button>
+                <Button :tag="Link" :href="masterAreaUrl" variant="outline-secondary"><Icon name="clipboard-list" class="me-1" />Master Area</Button>
             </template>
         </PageHeader>
 
@@ -223,42 +304,45 @@ function fokusSales(s) {
             <div class="lg:col-span-3 flex flex-col gap-2">
                 <Card body-class="card-body card-body-compact">
                     <template #header><h6 class="mb-0 font-semibold">Saring</h6></template>
-                    <Label for="cari_sales" class="mb-1">Cari</Label>
-                    <Input id="cari_sales" v-model="cari" type="search" class="mb-2" placeholder="Nama, depo, koordinator, HP…" />
-                    <Label for="depo_sales" class="mb-1">Depo</Label>
-                    <Select id="depo_sales" v-model="depoDipilih" :options="opsiDepo" placeholder="Semua depo" class="mb-2" />
-                    <div class="text-xs font-semibold mb-1">Terakhir terlihat</div>
-                    <label v-for="s in STATUS" :key="s.id" class="flex items-center gap-2 mb-1 cursor-pointer text-sm">
-                        <Checkbox v-model="statusDipilih" :value="s.id" />
-                        <span class="legenda-peta legenda-peta-titik" :style="s.warna ? { background: s.warna } : {}"></span>
-                        <span class="grow">{{ s.label }}</span>
-                        <span class="font-semibold">{{ angka(hitung[s.id] ?? 0) }}</span>
+                    <Label for="depo_area" class="mb-1">Depo</Label>
+                    <Select id="depo_area" v-model="depoDipilih" :options="opsiDepo" placeholder="Seluruh Indonesia" class="mb-2" />
+                    <label class="flex items-center gap-2 cursor-pointer text-sm">
+                        <Checkbox v-model="tampilGps" />
+                        <span>Tampilkan posisi GPS terakhir sales</span>
                     </label>
-                    <p class="text-xs text-gray-500 mt-2 mb-0">"Belum ada lokasi" tidak tampil di peta, hanya di daftar.</p>
+                    <div v-if="tampilGps" class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500 mt-1">
+                        <span v-for="s in STATUS_GPS" :key="s.id"><span class="legenda-peta legenda-peta-titik" :style="{ background: s.warna }"></span>{{ s.label }}</span>
+                    </div>
                 </Card>
 
                 <Card body-class="p-0">
-                    <template #header><h6 class="mb-0 font-semibold">Sales ({{ angka(tersaring.length) }})</h6></template>
+                    <template #header>
+                        <div class="flex items-center justify-between gap-2">
+                            <h6 class="mb-0 font-semibold">Sales ({{ angka(daftarSales.length) }})</h6>
+                            <Button v-if="salesDipilih" size="sm" variant="light" @click="lepasSorot">Lepas sorotan</Button>
+                        </div>
+                    </template>
+                    <div class="card-body card-body-compact pb-0">
+                        <Input v-model="cari" type="search" class="mb-2" placeholder="Cari nama sales, depo, koordinator…" aria-label="Cari sales" />
+                    </div>
                     <div class="max-h-96 overflow-y-auto">
                         <div class="list-group list-group-flush">
                             <div v-if="memuat && !sales.length" class="list-group-item text-center py-4"><span class="spinner me-2"></span>Memuat…</div>
-                            <div v-else-if="!tersaring.length" class="list-group-item text-center text-gray-500 py-4">Tidak ada sales.</div>
+                            <div v-else-if="!daftarSales.length" class="list-group-item text-center text-gray-500 py-4">Tidak ada sales.</div>
                             <button
-                                v-for="s in tersaring.slice(0, MAKS_DAFTAR)"
+                                v-for="s in daftarSales.slice(0, MAKS_DAFTAR)"
                                 :key="s.id"
                                 type="button"
                                 class="list-group-item list-group-item-action w-full text-left"
-                                :disabled="s.lat === null"
-                                @click="fokusSales(s)"
+                                :class="{ 'list-group-item-terpilih': salesDipilih?.id === s.id }"
+                                :disabled="!s.jumlahArea"
+                                @click="pilihSales(s)"
                             >
-                                <div class="flex items-center gap-2">
-                                    <span class="legenda-peta legenda-peta-titik" :style="warnaStatus[s.status] ? { background: warnaStatus[s.status] } : {}"></span>
-                                    <span class="font-semibold truncate grow">{{ s.nama }}</span>
-                                </div>
-                                <small class="text-gray-500">{{ s.depo ?? '-' }} · {{ s.sejak ?? 'belum ada lokasi' }}</small>
+                                <span class="font-semibold">{{ s.nama }}</span><br>
+                                <small class="text-gray-500">{{ s.depo ?? '-' }} · {{ s.jumlahArea ? angka(s.jumlahArea) + ' area' : 'belum ada area' }}</small>
                             </button>
-                            <div v-if="tersaring.length > MAKS_DAFTAR" class="list-group-item text-center text-gray-500 text-xs">
-                                {{ angka(tersaring.length - MAKS_DAFTAR) }} sales lainnya, persempit pencarian.
+                            <div v-if="daftarSales.length > MAKS_DAFTAR" class="list-group-item text-center text-gray-500 text-xs">
+                                {{ angka(daftarSales.length - MAKS_DAFTAR) }} sales lainnya, persempit pencarian.
                             </div>
                         </div>
                     </div>
@@ -267,10 +351,14 @@ function fokusSales(s) {
 
             <div class="lg:col-span-9">
                 <Card body-class="card-body p-2">
-                    <div ref="wadah" class="h-160 rounded-md" aria-label="Peta sebaran sales"></div>
-                    <p class="text-xs text-gray-500 mt-1 mb-0">
-                        Lingkaran berangka = jumlah sales per depo (klik untuk memperbesar). Perbesar peta untuk melihat titik tiap sales; klik titik untuk detailnya.
-                    </p>
+                    <div ref="wadah" class="h-160 rounded-md" aria-label="Peta sebaran sales dan master area"></div>
+                    <div class="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-gray-500">
+                        <span><span class="legenda-peta legenda-peta-aktif"></span>Ada sales aktif (rute HP)</span>
+                        <span><span class="legenda-peta legenda-peta-tugas-nonaktif"></span>Hanya penugasan tidak aktif</span>
+                        <span><span class="legenda-peta legenda-peta-nonaktif"></span>Belum ada sales</span>
+                        <span><span class="legenda-peta legenda-peta-sorot"></span>Area sales terpilih</span>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1 mb-0"><span v-if="memuatArea" class="spinner me-1"></span>{{ info }}</p>
                 </Card>
             </div>
         </div>
