@@ -253,7 +253,11 @@ async function hapusArea(id) {
     const catatan = a && (a.outlet_count || a.salesperson) ? `\nArea ini punya ${a.outlet_count ?? 0} toko${a.salesperson ? ' dan sales ' + a.salesperson : ''}.` : '';
     if (!confirm(`Hapus area ${a ? a.name + ' (' + a.code + ')' : 'ini'}?${catatan}`)) return;
     const res = await fetch(props.destroyUrl + '/' + id, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': csrf, Accept: 'application/json' } });
-    if (!res.ok) { alert('Gagal menghapus area.'); return; }
+    if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.message || 'Gagal menghapus area.');
+        return;
+    }
     peta.closePopup();
     areas.value = areas.value.filter((x) => x.id !== id);
     gambarArea();

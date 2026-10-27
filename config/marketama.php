@@ -24,6 +24,7 @@ use App\Support\Menu\Motoris\SumberStokKompetitor;
 use App\Support\Menu\Motoris\SumberStokOutlet;
 use App\Support\Menu\SumberCheckinPagi;
 use App\Support\Menu\SumberJoinVisit;
+use App\Support\Menu\SumberMasterArea;
 use App\Support\Menu\SumberOutletBaru;
 use App\Support\Menu\SumberOutletMaster;
 
@@ -49,7 +50,7 @@ return [
         // User dan Karyawan (akun login aplikasi HP, role & hak akses)
         'user_sales', 'user_koordinator', 'role',
         // Master Data & Pengaturan yang dibaca aplikasi HP / laporan motoris
-        'kuota_motoris', 'master_depo', 'holiday_dates', 'waktu_aktif_app', 'produk_kompetitor', 'tipe_outlet',
+        'kuota_motoris', 'master_depo', 'master_area', 'holiday_dates', 'waktu_aktif_app', 'produk_kompetitor', 'tipe_outlet',
         'rumus_insentif_sales', 'sales_point_conversion_per_warehouse',
         // Grup A analisa menu (25 Okt 2026): dialihkan ke trx_* / mk_* (riwayat lama lewat enesis:migrasi-transaksi)
         'barang_canvassing', 'lap_barang_canvassing', 'lap_barang_habis_terjual', 'pengembalian_barang', 'lap_pengembalian_barang',
@@ -2709,8 +2710,10 @@ return [
                 'terakhir_aktif' => 'Terakhir Aktif',
             ],
         ],
+        // Dibaca dari area_polygon (peta area Enesis), bukan salinan datar master_area: area baru ikut tampil.
         'master_area' => [
             'title' => 'Master Area',
+            'sumber' => SumberMasterArea::class,
             'columns' => [
                 'kode' => 'Kode',
                 'nama' => 'Nama',

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\Akses\Akses;
+use App\Support\Area\AreaMk;
 use App\Support\Area\AreaTerpasang;
 use App\Support\Area\GridArea;
 use App\Support\Area\KodeArea;
@@ -115,7 +116,8 @@ class AutoGridController extends Controller
         $kelPerId = $kelurahan->keyBy('id');
         $idWilayah = $wilayah->idWilayah($kelurahan);
 
-        $hasil = DB::transaction(function () use ($data, $perKunci, $kelPerId, $idWilayah, $depo, $wilayahDepo) {
+        $diubah = DesignAreaController::diubah($request);
+        $hasil = DB::transaction(function () use ($data, $perKunci, $kelPerId, $idWilayah, $depo, $wilayahDepo, $diubah) {
             $unit = collect($data['kunci'])->map(fn ($k) => $perKunci[$k]);
             $terpasang = new AreaTerpasang($this->kotakUnit($unit->all()));
 
@@ -149,11 +151,13 @@ class AutoGridController extends Controller
                     'sumber_polygon' => 'grid-'.$data['ukuran'].'km-'.$data['mode'],
                     'info' => $this->info($u, $data),
                     'outlet_count' => 0,
+                    ...$diubah,
                 ];
             }
             foreach (array_chunk($baris, 100) as $potongan) {
                 DB::table('area_polygon')->insert($potongan);
             }
+            AreaMk::sinkronKode($kode);
 
             return ['dibuat' => count($baris), 'kode' => [$kode[0], end($kode)], 'dilewati' => $dilewati];
         });
