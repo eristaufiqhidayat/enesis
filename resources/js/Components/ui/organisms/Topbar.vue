@@ -31,6 +31,9 @@ onUnmounted(() => document.removeEventListener('click', closeNotifOnOutsideClick
             <Tooltip label="Tambah Barang Canvassing" align="end"><Link class="shortcut-btn" href="/barang_canvassing/add">
                     <Icon name="boxes" />
                 </Link></Tooltip>
+            <Tooltip label="Peta Sebaran Sales" align="end"><Link class="shortcut-btn" href="/peta_sebaran_sales" aria-label="Peta Sebaran Sales">
+                    <Icon name="map" />
+                </Link></Tooltip>
             <Tooltip label="Design Polygon Area" align="end"><Link class="shortcut-btn" href="/master_area/design_area">
                     <Icon name="shapes" />
                 </Link></Tooltip>
