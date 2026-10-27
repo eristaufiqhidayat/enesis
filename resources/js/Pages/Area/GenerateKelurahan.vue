@@ -18,7 +18,7 @@ import ItemKelurahan from '@/Pages/Area/partials/ItemKelurahan.vue';
 import { useFormWilayah } from '@/Pages/Area/partials/formWilayah.js';
 import { useLeafletMap } from '@/Composables/useLeafletMap.js';
 import { bersihkanQuery } from '@/Support/query.js';
-import { escapeHtml, ikonDepo, ikonLingkaran, multiKeLatLng } from '@/Support/peta.js';
+import { escapeHtml, ikonDepo, ikonLingkaran, ikonSvg, multiKeLatLng } from '@/Support/peta.js';
 import { STATUS, jarakKm, statusKelurahan, warnaKecamatan } from '@/Pages/Area/partials/kelurahan.js';
 
 const props = defineProps({
@@ -27,6 +27,10 @@ const props = defineProps({
     provinsi: { type: Array, required: true },
     depo: { type: Array, required: true },
     bisaTambah: { type: Boolean, default: false },
+    bisaUbah: { type: Boolean, default: false },
+    bisaHapus: { type: Boolean, default: false },
+    designUrl: { type: String, default: null },
+    hapusUrl: { type: String, default: null },
     kembaliUrl: { type: String, required: true },
     autoGridUrl: { type: String, default: null },
     opsiUrl: { type: String, required: true },
@@ -88,7 +92,7 @@ function togglePilih(k) {
     dipilih.value = baru;
 }
 
-async function tampilkan() {
+async function tampilkan(fokusPeta = true) {
     if (!form.kota_id) { alert('Pilih Kota / Kabupaten terlebih dahulu.'); return; }
     memuat.value = true;
     peringatan.value = null;
@@ -103,7 +107,7 @@ async function tampilkan() {
         judulHasil.value = data.kecamatan ? `Kec. ${data.kecamatan}, ${data.kota}` : data.kota;
         // Default: semua yang siap dibuat langsung terpilih.
         dipilih.value = new Set(data.kelurahan.filter((k) => statusKelurahan(k) === 'siap').map((k) => k.id));
-        gambarKelurahan(true);
+        gambarKelurahan(fokusPeta);
     } catch {
         alert('Gagal memuat daftar kelurahan.');
     } finally {
@@ -154,8 +158,42 @@ useLeafletMap(wadah, {
         lapisanKelurahan = L.featureGroup().addTo(map);
         lapisanDepo = L.layerGroup().addTo(map);
         gambarDepo();
+
+        // Tombol Hapus di popup area yang sudah ada (HTML Leaflet): listener dipasang saat popup dibuka.
+        map.on('popupopen', (e) => {
+            e.popup.getElement().querySelectorAll('.btn-delete-area').forEach((tombol) => {
+                tombol.addEventListener('click', () => hapusArea(Number(tombol.dataset.id), tombol.dataset.code));
+            });
+        });
     },
 });
+
+const ikonPensil = ikonSvg('<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>');
+const ikonTempatSampah = ikonSvg('<path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>');
+
+// Popup kelurahan yang sudah punya area: daftar areanya dengan tombol Ubah (ke Design Area) dan Hapus.
+function popupArea(k) {
+    return '<div style="min-width:220px;font-size:12px"><strong style="font-size:13px">' + escapeHtml(k.nama) + '</strong>'
+        + '<br><span class="text-gray-500">Kec. ' + escapeHtml(k.kecamatan) + '</span><hr class="my-1">'
+        + k.area.map((a) => '<div class="mb-1"><b>' + escapeHtml(a.code) + '</b> ' + escapeHtml(a.name)
+            + (a.warehouse ? '<br><small>Depo ' + escapeHtml(a.warehouse) + '</small>' : '')
+            + '<div class="flex flex-wrap gap-1 mt-1">'
+            + (props.bisaUbah && props.designUrl ? '<a class="btn btn-sm btn-outline-primary" href="' + props.designUrl + '?area=' + a.id + '">' + ikonPensil + 'Ubah</a>' : '')
+            + (props.bisaHapus && props.hapusUrl ? '<button type="button" class="btn btn-sm btn-outline-danger btn-delete-area" data-id="' + a.id + '" data-code="' + escapeHtml(a.code) + '">' + ikonTempatSampah + 'Hapus</button>' : '')
+            + '</div></div>').join('')
+        + '</div>';
+}
+
+async function hapusArea(id, kode) {
+    if (!confirm(`Hapus area ${kode}? Kelurahannya bisa dibuat ulang sesudahnya.`)) return;
+    const res = await fetch(props.hapusUrl + '/' + id, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': csrf, Accept: 'application/json' } });
+    if (!res.ok) { alert('Gagal menghapus area.'); return; }
+    peta.closePopup();
+    // Muat ulang tanpa mengubah pilihan: kelurahannya kembali "Siap dibuat" tetapi tidak otomatis terpilih.
+    const pilihan = new Set(dipilih.value);
+    await tampilkan(false);
+    dipilih.value = pilihan;
+}
 
 function gayaKelurahan(k) {
     const status = statusKelurahan(k);
@@ -181,7 +219,10 @@ function gambarKelurahan(fokus = false) {
         if (!k.geometri) return;
         const lapis = L.polygon(multiKeLatLng(k.geometri), gayaKelurahan(k))
             .bindTooltip(tooltipKelurahan(k), { sticky: true })
-            .on('click', () => togglePilih(k));
+            .on('click', (e) => {
+                if (statusKelurahan(k) === 'ada') L.popup().setLatLng(e.latlng).setContent(popupArea(k)).openOn(peta);
+                else togglePilih(k);
+            });
         lapis.addTo(lapisanKelurahan);
         overlay.set(k.id, lapis);
     });
@@ -214,7 +255,7 @@ function fokus(k) {
 <template>
     <Head :title="`${title} · ${appName}`" />
     <AppLayout :breadcrumb-slug="slug">
-        <PageHeader :title="title" subtitle="Buat area per kelurahan/desa dari batas wilayah resmi Kemendagri 2025">
+        <PageHeader :title="title" subtitle="Buat area per kelurahan/desa dari batas wilayah resmi (peta BIG, cadangan dataset Kemendagri 2025)">
             <template #actions>
                 <Link v-if="autoGridUrl" :href="autoGridUrl" class="text-gray-500 hover:underline">Auto Grid</Link>
                 <Link :href="kembaliUrl" class="text-gray-500 hover:underline">Kembali ke Design Area</Link>
@@ -231,7 +272,7 @@ function fokus(k) {
                         <Button id="btn_tampilkan" variant="primary" :loading="memuat" :disabled="!form.kota_id" @click="tampilkan">
                             <Icon name="search" class="me-1" />Tampilkan Kelurahan
                         </Button>
-                        <small class="text-gray-500">Batas satu kota diambil sekali dari dataset lalu disimpan, jadi pemakaian berikutnya langsung tampil.</small>
+                        <small class="text-gray-500">Batas satu kota diambil sekali dari sumber resmi lalu disimpan, jadi pemakaian berikutnya langsung tampil. Klik kelurahan yang sudah punya area untuk mengubah atau menghapus areanya.</small>
                     </div>
                 </Card>
 
@@ -254,7 +295,7 @@ function fokus(k) {
                     <StatRow label="Tanpa batas resmi" value-class="text-gray-500">{{ ringkasan.tanpa }}</StatRow>
                     <StatRow label="Dipilih">{{ dipilih.size }} · {{ totalLuas.toLocaleString('id-ID', { maximumFractionDigits: 1 }) }} km²</StatRow>
                     <small v-if="ringkasan.tanpa" class="block mt-2 text-gray-500">
-                        Kelurahan tanpa batas resmi (tidak berkode Kemendagri atau belum ada di dataset) bisa digambar manual di
+                        Kelurahan tanpa batas resmi (tidak berkode Kemendagri atau belum ada di sumber batas) bisa digambar manual di
                         <Link :href="kembaliUrl" class="text-blue-600 hover:underline">Design Area</Link>.
                     </small>
                 </Card>

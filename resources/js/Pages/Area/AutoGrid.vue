@@ -231,7 +231,7 @@ function fokus(u) {
 <template>
     <Head :title="`${title} · ${appName}`" />
     <AppLayout :breadcrumb-slug="slug">
-        <PageHeader :title="title" subtitle="Bagi wilayah jadi kotak 1–15 km, dipotong batas kelurahan resmi Kemendagri 2025">
+        <PageHeader :title="title" subtitle="Bagi wilayah jadi kotak 1–15 km, dipotong batas kelurahan resmi (peta BIG / Kemendagri)">
             <template #actions>
                 <Link :href="kelurahanUrl" class="text-gray-500 hover:underline">Per Kelurahan</Link>
                 <Link :href="kembaliUrl" class="text-gray-500 hover:underline">Kembali ke Design Area</Link>
