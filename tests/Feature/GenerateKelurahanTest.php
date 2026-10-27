@@ -150,7 +150,7 @@ SQL;
             ->assertJsonPath('kelurahan.0.area.0.code', $prefix.'0001');
     }
 
-    public function test_legacy_area_matched_by_name_counts_as_existing(): void
+    public function test_drawn_area_without_id_matched_by_name_counts_as_existing(): void
     {
         Http::fake([self::URL_KEL => Http::response(self::SQL)]);
         DB::table('area_polygon')->insert([
@@ -161,6 +161,30 @@ SQL;
         $this->postJson('/master_area/kelurahan_polygon/simpan', ['warehouse_id' => 48, 'kelurahan_ids' => [$this->kelurahanId('Gambir')]])
             ->assertJsonPath('dibuat', 0)
             ->assertJsonPath('dilewati.0.alasan', 'Sudah ada area AREA-20260101-0001 (Depo Lain)');
+    }
+
+    public function test_marketama_areas_do_not_block_and_are_reported_as_old(): void
+    {
+        Http::fake([self::URL_KEL => Http::response(self::SQL)]);
+        $gambir = $this->kelurahanId('Gambir');
+        // Segi enam tarikan Marketama: source_id terisi, village_id memakai ID Marketama (kebetulan sama dengan ID Enesis).
+        foreach ([1, 2] as $i) {
+            DB::table('area_polygon')->insert([
+                'source_id' => 900 + $i, 'code' => 'AREA-20260713-000'.$i, 'name' => 'Depo Lama-00'.$i, 'warehouse' => 'Depo Lain',
+                'city' => 'Kota Jakarta Pusat', 'district' => 'Gambir', 'village' => 'Gambir', 'village_id' => $gambir,
+                'polygon' => json_encode([[106.8, -6.1], [106.9, -6.1], [106.9, -6.2]]),
+            ]);
+        }
+
+        $kel = collect($this->getJson('/master_area/kelurahan_polygon/pratinjau?kota_id='.$this->kota)->json('kelurahan'))->keyBy('nama');
+        $this->assertSame([], $kel['Gambir']['area']);
+        $this->assertSame(2, $kel['Gambir']['area_lama']);
+        $this->assertSame(0, $kel['Kebon Kelapa']['area_lama']);
+
+        $this->postJson('/master_area/kelurahan_polygon/simpan', ['warehouse_id' => 48, 'kelurahan_ids' => [$gambir]])
+            ->assertCreated()
+            ->assertJsonPath('dibuat', 1);
+        $this->assertSame(3, DB::table('area_polygon')->where('village', 'Gambir')->count());
     }
 
     public function test_save_requires_add_right_and_valid_depot(): void

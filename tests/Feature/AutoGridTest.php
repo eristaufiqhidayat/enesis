@@ -120,6 +120,23 @@ class AutoGridTest extends TestCase
         ])->assertJsonValidationErrors('kunci');
     }
 
+    public function test_old_marketama_area_does_not_mark_cells_as_overlapping(): void
+    {
+        $unit = collect($this->pratinjau(['mode' => 'kotak'])->json('unit'));
+        // Segi enam Marketama besar yang menutupi seluruh wilayah uji.
+        DB::table('area_polygon')->insert([
+            'source_id' => 55, 'code' => 'AREA-20260713-0001', 'name' => 'Depo Lama-001', 'city' => 'Kota Jakarta Pusat',
+            'polygon' => json_encode([[100, -10], [120, -10], [120, 0], [100, 0]]),
+        ]);
+
+        $lagi = collect($this->pratinjau(['mode' => 'kotak'])->json('unit'));
+        $this->assertSame($unit->count(), $lagi->whereNull('area')->count());
+
+        $this->postJson('/master_area/auto_design_area/simpan', [
+            'kota_id' => $this->kota, 'ukuran' => 2, 'mode' => 'kotak', 'warehouse_id' => 48, 'kunci' => [$unit[0]['kunci']],
+        ])->assertCreated()->assertJsonPath('dibuat', 1);
+    }
+
     public function test_save_requires_add_right(): void
     {
         Akses::lupakan();

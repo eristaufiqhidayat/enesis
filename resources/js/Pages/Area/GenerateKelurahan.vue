@@ -193,7 +193,8 @@ function tooltipKelurahan(k) {
     const jarak = jarakKm(depoTerpilih.value, k);
     return '<b>' + escapeHtml(k.nama) + '</b><br><small>Kec. ' + escapeHtml(k.kecamatan) + ' · ' + (k.luas_km2 ?? 0).toLocaleString('id-ID') + ' km²'
         + (jarak !== null ? ' · ' + jarak.toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' km dari depo' : '') + '</small>'
-        + (area ? '<br><small>Sudah ada: ' + escapeHtml(area.code) + (area.warehouse ? ' (' + escapeHtml(area.warehouse) + ')' : '') + '</small>' : '');
+        + (area ? '<br><small>Sudah ada: ' + escapeHtml(area.code) + (area.warehouse ? ' (' + escapeHtml(area.warehouse) + ')' : '') + '</small>' : '')
+        + (k.area_lama ? '<br><small>' + k.area_lama + ' area lama Marketama (tidak menghalangi)</small>' : '');
 }
 
 function gambarKelurahan(fokus = false) {

@@ -90,7 +90,7 @@ class GenerateKelurahanController extends Controller
                 'lng' => $b?->lng !== null ? (float) $b->lng : null,
                 'luas_km2' => $b?->luas_km2 !== null ? (float) $b->luas_km2 : null,
                 'jumlah_titik' => $b?->jumlah_titik,
-                'area' => $areaAda($k),
+                ...$areaAda($k),
             ];
         })->values();
 
@@ -122,7 +122,7 @@ class GenerateKelurahanController extends Controller
             $baru = [];
             foreach ($data['kelurahan_ids'] as $id) {
                 $k = $kelurahan->get($id);
-                $ada = $k ? $cariArea($k) : [];
+                $ada = $k ? $cariArea($k)['area'] : [];
                 $alasan = match (true) {
                     ! $k => 'Kelurahan tidak ditemukan',
                     $ada !== [] => 'Sudah ada area '.$ada[0]['code'].($ada[0]['warehouse'] ? ' ('.$ada[0]['warehouse'].')' : ''),
@@ -170,36 +170,48 @@ class GenerateKelurahanController extends Controller
     }
 
     /**
-     * Pencari area yang sudah menutup sebuah kelurahan: lewat village_id / kode_kelurahan (area hasil generate),
-     * atau lewat nama kota+kecamatan+kelurahan (area lama hasil tarikan Marketama yang belum punya ID).
+     * Pencari area yang sudah menutup sebuah kelurahan.
      *
-     * @return callable(object): list<array{id: int, code: string, name: string, warehouse: ?string}>
+     * - area: area buatan Enesis (Generate, Auto Grid, gambar manual), dikenali lewat village_id / kode_kelurahan,
+     *   atau nama kota+kecamatan+kelurahan untuk area gambar tanpa ID. Area ini menghalangi kelurahan dibuat lagi.
+     * - area_lama: jumlah area lama hasil tarikan Marketama (source_id terisi, umumnya segi enam "Generate Polygon V2")
+     *   di kelurahan yang sama, hanya sebagai keterangan: area kelurahan tetap bisa dibuat di sampingnya.
+     *   village_id area lama memakai ID Marketama, jadi dicocokkan lewat nama.
+     *
+     * @return callable(object): array{area: list<array{id: int, code: string, name: string, warehouse: ?string}>, area_lama: int}
      */
     private function areaYangAda(?object $kota, Collection $kelurahan): callable
     {
         $ids = $kelurahan->pluck('id')->all();
         $kode = $kelurahan->pluck('kode')->filter()->all();
-        $kotaNama = $kota?->nama_kota_kabupaten ?? $kelurahan->pluck('kota_kabupaten')->unique()->all();
+        $kotaNama = (array) ($kota?->nama_kota_kabupaten ?? $kelurahan->pluck('kota_kabupaten')->unique()->all());
 
         $area = DB::table('area_polygon')
             ->where(function ($q) use ($ids, $kode, $kotaNama) {
                 $q->whereIn('village_id', $ids)
                     ->orWhereIn('kode_kelurahan', $kode ?: ['-'])
                     // Nama kelurahan dicocokkan di PHP (tanpa beda huruf besar/kecil), cukup saring per kota di SQL.
-                    ->orWhere(fn ($q) => $q->whereIn('city', (array) $kotaNama)->whereNull('village_id')->whereNull('kode_kelurahan'));
+                    ->orWhereIn('city', $kotaNama);
             })
             ->orderBy('code')
-            ->get(['id', 'code', 'name', 'warehouse', 'village_id', 'kode_kelurahan', 'city', 'district', 'village']);
+            ->get(['id', 'source_id', 'code', 'name', 'warehouse', 'village_id', 'kode_kelurahan', 'city', 'district', 'village']);
 
-        $kunciNama = fn ($kota, $kec, $kel) => mb_strtolower(trim($kota).'|'.trim($kec).'|'.trim($kel));
+        $kunciNama = fn ($kota, $kec, $kel) => mb_strtolower(trim((string) $kota).'|'.trim((string) $kec).'|'.trim((string) $kel));
+        [$lama, $enesis] = $area->partition(fn ($a) => $a->source_id !== null);
+        $lamaPerNama = $lama->countBy(fn ($a) => $kunciNama($a->city, $a->district, $a->village));
 
-        return function (object $k) use ($area, $kunciNama) {
-            return $area->filter(fn ($a) => $a->village_id == $k->id
-                || ($k->kode && $a->kode_kelurahan === $k->kode)
-                || ($a->village_id === null && $a->kode_kelurahan === null
-                    && $kunciNama($a->city, $a->district, $a->village) === $kunciNama($k->kota_kabupaten, $k->kecamatan, $k->nama_kelurahan)))
-                ->map(fn ($a) => ['id' => $a->id, 'code' => $a->code, 'name' => $a->name, 'warehouse' => $a->warehouse])
-                ->values()->all();
+        return function (object $k) use ($enesis, $lamaPerNama, $kunciNama) {
+            $nama = $kunciNama($k->kota_kabupaten, $k->kecamatan, $k->nama_kelurahan);
+
+            return [
+                'area' => $enesis->filter(fn ($a) => $a->village_id == $k->id
+                    || ($k->kode && $a->kode_kelurahan === $k->kode)
+                    || ($a->village_id === null && $a->kode_kelurahan === null
+                        && $kunciNama($a->city, $a->district, $a->village) === $nama))
+                    ->map(fn ($a) => ['id' => $a->id, 'code' => $a->code, 'name' => $a->name, 'warehouse' => $a->warehouse])
+                    ->values()->all(),
+                'area_lama' => $lamaPerNama[$nama] ?? 0,
+            ];
         };
     }
 }

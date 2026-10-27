@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\DB;
 
 // Area yang sudah ada di area_polygon dalam satu kotak batas, untuk menandai kotak grid yang tumpang tindih.
 // Dicek lewat satu titik di dalam tiap kotak grid (bukan irisan penuh), cukup untuk mencegah area dobel.
+// Area lama tarikan Marketama (source_id terisi, segi enam "Generate Polygon V2") tidak dihitung: area baru
+// boleh dibuat di sampingnya.
 class AreaTerpasang
 {
     /** @var list<array{id: int, code: string, name: string, warehouse: ?string, kotak: array, multi: array}> */
@@ -15,7 +17,7 @@ class AreaTerpasang
     /** @param array $kotak [minLng, minLat, maxLng, maxLat] wilayah yang dicek */
     public function __construct(array $kotak)
     {
-        DB::table('area_polygon')->select(['id', 'code', 'name', 'warehouse', 'polygon', 'geometri'])->orderBy('id')
+        DB::table('area_polygon')->whereNull('source_id')->select(['id', 'code', 'name', 'warehouse', 'polygon', 'geometri'])->orderBy('id')
             ->chunk(1000, function ($baris) use ($kotak) {
                 foreach ($baris as $a) {
                     $multi = $a->geometri ? (json_decode($a->geometri, true)['coordinates'] ?? []) : self::dariCincin(json_decode($a->polygon, true) ?: []);
