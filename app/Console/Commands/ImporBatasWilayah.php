@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\Database\Sql;
 use App\Support\Wilayah\BatasWilayah;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -39,7 +40,7 @@ class ImporBatasWilayah extends Command
             $kota = $kota->merge(
                 DB::table('kota_kabupaten')->whereNotNull('kode')
                     ->when(! $this->option('semua'), fn ($q) => $q->where(function ($q) use ($provinsi) {
-                        $provinsi->each(fn ($p) => $q->orWhere('kode', 'like', $p.'%'));
+                        $provinsi->each(fn ($p) => $q->orWhereRaw(Sql::teks('kode').' LIKE ?', [$p.'%']));
                     }))
                     ->pluck('kode')->map(fn ($k) => (string) $k)
             );

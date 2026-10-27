@@ -4,6 +4,7 @@ namespace App\Support\Menu;
 
 use App\Models\User;
 use App\Support\Area\AreaMk;
+use App\Support\Database\Sql;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
@@ -22,9 +23,7 @@ class SumberMasterArea implements SumberTabel
     public function query(?User $user): Builder
     {
         $idMk = AreaMk::idSql('ap');
-        $gabung = DB::connection()->getDriverName() === 'mysql'
-            ? "GROUP_CONCAT(DISTINCT k.nama ORDER BY k.nama SEPARATOR ', ')"
-            : 'GROUP_CONCAT(DISTINCT k.nama)';
+        $gabung = Sql::gabungUnik('k.nama');
 
         return DB::table('area_polygon as ap')
             ->leftJoin('area_depo as d', 'd.warehouse_id', '=', 'ap.warehouse_id')
