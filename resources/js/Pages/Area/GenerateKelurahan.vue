@@ -18,7 +18,8 @@ import ItemKelurahan from '@/Pages/Area/partials/ItemKelurahan.vue';
 import { useFormWilayah } from '@/Pages/Area/partials/formWilayah.js';
 import { useLeafletMap } from '@/Composables/useLeafletMap.js';
 import { bersihkanQuery } from '@/Support/query.js';
-import { escapeHtml, ikonDepo, ikonLingkaran, ikonSvg, multiKeLatLng } from '@/Support/peta.js';
+import { escapeHtml, ikonDepo, ikonLingkaran, multiKeLatLng } from '@/Support/peta.js';
+import { hapusArea, pasangAksiArea, popupAksiArea } from '@/Pages/Area/partials/aksiArea.js';
 import { STATUS, jarakKm, statusKelurahan, warnaKecamatan } from '@/Pages/Area/partials/kelurahan.js';
 
 const props = defineProps({
@@ -159,35 +160,19 @@ useLeafletMap(wadah, {
         lapisanDepo = L.layerGroup().addTo(map);
         gambarDepo();
 
-        // Tombol Hapus di popup area yang sudah ada (HTML Leaflet): listener dipasang saat popup dibuka.
-        map.on('popupopen', (e) => {
-            e.popup.getElement().querySelectorAll('.btn-delete-area').forEach((tombol) => {
-                tombol.addEventListener('click', () => hapusArea(Number(tombol.dataset.id), tombol.dataset.code));
-            });
-        });
+        // Tombol Hapus di popup kelurahan yang sudah punya area.
+        pasangAksiArea(map, hapusDariPeta);
     },
 });
 
-const ikonPensil = ikonSvg('<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>');
-const ikonTempatSampah = ikonSvg('<path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>');
+const hakArea = { bisaUbah: props.bisaUbah, bisaHapus: props.bisaHapus, designUrl: props.designUrl, hapusUrl: props.hapusUrl };
 
-// Popup kelurahan yang sudah punya area: daftar areanya dengan tombol Ubah (ke Design Area) dan Hapus.
 function popupArea(k) {
-    return '<div style="min-width:220px;font-size:12px"><strong style="font-size:13px">' + escapeHtml(k.nama) + '</strong>'
-        + '<br><span class="text-gray-500">Kec. ' + escapeHtml(k.kecamatan) + '</span><hr class="my-1">'
-        + k.area.map((a) => '<div class="mb-1"><b>' + escapeHtml(a.code) + '</b> ' + escapeHtml(a.name)
-            + (a.warehouse ? '<br><small>Depo ' + escapeHtml(a.warehouse) + '</small>' : '')
-            + '<div class="flex flex-wrap gap-1 mt-1">'
-            + (props.bisaUbah && props.designUrl ? '<a class="btn btn-sm btn-outline-primary" href="' + props.designUrl + '?area=' + a.id + '">' + ikonPensil + 'Ubah</a>' : '')
-            + (props.bisaHapus && props.hapusUrl ? '<button type="button" class="btn btn-sm btn-outline-danger btn-delete-area" data-id="' + a.id + '" data-code="' + escapeHtml(a.code) + '">' + ikonTempatSampah + 'Hapus</button>' : '')
-            + '</div></div>').join('')
-        + '</div>';
+    return popupAksiArea('<strong style="font-size:13px">' + escapeHtml(k.nama) + '</strong><br><span class="text-gray-500">Kec. ' + escapeHtml(k.kecamatan) + '</span>', k.area, hakArea);
 }
 
-async function hapusArea(id, kode) {
-    if (!confirm(`Hapus area ${kode}? Kelurahannya bisa dibuat ulang sesudahnya.`)) return;
-    const res = await fetch(props.hapusUrl + '/' + id, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': csrf, Accept: 'application/json' } });
-    if (!res.ok) { alert('Gagal menghapus area.'); return; }
+async function hapusDariPeta(id, kode) {
+    if (!(await hapusArea(props.hapusUrl, id, kode))) return;
     peta.closePopup();
     // Muat ulang tanpa mengubah pilihan: kelurahannya kembali "Siap dibuat" tetapi tidak otomatis terpilih.
     const pilihan = new Set(dipilih.value);
@@ -308,7 +293,7 @@ function fokus(k) {
                         <span v-for="s in STATUS" :key="s.id" class="flex items-center gap-1">
                             <span class="inline-block w-3 h-3 rounded-sm border" :style="{ background: s.warnaPeta, borderColor: s.garisPeta }"></span>{{ s.label }}
                         </span>
-                        <span>Klik polygon untuk memilih / membatalkan.</span>
+                        <span>Klik polygon untuk memilih / membatalkan; klik yang kuning untuk mengubah atau menghapus areanya.</span>
                     </div>
                 </Card>
 

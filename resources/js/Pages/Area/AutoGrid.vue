@@ -22,6 +22,7 @@ import { warnaKecamatan } from '@/Pages/Area/partials/kelurahan.js';
 import { useLeafletMap } from '@/Composables/useLeafletMap.js';
 import { bersihkanQuery } from '@/Support/query.js';
 import { escapeHtml, ikonDepo, ikonLingkaran, multiKeLatLng } from '@/Support/peta.js';
+import { hapusArea, pasangAksiArea, popupAksiArea } from '@/Pages/Area/partials/aksiArea.js';
 
 const props = defineProps({
     slug: { type: String, required: true },
@@ -31,6 +32,10 @@ const props = defineProps({
     wilayahDepo: { type: Array, default: () => [] },
     ukuran: { type: Array, required: true },
     bisaTambah: { type: Boolean, default: false },
+    bisaUbah: { type: Boolean, default: false },
+    bisaHapus: { type: Boolean, default: false },
+    designUrl: { type: String, default: null },
+    hapusUrl: { type: String, default: null },
     kembaliUrl: { type: String, required: true },
     kelurahanUrl: { type: String, required: true },
     opsiUrl: { type: String, required: true },
@@ -104,7 +109,7 @@ function togglePilih(u) {
     dipilih.value = baru;
 }
 
-async function generate() {
+async function generate(fokusPeta = true) {
     if (!form.kota_id) { alert('Pilih Kota / Kabupaten terlebih dahulu.'); return; }
     memuat.value = true;
     peringatan.value = null;
@@ -123,7 +128,7 @@ async function generate() {
         peringatan.value = data.peringatan;
         info.value = { wilayah: data.kecamatan ? `Kec. ${data.kecamatan}, ${data.kota}` : data.kota, baris: data.baris, kolom: data.kolom };
         dipilih.value = new Set(data.unit.filter((u) => !u.area).map((u) => u.kunci));
-        gambarGrid(true);
+        gambarGrid(fokusPeta !== false);
     } catch {
         galat.value = 'Gagal membuat grid.';
     } finally {
@@ -176,8 +181,25 @@ useLeafletMap(wadah, {
         lapisanGrid = L.featureGroup().addTo(map);
         lapisanDepo = L.layerGroup().addTo(map);
         gambarDepo();
+        // Tombol Hapus di popup kotak yang tumpang tindih dengan area yang sudah ada.
+        pasangAksiArea(map, hapusDariPeta);
     },
 });
+
+const hakArea = { bisaUbah: props.bisaUbah, bisaHapus: props.bisaHapus, designUrl: props.designUrl, hapusUrl: props.hapusUrl };
+
+function popupArea(u) {
+    return popupAksiArea('<strong style="font-size:13px">Kotak ' + escapeHtml(u.label) + '</strong><br><span class="text-gray-500">Tumpang tindih dengan area:</span>', [u.area], hakArea);
+}
+
+async function hapusDariPeta(id, kode) {
+    if (!(await hapusArea(props.hapusUrl, id, kode))) return;
+    peta.closePopup();
+    // Grid dibuat ulang tanpa menggeser peta; pilihan yang sudah ada tetap.
+    const pilihan = new Set(dipilih.value);
+    await generate(false);
+    dipilih.value = new Set([...pilihan].filter((k) => unit.value.some((u) => u.kunci === k)));
+}
 
 function gaya(u) {
     if (u.area) return { renderer, color: '#d97706', weight: 1, dashArray: '4 3', fillColor: '#f59e0b', fillOpacity: 0.12 };
@@ -199,7 +221,10 @@ function gambarGrid(fokus = false) {
     unit.value.forEach((u) => {
         const lapis = L.polygon(multiKeLatLng(u.geometri), gaya(u))
             .bindTooltip(tooltip(u), { sticky: true })
-            .on('click', () => togglePilih(u));
+            .on('click', (e) => {
+                if (u.area) L.popup().setLatLng(e.latlng).setContent(popupArea(u)).openOn(peta);
+                else togglePilih(u);
+            });
         lapis.addTo(lapisanGrid);
         overlay.set(u.kunci, lapis);
     });
@@ -301,7 +326,7 @@ function fokus(u) {
                         <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-sm bg-blue-600"></span>Dipilih (warna per kecamatan)</span>
                         <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-sm bg-gray-300"></span>Tidak dipilih</span>
                         <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-sm border border-amber-600 bg-amber-200"></span>Tumpang tindih area lama</span>
-                        <span>Klik kotak untuk memilih / membatalkan.</span>
+                        <span>Klik kotak untuk memilih / membatalkan; klik kotak kuning untuk mengubah atau menghapus area lamanya.</span>
                     </div>
                 </Card>
 

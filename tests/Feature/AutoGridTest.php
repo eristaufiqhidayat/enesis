@@ -58,6 +58,10 @@ class AutoGridTest extends TestCase
                 ->where('ukuran', range(1, 15))
                 ->has('wilayahDepo', 1, fn (Assert $w) => $w->where('id', 7)->where('depo_id', 48)->etc())
                 ->where('bisaTambah', true)
+                ->where('bisaUbah', true)
+                ->where('bisaHapus', true)
+                ->where('designUrl', route('design-area.index'))
+                ->where('hapusUrl', url('master_area/design_area/areas'))
             );
 
         $this->get('/master_area/design_area')
