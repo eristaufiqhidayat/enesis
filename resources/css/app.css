@@ -280,6 +280,12 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     .peta-menggambar .leaflet-container,
     .peta-menggambar .leaflet-interactive { cursor: crosshair; }
 
+    /* Kotak legenda peta (Peta Wilayah Kerja Sales). */
+    .legenda-peta { @apply inline-block w-3 h-3 rounded-sm align-middle me-1 border; }
+    .legenda-peta-aktif { @apply bg-blue-500/40 border-blue-700; }
+    .legenda-peta-nonaktif { @apply bg-gray-400/20 border-gray-500 border-dashed; }
+    .legenda-peta-outlet { @apply bg-amber-500 border-white rounded-full; }
+
     /* Penanda editor bentuk area (Design Area): titik sudut dan titik tengah untuk menyisipkan titik. */
     .penanda-titik { background: #fff; border: 2px solid #dc3545; border-radius: 2px; cursor: move; }
     .penanda-tengah { background: rgba(220, 53, 69, 0.45); border: 1px solid #fff; border-radius: 9999px; cursor: copy; }

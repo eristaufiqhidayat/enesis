@@ -7,6 +7,7 @@ import Input from '@/Components/ui/atoms/Input.vue';
 import Label from '@/Components/ui/atoms/Label.vue';
 import Card from '@/Components/ui/molecules/Card.vue';
 import Pagination from '@/Components/ui/molecules/Pagination.vue';
+import PetaWilayahSales from './PetaWilayahSales.vue';
 import { angka } from '@/Support/format.js';
 
 // Area rute dan outlet seorang sales (aturan sama dengan rute di aplikasi HP).
@@ -22,6 +23,11 @@ function cari() {
 }
 
 const lokasi = (o) => [o.kelurahan, o.kecamatan].filter(Boolean).join(', ');
+
+// Peta wilayah kerja: badge area di bawah peta memfokuskan peta ke area itu.
+const petaRef = ref(null);
+const jumlahOutlet = computed(() => Object.fromEntries(props.outletSales.area.map((a) => [a.areaId, a.jumlahOutlet])));
+const kodeArea = computed(() => Object.fromEntries((props.outletSales.peta?.area ?? []).map((a) => [a.areaId, a.kode])));
 </script>
 
 <template>
@@ -39,12 +45,31 @@ const lokasi = (o) => [o.kelurahan, o.kecamatan].filter(Boolean).join(', ');
             </div>
         </template>
 
+        <PetaWilayahSales
+            v-if="outletSales.peta && outletSales.area.length"
+            ref="petaRef"
+            :peta="outletSales.peta"
+            :jumlah-outlet="jumlahOutlet"
+            :master-area-url="outletSales.masterAreaUrl"
+            :design-url="outletSales.designUrl"
+        />
+
         <template v-if="outletSales.area.length">
             <p class="text-xs text-gray-500 mb-1">Area sales · <span class="text-blue-700 font-semibold">biru = area aktif</span> (outletnya tampil di tabel &amp; di rute HP) · abu-abu = area tidak aktif</p>
         </template>
         <div class="flex flex-wrap gap-2 mb-3" aria-label="Area sales">
-            <Badge v-for="a in outletSales.area" :key="a.areaId" :variant="a.rute ? 'primary' : 'secondary'" :title="a.rute ? 'Area rute' : 'Area tidak aktif'">
-                {{ a.nama ?? `Area #${a.areaId}` }} · {{ angka(a.jumlahOutlet) }} outlet{{ a.rute ? '' : ' · tidak aktif' }}
+            <Badge
+                v-for="a in outletSales.area"
+                :key="a.areaId"
+                :variant="a.rute ? 'primary' : 'secondary'"
+                :title="(a.rute ? 'Area rute' : 'Area tidak aktif') + ' · klik untuk lihat di peta'"
+                class="cursor-pointer"
+                role="button"
+                tabindex="0"
+                @click="petaRef?.fokus(a.areaId)"
+                @keydown.enter="petaRef?.fokus(a.areaId)"
+            >
+                <template v-if="kodeArea[a.areaId]">{{ kodeArea[a.areaId] }} · </template>{{ a.nama ?? `Area #${a.areaId}` }} · {{ angka(a.jumlahOutlet) }} outlet{{ a.rute ? '' : ' · tidak aktif' }}
             </Badge>
             <span v-if="!outletSales.area.length" class="text-gray-500">Sales ini belum punya area, jadi belum punya outlet.</span>
         </div>
