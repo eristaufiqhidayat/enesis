@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Support\Akses\Akses;
 use App\Support\Akses\HierarkiSales;
+use App\Support\Area\WilayahKerjaSales;
 use App\Support\Mobile\HariKerja;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Query\Builder;
@@ -603,7 +604,15 @@ class AkunController extends Controller
                 'longitude' => $o->longitude,
             ]);
 
-        return ['area' => $area, 'outlet' => $outlet, 'q' => $q];
+        return [
+            'area' => $area,
+            'outlet' => $outlet,
+            'q' => $q,
+            // Peta wilayah kerja: polygon tiap area (baris Master Area), titik outlet rute, dan depo.
+            'peta' => WilayahKerjaSales::untuk((int) $akun->karyawan_id, $rute),
+            'masterAreaUrl' => route('menu', 'master_area'),
+            'designUrl' => route('design-area.index'),
+        ];
     }
 
     /** Akun sales yang karyawannya berada di bawah koordinator ini (null bila bukan koordinator). */
