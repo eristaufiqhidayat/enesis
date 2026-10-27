@@ -76,6 +76,63 @@ class GridAreaTest extends TestCase
         $this->assertStringStartsWith('Barat (A1', $kotak['unit'][0]['nama']);
     }
 
+    public function test_hexagon_mode_tiles_without_gaps_and_cells_are_hexagons(): void
+    {
+        $kel = [
+            ['id' => 1, 'kode' => '3171011001', 'nama' => 'Barat', 'kecamatan' => 'Gambir', 'multi' => self::kotak(106.80, -6.20, 106.83, -6.17)],
+            ['id' => 2, 'kode' => '3171011002', 'nama' => 'Timur', 'kecamatan' => 'Gambir', 'multi' => self::kotak(106.83, -6.20, 106.86, -6.17)],
+        ];
+        $luasTotal = Geometri::luasKm2($kel[0]['multi']) + Geometri::luasKm2($kel[1]['multi']);
+
+        $g = (new GridArea)->buat($kel, 1, 'segienam');
+
+        // Tanpa celah dan tumpang tindih: jumlah luas = luas wilayah.
+        $this->assertEqualsWithDelta($luasTotal, array_sum(array_column($g['unit'], 'luas_km2')), 0.01);
+        $this->assertSame(count($g['unit']), count(array_unique(array_column($g['unit'], 'kunci'))));
+        foreach ($g['unit'] as $u) {
+            $this->assertStringStartsWith('h', $u['kunci']);
+            $this->assertTrue(Geometri::dalam($u['titik'][0], $u['titik'][1], $u['geometri']), $u['nama']);
+        }
+
+        // Segi enam di tengah wilayah utuh: 6 sudut, luas = 3√3/2 · r² dengan r = 1/√3 km.
+        $utuh = array_filter($g['unit'], fn ($u) => count($u['kelurahan']) === 1 && count($u['geometri']) === 1
+            && count($u['geometri'][0][0]) === 7 && abs($u['luas_km2'] - sqrt(3) / 2) < 0.01);
+        $this->assertNotEmpty($utuh);
+
+        // Segi enam di garis batas dua kelurahan mencakup keduanya; kelurahan utama = bagian terluas.
+        $dua = array_values(array_filter($g['unit'], fn ($u) => count($u['kelurahan']) === 2));
+        $this->assertNotEmpty($dua);
+        $this->assertGreaterThanOrEqual($dua[0]['kelurahan'][1]['luas_km2'], $dua[0]['kelurahan'][0]['luas_km2']);
+
+        // Deterministik: kunci sama untuk input sama.
+        $this->assertSame(array_column($g['unit'], 'kunci'), array_column((new GridArea)->buat($kel, 1, 'segienam')['unit'], 'kunci'));
+    }
+
+    public function test_hexagon_fragment_of_other_village_merges_into_neighbour(): void
+    {
+        // Kelurahan kecil yang menempel di tepi: serpihannya digabung ke segi enam tetangga yang belum memuatnya.
+        $kel = [
+            ['id' => 1, 'kode' => '1', 'nama' => 'Besar', 'kecamatan' => 'X', 'multi' => self::kotak(106.80, -6.20, 106.83, -6.17)],
+            ['id' => 2, 'kode' => '2', 'nama' => 'Kecil', 'kecamatan' => 'X', 'multi' => self::kotak(106.83, -6.1705, 106.8303, -6.17)],
+        ];
+        $g = (new GridArea)->buat($kel, 1, 'segienam');
+
+        $luasTotal = Geometri::luasKm2($kel[0]['multi']) + Geometri::luasKm2($kel[1]['multi']);
+        $this->assertEqualsWithDelta($luasTotal, array_sum(array_column($g['unit'], 'luas_km2')), 0.01);
+        $kecil = array_values(array_filter($g['unit'], fn ($u) => in_array('Kecil', array_column($u['kelurahan'], 'nama'), true)));
+        $this->assertCount(1, $kecil);
+        $this->assertSame('Besar', $kecil[0]['kelurahan'][0]['nama']);
+    }
+
+    public function test_convex_clip_keeps_inside_part_only(): void
+    {
+        $persegi = self::kotak(0, 0, 2, 2);
+        // Segitiga berlawanan jarum jam menutup separuh persegi (di bawah diagonal).
+        $potong = Geometri::potongCembung($persegi, [[-1, -1], [3, -1], [3, 3]]);
+        $this->assertEqualsWithDelta(Geometri::luasKm2($persegi) / 2, Geometri::luasKm2($potong), Geometri::luasKm2($persegi) * 1e-3);
+        $this->assertSame([], Geometri::potongCembung($persegi, [[5, 5], [6, 5], [6, 6]]));
+    }
+
     public function test_labels_continue_past_z_and_dense_grid_is_rejected(): void
     {
         $this->assertSame('A1', GridArea::labelKotak(0, 0));

@@ -167,6 +167,72 @@ class Geometri
         return $hasil;
     }
 
+    /**
+     * Potong MultiPolygon dengan satu polygon cembung (mis. segi enam grid), algoritma Sutherland–Hodgman.
+     *
+     * @param  list<array{0: float, 1: float}>  $cembung  titik [lng, lat] berlawanan jarum jam, tanpa titik penutup
+     */
+    public static function potongCembung(array $multi, array $cembung): array
+    {
+        $bx = array_column($cembung, 0);
+        $by = array_column($cembung, 1);
+        [$minX, $minY, $maxX, $maxY] = [min($bx), min($by), max($bx), max($by)];
+        $n = count($cembung);
+
+        $hasil = [];
+        foreach ($multi as $polygon) {
+            $b = self::kotak([$polygon]);
+            if (! $b || $b[2] < $minX || $b[0] > $maxX || $b[3] < $minY || $b[1] > $maxY) {
+                continue;
+            }
+
+            $cincin = [];
+            foreach ($polygon as $i => $ring) {
+                $titik = array_slice($ring, 0, -1);
+                for ($e = 0; $e < $n && $titik; $e++) {
+                    [$ax, $ay] = $cembung[$e];
+                    [$cx, $cy] = $cembung[($e + 1) % $n];
+                    // Di dalam = di kiri sisi a→c (polygon cembung berlawanan jarum jam).
+                    $di = fn ($p) => ($cx - $ax) * ($p[1] - $ay) - ($cy - $ay) * ($p[0] - $ax) >= 0;
+                    $potong = function ($p, $q) use ($ax, $ay, $cx, $cy) {
+                        $d1 = ($cx - $ax) * ($p[1] - $ay) - ($cy - $ay) * ($p[0] - $ax);
+                        $d2 = ($cx - $ax) * ($q[1] - $ay) - ($cy - $ay) * ($q[0] - $ax);
+                        $t = $d1 / ($d1 - $d2);
+
+                        return [$p[0] + ($q[0] - $p[0]) * $t, $p[1] + ($q[1] - $p[1]) * $t];
+                    };
+                    $keluar = [];
+                    $prev = end($titik);
+                    foreach ($titik as $cur) {
+                        if ($di($cur)) {
+                            if (! $di($prev)) {
+                                $keluar[] = $potong($prev, $cur);
+                            }
+                            $keluar[] = $cur;
+                        } elseif ($di($prev)) {
+                            $keluar[] = $potong($prev, $cur);
+                        }
+                        $prev = $cur;
+                    }
+                    $titik = $keluar;
+                }
+
+                $tutup = count($titik) >= 3 ? self::tutup(array_map(fn ($p) => [round($p[0], 7), round($p[1], 7)], $titik)) : [];
+                if (count($tutup) < 4 || self::luasCincin($tutup) < 1e-9) {
+                    if ($i === 0) {
+                        continue 2;
+                    }
+
+                    continue;
+                }
+                $cincin[] = $tutup;
+            }
+            $hasil[] = $cincin;
+        }
+
+        return $hasil;
+    }
+
     /** Uji titik di dalam MultiPolygon (aturan genap-ganjil, lubang dihitung). */
     public static function dalam(float $x, float $y, array $multi): bool
     {
