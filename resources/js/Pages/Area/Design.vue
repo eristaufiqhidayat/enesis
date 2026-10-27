@@ -14,7 +14,7 @@ import Modal from '@/Components/ui/molecules/Modal.vue';
 import PageHeader from '@/Components/ui/molecules/PageHeader.vue';
 import { useLeafletMap } from '@/Composables/useLeafletMap.js';
 import { bersihkanQuery } from '@/Support/query.js';
-import { escapeHtml, ikonDepo, ikonLingkaran, ikonSvg } from '@/Support/peta.js';
+import { escapeHtml, ikonDepo, ikonLingkaran, ikonSvg, multiKeLatLng } from '@/Support/peta.js';
 
 const props = defineProps({
     slug: { type: String, required: true },
@@ -28,6 +28,8 @@ const props = defineProps({
     areasUrl: { type: String, required: true },
     storeUrl: { type: String, required: true },
     destroyUrl: { type: String, required: true },
+    generateUrl: { type: String, default: null },
+    autoGridUrl: { type: String, default: null },
 });
 
 const appName = usePage().props.appName;
@@ -58,7 +60,7 @@ const statusGambar = ref('Pilih provinsi lalu klik "Mulai Gambar" untuk membuat 
 const pesanGambar = computed(() => {
     if (!menggambar.value) return statusGambar.value;
     const n = titik.value.length;
-    return `${n} titik. ` + (n < 3 ? 'Tambahkan minimal 3 titik.' : 'Klik "Selesai" untuk menyimpan.');
+    return `${n} titik. ` + (n < 3 ? 'Klik peta untuk menambah titik (minimal 3).' : 'Klik "Selesai" atau klik dua kali di peta untuk menyimpan.');
 });
 
 const modalSimpan = ref(false);
@@ -86,8 +88,17 @@ useLeafletMap(wadah, {
 
         map.on('click', (e) => {
             if (!menggambar.value) return;
+            // Klik kedua dari dobel klik jatuh di titik yang sama: jangan jadi titik kembar.
+            const akhir = titik.value[titik.value.length - 1];
+            if (akhir && Math.abs(akhir[0] - e.latlng.lat) < 1e-9 && Math.abs(akhir[1] - e.latlng.lng) < 1e-9) return;
             titik.value.push([e.latlng.lat, e.latlng.lng]);
             gambarTitik();
+        });
+
+        // Dobel klik dipakai menutup polygon, bukan zoom.
+        map.doubleClickZoom.disable();
+        map.on('dblclick', () => {
+            if (menggambar.value && titik.value.length >= 3) selesaiGambar();
         });
 
         // Hapus area dari popup. Tombol ada di HTML popup Leaflet, jadi listener dipasang saat popup dibuka.
@@ -117,10 +128,16 @@ function gambarArea() {
     lapisanArea.clearLayers();
     overlay.clear();
     areas.value.forEach((a, i) => {
-        const latlngs = (a.polygon || []).map(([lng, lat]) => [lat, lng]);
-        if (latlngs.length < 3) return;
+        // Area hasil Generate Polygon Kelurahan punya geometri utuh (MultiPolygon, semua pulau); area lain satu cincin.
+        const latlngs = a.geometri?.coordinates
+            ? multiKeLatLng(a.geometri.coordinates)
+            : (a.polygon || []).map(([lng, lat]) => [lat, lng]);
+        if (!a.geometri && latlngs.length < 3) return;
         const warnaArea = warna[(a.warehouse_id || i) % warna.length];
-        const poly = L.polygon(latlngs, { color: warnaArea, weight: 2, fillOpacity: 0.25 }).bindPopup(popupArea(a));
+        // Popup dibuka manual: bindPopup menghentikan klik di polygon, sehingga saat menggambar titik di atas
+        // area lama tidak bertambah dan peta bergeser karena popup. Saat menggambar, klik diteruskan ke peta.
+        const poly = L.polygon(latlngs, { color: warnaArea, weight: 2, fillOpacity: 0.25 })
+            .on('click', (e) => { if (!menggambar.value) bukaPopup(a, e.latlng); });
         poly.addTo(lapisanArea);
         overlay.set(a.id, poly);
     });
@@ -137,11 +154,15 @@ function gambarDepo(warehouses) {
     });
 }
 
+function bukaPopup(a, latlng) {
+    L.popup().setLatLng(latlng).setContent(popupArea(a)).openOn(peta);
+}
+
 function fokusArea(a) {
     const poly = overlay.get(a.id);
     if (!poly) return;
     peta.fitBounds(poly.getBounds(), { maxZoom: 17 });
-    poly.openPopup();
+    bukaPopup(a, poly.getBounds().getCenter());
 }
 
 // ---------- Filter wilayah ----------
@@ -214,6 +235,7 @@ watch(menggambar, (on) => {
 
 function mulaiGambar() {
     if (!filter.province) { alert('Pilih Provinsi dulu supaya area tersimpan di wilayah yang benar.'); return; }
+    peta.closePopup();
     titik.value = [];
     menggambar.value = true;
     gambarTitik();
@@ -266,6 +288,8 @@ function cariAlamat(e) {
     <AppLayout :breadcrumb-slug="slug">
         <PageHeader :title="title">
             <template #actions>
+                <Button v-if="autoGridUrl" :tag="Link" :href="autoGridUrl" variant="outline-primary"><Icon name="map" class="me-1" />Auto Grid</Button>
+                <Button v-if="generateUrl" :tag="Link" :href="generateUrl" variant="outline-primary"><Icon name="layers" class="me-1" />Generate Polygon Kelurahan</Button>
                 <Link :href="kembaliUrl" class="text-gray-500 hover:underline">Kembali</Link>
             </template>
         </PageHeader>
@@ -361,7 +385,10 @@ function cariAlamat(e) {
         </Card>
 
         <Card body-class="card-body p-2">
-            <div ref="wadah" class="h-155 rounded-md" :class="{ 'cursor-crosshair': menggambar }"></div>
+            <!-- Class mode menggambar di pembungkus: class pada elemen peta sendiri akan menimpa class milik Leaflet. -->
+            <div :class="{ 'peta-menggambar': menggambar }">
+                <div ref="wadah" class="h-155 rounded-md"></div>
+            </div>
         </Card>
 
         <Modal :show="modalSimpan" title="Simpan Area Baru" @close="modalSimpan = false">

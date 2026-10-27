@@ -276,6 +276,10 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     .list-group-item { @apply block px-3 py-2 text-xs; }
     .list-group-item-action { @apply cursor-pointer hover:bg-gray-50; }
 
+    /* Peta Leaflet dalam mode menggambar (Design Area): kursor silang, juga di atas polygon area. */
+    .peta-menggambar .leaflet-container,
+    .peta-menggambar .leaflet-interactive { cursor: crosshair; }
+
     .data-table { @apply w-full text-xs border-collapse; }
     .data-table thead { @apply bg-gray-50; }
     /* Latar eksplisit per sel (bukan cuma di <thead>), supaya tetap solid saat sel header jadi sticky

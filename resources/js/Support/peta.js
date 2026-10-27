@@ -1,5 +1,8 @@
 // Helper peta Leaflet yang dipakai bersama halaman tracking dan design area.
 
+// Koordinat MultiPolygon GeoJSON [lng, lat] → latlngs Leaflet [lat, lng] (polygon → cincin → titik).
+export const multiKeLatLng = (multi) => multi.map((poly) => poly.map((ring) => ring.map(([lng, lat]) => [lat, lng])));
+
 export const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 // SVG Lucide ditulis manual karena isinya dirakit jadi string HTML untuk popup dan kontrol Leaflet.

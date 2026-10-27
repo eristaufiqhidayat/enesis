@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\Akses\Akses;
+use App\Support\Area\KodeArea;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -25,6 +26,8 @@ class DesignAreaController extends Controller
             'areasUrl' => route('design-area.areas'),
             'storeUrl' => route('design-area.store'),
             'destroyUrl' => url('master_area/design_area/areas'),
+            'generateUrl' => route('kelurahan-polygon.index'),
+            'autoGridUrl' => route('auto-grid.index'),
         ]);
     }
 
@@ -59,6 +62,7 @@ class DesignAreaController extends Controller
 
         $areas = $query->orderBy('name')->get()->map(function ($area) {
             $area->polygon = json_decode($area->polygon);
+            $area->geometri = $area->geometri ? json_decode($area->geometri) : null;
 
             return $area;
         });
@@ -84,17 +88,18 @@ class DesignAreaController extends Controller
             'polygon.*.*' => ['numeric'],
         ]);
 
-        $prefix = 'AREA-'.now()->format('Ymd').'-';
-        $last = DB::table('area_polygon')->where('code', 'like', $prefix.'%')->max('code');
-        $code = $prefix.str_pad((int) substr((string) $last, -4) + 1, 4, '0', STR_PAD_LEFT);
+        [$id, $code] = DB::transaction(function () use ($data) {
+            $code = KodeArea::berikutnya()[0];
 
-        $id = DB::table('area_polygon')->insertGetId([
-            ...$data,
-            'code' => $code,
-            'polygon' => json_encode($data['polygon']),
-            'warehouse' => DB::table('area_depo')->where('warehouse_id', $data['warehouse_id'] ?? null)->value('name'),
-            'outlet_count' => 0,
-        ]);
+            return [DB::table('area_polygon')->insertGetId([
+                ...$data,
+                'code' => $code,
+                'polygon' => json_encode($data['polygon']),
+                'warehouse' => DB::table('area_depo')->where('warehouse_id', $data['warehouse_id'] ?? null)->value('name'),
+                'outlet_count' => 0,
+                'sumber_polygon' => 'gambar',
+            ]), $code];
+        });
 
         return response()->json(['id' => $id, 'code' => $code], 201);
     }
