@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\Akses\Akses;
+use App\Support\Area\AreaMk;
 use App\Support\Area\KodeArea;
 use App\Support\Wilayah\Geometri;
 use Illuminate\Http\Request;
@@ -99,17 +100,20 @@ class DesignAreaController extends Controller
             'polygon.*.*' => ['numeric'],
         ]);
 
-        [$id, $code] = DB::transaction(function () use ($data) {
+        [$id, $code] = DB::transaction(function () use ($data, $request) {
             $code = KodeArea::berikutnya()[0];
-
-            return [DB::table('area_polygon')->insertGetId([
+            $id = DB::table('area_polygon')->insertGetId([
                 ...$data,
                 'code' => $code,
                 'polygon' => json_encode($data['polygon']),
                 'warehouse' => DB::table('area_depo')->where('warehouse_id', $data['warehouse_id'] ?? null)->value('name'),
                 'outlet_count' => 0,
                 'sumber_polygon' => 'gambar',
-            ]), $code];
+                ...self::diubah($request),
+            ]);
+            AreaMk::sinkron([$id]);
+
+            return [$id, $code];
         });
 
         return response()->json(['id' => $id, 'code' => $code], 201);
@@ -136,6 +140,7 @@ class DesignAreaController extends Controller
             'warehouse_id' => $data['warehouse_id'] ?? null,
             'warehouse' => DB::table('area_depo')->where('warehouse_id', $data['warehouse_id'] ?? null)->value('name'),
             'info' => $data['info'] ?? null,
+            ...self::diubah($request),
         ];
 
         if (! empty($data['geometri'])) {
@@ -148,7 +153,10 @@ class DesignAreaController extends Controller
             $ubah['sumber_polygon'] = 'diubah';
         }
 
-        DB::table('area_polygon')->where('id', $id)->update($ubah);
+        DB::transaction(function () use ($id, $ubah) {
+            DB::table('area_polygon')->where('id', $id)->update($ubah);
+            AreaMk::sinkron([$id]);
+        });
 
         $area = DB::table('area_polygon')->where('id', $id)->first();
         $area->polygon = json_decode($area->polygon);
@@ -157,11 +165,35 @@ class DesignAreaController extends Controller
         return response()->json($area);
     }
 
+    /**
+     * Hapus area. Area yang masih dipakai outlet, penugasan sales, atau transaksi HP (lewat mk_area) ditolak,
+     * supaya rute sales dan data outlet tidak kehilangan areanya.
+     */
     public function destroy(int $id)
     {
-        abort_unless(DB::table('area_polygon')->where('id', $id)->delete(), 404);
+        $area = DB::table('area_polygon')->where('id', $id)->first();
+        abort_unless($area, 404);
+
+        $rujukan = AreaMk::dirujuk($area);
+        if ($rujukan) {
+            return response()->json([
+                'message' => "Area {$area->code} masih dipakai: ".implode(', ', $rujukan).'. Pindahkan dulu ke area lain sebelum menghapus.',
+                'rujukan' => $rujukan,
+            ], 422);
+        }
+
+        DB::transaction(function () use ($area) {
+            DB::table('area_polygon')->where('id', $area->id)->delete();
+            AreaMk::hapus($area);
+        });
 
         return response()->noContent();
+    }
+
+    /** Kolom diubah_oleh / diubah_pada untuk area_polygon. */
+    public static function diubah(Request $request): array
+    {
+        return ['diubah_oleh' => $request->user()?->name ?: $request->user()?->username, 'diubah_pada' => now()];
     }
 
     /** Koordinat MultiPolygon dari editor → bersih (angka, 6 desimal, cincin tertutup) atau null bila tidak valid. */

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\Akses\Akses;
+use App\Support\Area\AreaMk;
 use App\Support\Area\KodeArea;
 use App\Support\Area\WilayahKota;
 use App\Support\Wilayah\Geometri;
@@ -114,7 +115,8 @@ class GenerateKelurahanController extends Controller
         $depo = DB::table('area_depo')->where('warehouse_id', $data['warehouse_id'])->first();
         $kelurahan = DB::table('kelurahan')->whereIn('id', $data['kelurahan_ids'])->get()->keyBy('id');
 
-        $hasil = DB::transaction(function () use ($data, $depo, $kelurahan, $wilayah) {
+        $diubah = DesignAreaController::diubah($request);
+        $hasil = DB::transaction(function () use ($data, $depo, $kelurahan, $wilayah, $diubah) {
             $batas = $wilayah->batasPerKode($kelurahan);
 
             $cariArea = $this->areaYangAda(null, $kelurahan);
@@ -157,11 +159,13 @@ class GenerateKelurahanController extends Controller
                     'sumber_polygon' => $batas[$k->kode]->sumber,
                     'info' => 'Kel. '.$k->nama_kelurahan.', Kec. '.$k->kecamatan,
                     'outlet_count' => 0,
+                    ...$diubah,
                 ];
             }
             foreach (array_chunk($baris, 100) as $potongan) {
                 DB::table('area_polygon')->insert($potongan);
             }
+            AreaMk::sinkronKode($kode);
 
             return ['dibuat' => count($baris), 'kode' => [$kode[0], end($kode)], 'dilewati' => $dilewati];
         });

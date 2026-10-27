@@ -38,7 +38,9 @@ export async function hapusArea(hapusUrl, id, kode) {
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
     const res = await fetch(hapusUrl + '/' + id, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': csrf, Accept: 'application/json' } });
     if (!res.ok) {
-        alert('Gagal menghapus area.');
+        // 422 = area masih dipakai outlet / penugasan sales / transaksi HP; pesan server menyebut rinciannya.
+        const data = await res.json().catch(() => ({}));
+        alert(data.message || 'Gagal menghapus area.');
         return false;
     }
     return true;
