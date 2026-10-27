@@ -20,6 +20,7 @@ const keterangan = computed(() => {
         'Kec. ' + k.kecamatan,
         k.luas_km2 !== null ? angka(k.luas_km2) + ' km²' : null,
         props.jarak !== null ? angka(props.jarak) + ' km dari depo' : null,
+        k.area_lama ? k.area_lama + ' area lama' : null,
     ].filter(Boolean).join(' · ');
 });
 </script>
