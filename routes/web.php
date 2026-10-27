@@ -16,6 +16,7 @@ use App\Http\Controllers\DesignAreaController;
 use App\Http\Controllers\GenerateKelurahanController;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\OutletBaruController;
+use App\Http\Controllers\PetaSebaranSalesController;
 use App\Http\Controllers\TrackingKoordinatorController;
 use App\Http\Controllers\TrackingSalesController;
 use Illuminate\Http\Request;
@@ -51,6 +52,12 @@ Route::middleware(['auth', 'wajib-ganti-password'])->group(function () {
         ->middleware('hak:tracking_sales_history_location')->name('tracking-sales.locations');
     Route::get('/tracking_sales_history_location/counts', [TrackingSalesController::class, 'counts'])
         ->middleware('hak:tracking_sales_history_location')->name('tracking-sales.counts');
+
+    // Peta sebaran sales se-Indonesia (ikon peta di kanan atas); data = Tracking Last Seen Sales.
+    Route::get('/peta_sebaran_sales', [PetaSebaranSalesController::class, 'index'])
+        ->middleware('hak:tracking_sales')->name('peta-sebaran-sales.index');
+    Route::get('/peta_sebaran_sales/data', [PetaSebaranSalesController::class, 'data'])
+        ->middleware('hak:tracking_sales')->name('peta-sebaran-sales.data');
 
     Route::prefix('master_area/design_area')->name('design-area.')->controller(DesignAreaController::class)->group(function () {
         Route::get('/', 'index')->middleware('hak:master_area')->name('index');

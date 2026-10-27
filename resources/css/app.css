@@ -285,6 +285,10 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     .legenda-peta-aktif { @apply bg-blue-500/40 border-blue-700; }
     .legenda-peta-nonaktif { @apply bg-gray-400/20 border-gray-500 border-dashed; }
     .legenda-peta-outlet { @apply bg-amber-500 border-white rounded-full; }
+    .legenda-peta-titik { @apply bg-gray-200 border-white rounded-full shrink-0; }
+
+    /* Lingkaran jumlah sales per depo (Peta Sebaran Sales); warna latar diisi sesuai status. */
+    .klaster-peta { @apply flex items-center justify-center rounded-full text-white text-xs font-bold border-2 border-white shadow-md cursor-pointer; }
 
     /* Penanda editor bentuk area (Design Area): titik sudut dan titik tengah untuk menyisipkan titik. */
     .penanda-titik { background: #fff; border: 2px solid #dc3545; border-radius: 2px; cursor: move; }
