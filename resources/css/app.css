@@ -289,6 +289,14 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
 
     /* Lingkaran jumlah sales per depo (Peta Sebaran Sales); warna latar diisi sesuai status. */
     .klaster-peta { @apply flex items-center justify-center rounded-full text-white text-xs font-bold border-2 border-white shadow-md cursor-pointer; }
+    .klaster-peta-area { @apply bg-blue-700/85; }
+    .legenda-peta-tugas-nonaktif { @apply bg-amber-400/40 border-amber-700; }
+    .legenda-peta-sorot { @apply bg-red-500/30 border-red-600 border-2; }
+    .list-group-item-terpilih { @apply bg-blue-50; }
+
+    /* Nama sales di dalam polygon area (Peta Sebaran Sales, zoom dekat); titik tengah = titik pusat label. */
+    .label-area-peta { @apply pointer-events-none; }
+    .label-area-peta span { @apply absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-center text-[10px] leading-tight font-semibold text-white; text-shadow: 0 0 3px #000, 0 0 2px #000; }
 
     /* Penanda editor bentuk area (Design Area): titik sudut dan titik tengah untuk menyisipkan titik. */
     .penanda-titik { background: #fff; border: 2px solid #dc3545; border-radius: 2px; cursor: move; }

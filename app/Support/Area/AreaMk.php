@@ -2,6 +2,7 @@
 
 namespace App\Support\Area;
 
+use App\Support\Wilayah\Geometri;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -65,10 +66,33 @@ class AreaMk
                         'area_polygon_id' => (int) $r->id,
                     ]),
                 ])->all(), ['id'], ['kode', 'nama', 'depo_id', 'data']);
+                self::perbaruiKotak($rows->pluck('id')->all());
                 $jumlah += $rows->count();
             });
 
         return $jumlah;
+    }
+
+    /**
+     * Isi kotak batas (min/max lng/lat) area dari geometri atau polygon-nya, untuk pencarian area per layar peta.
+     *
+     * @param  list<int>  $ids  ID area_polygon
+     */
+    public static function perbaruiKotak(array $ids): void
+    {
+        if (! $ids || ! Schema::hasColumn('area_polygon', 'min_lng')) {
+            return;
+        }
+        DB::table('area_polygon')->whereIn('id', $ids)->select(['id', 'polygon', 'geometri'])->orderBy('id')
+            ->chunk(500, function ($rows) {
+                foreach ($rows as $r) {
+                    $multi = $r->geometri ? (json_decode($r->geometri, true)['coordinates'] ?? []) : [[json_decode((string) $r->polygon, true) ?: []]];
+                    $k = Geometri::kotak($multi);
+                    DB::table('area_polygon')->where('id', $r->id)->update($k
+                        ? ['min_lng' => $k[0], 'min_lat' => $k[1], 'max_lng' => $k[2], 'max_lat' => $k[3]]
+                        : ['min_lng' => null, 'min_lat' => null, 'max_lng' => null, 'max_lat' => null]);
+                }
+            });
     }
 
     /** Sinkron area berdasarkan kode (untuk insert massal Generate/Auto Grid yang tidak mengembalikan ID). */

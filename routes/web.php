@@ -58,6 +58,8 @@ Route::middleware(['auth', 'wajib-ganti-password'])->group(function () {
         ->middleware('hak:tracking_sales')->name('peta-sebaran-sales.index');
     Route::get('/peta_sebaran_sales/data', [PetaSebaranSalesController::class, 'data'])
         ->middleware('hak:tracking_sales')->name('peta-sebaran-sales.data');
+    Route::get('/peta_sebaran_sales/area', [PetaSebaranSalesController::class, 'area'])
+        ->middleware('hak:tracking_sales')->name('peta-sebaran-sales.area');
 
     Route::prefix('master_area/design_area')->name('design-area.')->controller(DesignAreaController::class)->group(function () {
         Route::get('/', 'index')->middleware('hak:master_area')->name('index');
