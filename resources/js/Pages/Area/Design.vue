@@ -14,7 +14,7 @@ import Modal from '@/Components/ui/molecules/Modal.vue';
 import PageHeader from '@/Components/ui/molecules/PageHeader.vue';
 import { useLeafletMap } from '@/Composables/useLeafletMap.js';
 import { bersihkanQuery } from '@/Support/query.js';
-import { escapeHtml, ikonDepo, ikonLingkaran, ikonSvg } from '@/Support/peta.js';
+import { escapeHtml, ikonDepo, ikonLingkaran, ikonSvg, multiKeLatLng } from '@/Support/peta.js';
 
 const props = defineProps({
     slug: { type: String, required: true },
@@ -29,6 +29,7 @@ const props = defineProps({
     storeUrl: { type: String, required: true },
     destroyUrl: { type: String, required: true },
     generateUrl: { type: String, default: null },
+    autoGridUrl: { type: String, default: null },
 });
 
 const appName = usePage().props.appName;
@@ -120,7 +121,7 @@ function gambarArea() {
     areas.value.forEach((a, i) => {
         // Area hasil Generate Polygon Kelurahan punya geometri utuh (MultiPolygon, semua pulau); area lain satu cincin.
         const latlngs = a.geometri?.coordinates
-            ? a.geometri.coordinates.map((poly) => poly.map((ring) => ring.map(([lng, lat]) => [lat, lng])))
+            ? multiKeLatLng(a.geometri.coordinates)
             : (a.polygon || []).map(([lng, lat]) => [lat, lng]);
         if (!a.geometri && latlngs.length < 3) return;
         const warnaArea = warna[(a.warehouse_id || i) % warna.length];
@@ -270,6 +271,7 @@ function cariAlamat(e) {
     <AppLayout :breadcrumb-slug="slug">
         <PageHeader :title="title">
             <template #actions>
+                <Button v-if="autoGridUrl" :tag="Link" :href="autoGridUrl" variant="outline-primary"><Icon name="map" class="me-1" />Auto Grid</Button>
                 <Button v-if="generateUrl" :tag="Link" :href="generateUrl" variant="outline-primary"><Icon name="layers" class="me-1" />Generate Polygon Kelurahan</Button>
                 <Link :href="kembaliUrl" class="text-gray-500 hover:underline">Kembali</Link>
             </template>

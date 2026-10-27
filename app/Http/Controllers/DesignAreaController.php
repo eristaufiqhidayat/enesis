@@ -27,6 +27,7 @@ class DesignAreaController extends Controller
             'storeUrl' => route('design-area.store'),
             'destroyUrl' => url('master_area/design_area/areas'),
             'generateUrl' => route('kelurahan-polygon.index'),
+            'autoGridUrl' => route('auto-grid.index'),
         ]);
     }
 

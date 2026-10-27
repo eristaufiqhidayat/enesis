@@ -1,24 +1,24 @@
 <script setup>
 // Generate Polygon Kelurahan: pilih depo + kota (opsional kecamatan), server mengirim batas resmi tiap kelurahan,
 // user memilih kelurahan di daftar/peta, lalu server membuat 1 area per kelurahan.
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Button from '@/Components/ui/atoms/Button.vue';
 import Checkbox from '@/Components/ui/atoms/Checkbox.vue';
 import Icon from '@/Components/ui/atoms/Icon.vue';
 import Input from '@/Components/ui/atoms/Input.vue';
-import Label from '@/Components/ui/atoms/Label.vue';
 import Select from '@/Components/ui/atoms/Select.vue';
 import Alert from '@/Components/ui/molecules/Alert.vue';
 import Card from '@/Components/ui/molecules/Card.vue';
-import Combobox from '@/Components/ui/molecules/Combobox.vue';
 import PageHeader from '@/Components/ui/molecules/PageHeader.vue';
 import StatRow from '@/Components/ui/molecules/StatRow.vue';
+import FormWilayah from '@/Pages/Area/partials/FormWilayah.vue';
 import ItemKelurahan from '@/Pages/Area/partials/ItemKelurahan.vue';
+import { useFormWilayah } from '@/Pages/Area/partials/formWilayah.js';
 import { useLeafletMap } from '@/Composables/useLeafletMap.js';
 import { bersihkanQuery } from '@/Support/query.js';
-import { escapeHtml, ikonDepo, ikonLingkaran } from '@/Support/peta.js';
+import { escapeHtml, ikonDepo, ikonLingkaran, multiKeLatLng } from '@/Support/peta.js';
 import { STATUS, jarakKm, statusKelurahan, warnaKecamatan } from '@/Pages/Area/partials/kelurahan.js';
 
 const props = defineProps({
@@ -28,6 +28,7 @@ const props = defineProps({
     depo: { type: Array, required: true },
     bisaTambah: { type: Boolean, default: false },
     kembaliUrl: { type: String, required: true },
+    autoGridUrl: { type: String, default: null },
     opsiUrl: { type: String, required: true },
     pratinjauUrl: { type: String, required: true },
     simpanUrl: { type: String, required: true },
@@ -37,41 +38,12 @@ const appName = usePage().props.appName;
 const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
 
 // ---------- Pengaturan ----------
-const form = reactive({ warehouse_id: '', provinsi_id: '', kota_id: '', kecamatan_id: '' });
-const opsi = reactive({ kota: [], kecamatan: [] });
-const opsiDepo = computed(() => props.depo.map((d) => ({ value: d.warehouse_id, label: d.name })));
-const opsiProvinsi = computed(() => props.provinsi.map((p) => ({ value: p.id, label: p.nama })));
-const keOpsi = (daftar) => daftar.map((x) => ({ value: x.id, label: x.nama }));
-const depoTerpilih = computed(() => props.depo.find((d) => String(d.warehouse_id) === String(form.warehouse_id)) ?? null);
+const { form, opsi, opsiDepo, opsiProvinsi, depoTerpilih } = useFormWilayah(props);
 
-async function ambilOpsi(params) {
-    const res = await fetch(props.opsiUrl + '?' + new URLSearchParams(params), { headers: { Accept: 'application/json' } });
-    return res.ok ? res.json() : [];
-}
-
-// Depo terpilih mengisi provinsi otomatis bila nama provinsinya ada di master.
-watch(depoTerpilih, (depo) => {
-    const prov = depo && props.provinsi.find((p) => String(p.nama ?? '').toLowerCase() === String(depo.province ?? '').toLowerCase());
-    if (prov && String(form.provinsi_id) !== String(prov.id)) form.provinsi_id = prov.id;
+watch(depoTerpilih, () => {
     gambarDepo();
     // Jarak di tooltip ikut depo yang baru.
     kelurahan.value.forEach((k) => overlay.get(k.id)?.setTooltipContent(tooltipKelurahan(k)));
-});
-
-watch(() => form.provinsi_id, async (id) => {
-    form.kota_id = '';
-    opsi.kota = [];
-    if (!id) return;
-    const hasil = await ambilOpsi({ tingkat: 'kota', provinsi_id: id });
-    if (String(form.provinsi_id) === String(id)) opsi.kota = keOpsi(hasil);
-});
-
-watch(() => form.kota_id, async (id) => {
-    form.kecamatan_id = '';
-    opsi.kecamatan = [];
-    if (!id) return;
-    const hasil = await ambilOpsi({ tingkat: 'kecamatan', kota_id: id });
-    if (String(form.kota_id) === String(id)) opsi.kecamatan = keOpsi(hasil);
 });
 
 // ---------- Hasil pratinjau ----------
@@ -207,9 +179,7 @@ function gambarKelurahan(fokus = false) {
     overlay.clear();
     kelurahan.value.forEach((k) => {
         if (!k.geometri) return;
-        // GeoJSON [lng, lat] → Leaflet [lat, lng]; MultiPolygon = polygon → cincin → titik.
-        const latlngs = k.geometri.map((poly) => poly.map((ring) => ring.map(([lng, lat]) => [lat, lng])));
-        const lapis = L.polygon(latlngs, gayaKelurahan(k))
+        const lapis = L.polygon(multiKeLatLng(k.geometri), gayaKelurahan(k))
             .bindTooltip(tooltipKelurahan(k), { sticky: true })
             .on('click', () => togglePilih(k));
         lapis.addTo(lapisanKelurahan);
@@ -246,6 +216,7 @@ function fokus(k) {
     <AppLayout :breadcrumb-slug="slug">
         <PageHeader :title="title" subtitle="Buat area per kelurahan/desa dari batas wilayah resmi Kemendagri 2025">
             <template #actions>
+                <Link v-if="autoGridUrl" :href="autoGridUrl" class="text-gray-500 hover:underline">Auto Grid</Link>
                 <Link :href="kembaliUrl" class="text-gray-500 hover:underline">Kembali ke Design Area</Link>
             </template>
         </PageHeader>
@@ -256,22 +227,7 @@ function fokus(k) {
                     <template #header><h6 class="mb-0 font-semibold">Pengaturan</h6></template>
 
                     <div class="flex flex-col gap-2">
-                        <div>
-                            <Label for="gen_depo" class="mb-1">Depo <span class="text-red-600">*</span></Label>
-                            <Combobox id="gen_depo" v-model="form.warehouse_id" :options="opsiDepo" placeholder="Pilih depo..." />
-                        </div>
-                        <div>
-                            <Label for="gen_provinsi" class="mb-1">Provinsi <span class="text-red-600">*</span></Label>
-                            <Combobox id="gen_provinsi" v-model="form.provinsi_id" :options="opsiProvinsi" placeholder="Pilih provinsi..." />
-                        </div>
-                        <div>
-                            <Label for="gen_kota" class="mb-1">Kota / Kabupaten <span class="text-red-600">*</span></Label>
-                            <Combobox id="gen_kota" v-model="form.kota_id" :options="opsi.kota" :disabled="!form.provinsi_id" placeholder="Pilih kota / kabupaten..." />
-                        </div>
-                        <div>
-                            <Label for="gen_kecamatan" class="mb-1">Kecamatan</Label>
-                            <Combobox id="gen_kecamatan" v-model="form.kecamatan_id" :options="opsi.kecamatan" :disabled="!form.kota_id" placeholder="Semua kecamatan" />
-                        </div>
+                        <FormWilayah :form="form" :opsi="opsi" :opsi-depo="opsiDepo" :opsi-provinsi="opsiProvinsi" id-prefix="gen" />
                         <Button id="btn_tampilkan" variant="primary" :loading="memuat" :disabled="!form.kota_id" @click="tampilkan">
                             <Icon name="search" class="me-1" />Tampilkan Kelurahan
                         </Button>

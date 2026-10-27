@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\SummaryDepoController;
 use App\Http\Controllers\Auth\DemoLoginController;
 use App\Http\Controllers\Auth\GantiPasswordController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\AutoGridController;
 use App\Http\Controllers\DesignAreaController;
 use App\Http\Controllers\GenerateKelurahanController;
 use App\Http\Controllers\MenuController;
@@ -63,6 +64,13 @@ Route::middleware(['auth', 'wajib-ganti-password'])->group(function () {
     Route::prefix('master_area/kelurahan_polygon')->name('kelurahan-polygon.')->controller(GenerateKelurahanController::class)->group(function () {
         Route::get('/', 'index')->middleware('hak:master_area')->name('index');
         Route::get('/opsi', 'opsi')->middleware('hak:master_area')->name('opsi');
+        Route::get('/pratinjau', 'pratinjau')->middleware('hak:master_area')->name('pratinjau');
+        Route::post('/simpan', 'simpan')->middleware('hak:master_area,tambah')->name('simpan');
+    });
+
+    // Auto Grid: wilayah dibagi kotak 1–15 km yang dipotong batas kelurahan resmi (URL sama dengan Marketama).
+    Route::prefix('master_area/auto_design_area')->name('auto-grid.')->controller(AutoGridController::class)->group(function () {
+        Route::get('/', 'index')->middleware('hak:master_area')->name('index');
         Route::get('/pratinjau', 'pratinjau')->middleware('hak:master_area')->name('pratinjau');
         Route::post('/simpan', 'simpan')->middleware('hak:master_area,tambah')->name('simpan');
     });

@@ -4,13 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Support\Akses\Akses;
 use App\Support\Area\KodeArea;
-use App\Support\Wilayah\BatasWilayah;
+use App\Support\Area\WilayahKota;
 use App\Support\Wilayah\Geometri;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
-use RuntimeException;
 
 // Generate Polygon Kelurahan: buat area (area_polygon) 1 area = 1 kelurahan/desa dari batas resmi Kemendagri
 // di tabel batas_wilayah. Berbeda dengan Marketama (mencari tiap kelurahan ke OpenStreetMap dari browser),
@@ -26,6 +25,7 @@ class GenerateKelurahanController extends Controller
             'depo' => DB::table('area_depo')->orderBy('name')->get(['warehouse_id', 'name', 'province', 'lat', 'lng']),
             'bisaTambah' => Akses::bisa($request->user(), 'master_area', 'tambah'),
             'kembaliUrl' => route('design-area.index'),
+            'autoGridUrl' => route('auto-grid.index'),
             'opsiUrl' => route('kelurahan-polygon.opsi'),
             'pratinjauUrl' => route('kelurahan-polygon.pratinjau'),
             'simpanUrl' => route('kelurahan-polygon.simpan'),
@@ -57,7 +57,7 @@ class GenerateKelurahanController extends Controller
     }
 
     /** Daftar kelurahan satu kota (atau satu kecamatan) beserta batasnya dan area yang sudah ada. */
-    public function pratinjau(Request $request, BatasWilayah $batas)
+    public function pratinjau(Request $request, WilayahKota $wilayah)
     {
         $data = $request->validate([
             'kota_id' => ['required', 'integer'],
@@ -68,21 +68,9 @@ class GenerateKelurahanController extends Controller
         abort_unless($kota, 404);
         $kecamatan = ! empty($data['kecamatan_id']) ? DB::table('kecamatan')->find($data['kecamatan_id']) : null;
 
-        $peringatan = null;
-        if (! $kota->kode) {
-            $peringatan = 'Kota/kabupaten ini tidak punya kode Kemendagri, jadi batas resminya tidak bisa dicari.';
-        } else {
-            try {
-                $batas->pastikanKota((string) $kota->kode);
-            } catch (RuntimeException $e) {
-                $peringatan = $e->getMessage();
-            }
-        }
-
-        $kelurahan = $this->kelurahanKota($kota, $kecamatan);
-        $batasPerKode = DB::table('batas_wilayah')->where('tingkat', 'kelurahan')
-            ->whereIn('kode', $kelurahan->pluck('kode')->filter()->all())
-            ->get(['kode', 'lat', 'lng', 'geojson', 'jumlah_titik', 'luas_km2'])->keyBy('kode');
+        $peringatan = $wilayah->siapkanBatas($kota);
+        $kelurahan = $wilayah->kelurahan($kota, $kecamatan);
+        $batasPerKode = $wilayah->batasPerKode($kelurahan);
         $areaAda = $this->areaYangAda($kota, $kelurahan);
 
         $hasil = $kelurahan->map(function ($k) use ($batasPerKode, $areaAda) {
@@ -111,7 +99,7 @@ class GenerateKelurahanController extends Controller
     }
 
     /** Simpan kelurahan terpilih sebagai area baru milik satu depo. Batas diambil ulang dari server, bukan dari browser. */
-    public function simpan(Request $request)
+    public function simpan(Request $request, WilayahKota $wilayah)
     {
         $data = $request->validate([
             'warehouse_id' => ['required', 'integer', 'exists:area_depo,warehouse_id'],
@@ -122,9 +110,8 @@ class GenerateKelurahanController extends Controller
         $depo = DB::table('area_depo')->where('warehouse_id', $data['warehouse_id'])->first();
         $kelurahan = DB::table('kelurahan')->whereIn('id', $data['kelurahan_ids'])->get()->keyBy('id');
 
-        $hasil = DB::transaction(function () use ($data, $depo, $kelurahan) {
-            $batas = DB::table('batas_wilayah')->where('tingkat', 'kelurahan')
-                ->whereIn('kode', $kelurahan->pluck('kode')->filter()->all())->get()->keyBy('kode');
+        $hasil = DB::transaction(function () use ($data, $depo, $kelurahan, $wilayah) {
+            $batas = $wilayah->batasPerKode($kelurahan);
 
             $cariArea = $this->areaYangAda(null, $kelurahan);
             $dilewati = [];
@@ -150,7 +137,7 @@ class GenerateKelurahanController extends Controller
                 return ['dibuat' => 0, 'kode' => [], 'dilewati' => $dilewati];
             }
 
-            $idWilayah = $this->idWilayah(collect($baru));
+            $idWilayah = $wilayah->idWilayah(collect($baru));
             $kode = KodeArea::berikutnya(count($baru));
             $baris = [];
             foreach ($baru as $i => $k) {
@@ -162,15 +149,7 @@ class GenerateKelurahanController extends Controller
                     'geometri' => json_encode(['type' => 'MultiPolygon', 'coordinates' => $multi]),
                     'warehouse' => $depo->name,
                     'warehouse_id' => $depo->warehouse_id,
-                    'province' => $k->provinsi,
-                    'province_id' => $idWilayah['provinsi'][$k->provinsi] ?? null,
-                    'city' => $k->kota_kabupaten,
-                    'city_id' => $idWilayah['kota'][$k->provinsi.'|'.$k->kota_kabupaten] ?? null,
-                    'district' => $k->kecamatan,
-                    'district_id' => $idWilayah['kecamatan'][$k->provinsi.'|'.$k->kota_kabupaten.'|'.$k->kecamatan] ?? null,
-                    'village' => $k->nama_kelurahan,
-                    'village_id' => $k->id,
-                    'kode_kelurahan' => $k->kode,
+                    ...WilayahKota::kolomWilayah($k, $idWilayah),
                     'sumber_polygon' => $batas[$k->kode]->sumber,
                     'info' => 'Kel. '.$k->nama_kelurahan.', Kec. '.$k->kecamatan,
                     'outlet_count' => 0,
@@ -184,16 +163,6 @@ class GenerateKelurahanController extends Controller
         });
 
         return response()->json($hasil, $hasil['dibuat'] ? 201 : 200);
-    }
-
-    private function kelurahanKota(object $kota, ?object $kecamatan): Collection
-    {
-        return DB::table('kelurahan')
-            ->where('provinsi', $kota->provinsi)
-            ->where('kota_kabupaten', $kota->nama_kota_kabupaten)
-            ->when($kecamatan, fn ($q) => $q->where('kecamatan', $kecamatan->nama_kecamatan))
-            ->orderBy('kecamatan')->orderBy('nama_kelurahan')
-            ->get(['id', 'kode', 'provinsi', 'kota_kabupaten', 'kecamatan', 'nama_kelurahan']);
     }
 
     /**
@@ -228,21 +197,5 @@ class GenerateKelurahanController extends Controller
                 ->map(fn ($a) => ['id' => $a->id, 'code' => $a->code, 'name' => $a->name, 'warehouse' => $a->warehouse])
                 ->values()->all();
         };
-    }
-
-    /** ID provinsi/kota/kecamatan Enesis untuk kolom *_id area_polygon (tabel wilayah masih berelasi lewat nama). */
-    private function idWilayah(Collection $kelurahan): array
-    {
-        $provinsi = $kelurahan->pluck('provinsi')->unique()->all();
-
-        return [
-            'provinsi' => DB::table('provinsi')->whereIn('nama_provinsi', $provinsi)->pluck('id', 'nama_provinsi')->all(),
-            'kota' => DB::table('kota_kabupaten')->whereIn('provinsi', $provinsi)->get(['id', 'provinsi', 'nama_kota_kabupaten'])
-                ->mapWithKeys(fn ($r) => [$r->provinsi.'|'.$r->nama_kota_kabupaten => $r->id])->all(),
-            'kecamatan' => DB::table('kecamatan')->whereIn('provinsi', $provinsi)
-                ->whereIn('kota_kabupaten', $kelurahan->pluck('kota_kabupaten')->unique()->all())
-                ->get(['id', 'provinsi', 'kota_kabupaten', 'nama_kecamatan'])
-                ->mapWithKeys(fn ($r) => [$r->provinsi.'|'.$r->kota_kabupaten.'|'.$r->nama_kecamatan => $r->id])->all(),
-        ];
     }
 }
