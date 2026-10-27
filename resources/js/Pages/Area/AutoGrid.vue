@@ -50,6 +50,7 @@ const MAKS_DAFTAR = 300;
 const MODE = [
     { id: 'kelurahan', label: 'Potong per kelurahan', ket: 'Tiap area pasti di dalam 1 kelurahan. Kotak di perbatasan kelurahan jadi beberapa area.' },
     { id: 'kotak', label: 'Kotak utuh', ket: 'Tiap area = 1 kotak (hanya dipotong batas wilayah). Satu area bisa mencakup beberapa kelurahan.' },
+    { id: 'segienam', label: 'Polygon (segi enam)', ket: 'Tiap area = 1 segi enam seperti area lama Marketama (hanya dipotong batas wilayah). Ukuran = jarak sisi ke sisi.' },
 ];
 
 // ---------- Pengaturan ----------
@@ -284,7 +285,7 @@ function fokus(u) {
                             </template>
                         </FormWilayah>
                         <div>
-                            <Label for="grid_ukuran" class="mb-1">Ukuran Kotak <span class="text-red-600">*</span></Label>
+                            <Label for="grid_ukuran" class="mb-1">{{ grid.mode === 'segienam' ? 'Ukuran Segi Enam' : 'Ukuran Kotak' }} <span class="text-red-600">*</span></Label>
                             <Select id="grid_ukuran" v-model="grid.ukuran" :options="opsiUkuran" />
                         </div>
                         <div>

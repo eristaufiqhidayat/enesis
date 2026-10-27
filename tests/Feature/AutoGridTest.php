@@ -120,6 +120,21 @@ class AutoGridTest extends TestCase
         ])->assertJsonValidationErrors('kunci');
     }
 
+    public function test_hexagon_mode_previews_and_saves(): void
+    {
+        $unit = collect($this->pratinjau(['mode' => 'segienam'])->assertOk()->json('unit'));
+        $this->assertNotEmpty($unit);
+        $this->assertTrue($unit->every(fn ($u) => str_starts_with($u['kunci'], 'h')));
+
+        $this->postJson('/master_area/auto_design_area/simpan', [
+            'kota_id' => $this->kota, 'ukuran' => 2, 'mode' => 'segienam', 'warehouse_id' => 48, 'kunci' => [$unit[0]['kunci']],
+        ])->assertCreated()->assertJsonPath('dibuat', 1);
+
+        $area = DB::table('area_polygon')->where('name', $unit[0]['nama'])->first();
+        $this->assertSame('grid-2km-segienam', $area->sumber_polygon);
+        $this->assertStringStartsWith('Segi enam 2 km '.$unit[0]['label'], $area->info);
+    }
+
     public function test_old_marketama_area_does_not_mark_cells_as_overlapping(): void
     {
         $unit = collect($this->pratinjau(['mode' => 'kotak'])->json('unit'));

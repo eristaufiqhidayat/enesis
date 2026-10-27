@@ -214,7 +214,7 @@ class AutoGridController extends Controller
     /** Keterangan: ukuran grid + kelurahan yang dicakup (mode kotak: tiga terluas beserta persentasenya). */
     private function info(array $u, array $data): string
     {
-        $info = 'Grid '.$data['ukuran'].' km '.$u['label'];
+        $info = ($data['mode'] === 'segienam' ? 'Segi enam ' : 'Grid ').$data['ukuran'].' km '.$u['label'];
         if ($data['mode'] === 'kelurahan' || count($u['kelurahan']) === 1) {
             $k = $u['kelurahan'][0];
 

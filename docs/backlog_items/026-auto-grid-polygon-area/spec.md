@@ -65,3 +65,9 @@ Total luas grid sama dengan total luas kelurahan.
   - Simpan membangun ulang di server, mengisi kolom, lalu kedua kalinya dilewati karena tumpang tindih.
   - Kunci basi ditolak.
   - Hak `tambah`.
+
+## Tambahan: mode Polygon (segi enam) — 27 Okt 2026
+- Mode ketiga `segienam`: wilayah dibagi segi enam "flat-top" berukuran sama (ukuran = jarak sisi ke sisi, kolom ganjil turun setengah baris), lalu dipotong batas wilayah resmi, seperti area lama Marketama "Generate Polygon V2".
+- Satu area = satu segi enam utuh; kelurahan utama = bagian terluas. Pecahan < 25% luas segi enam digabung ke tetangga terluas (6 arah), label `A5+B5`.
+- Pemotongan memakai `Geometri::potongCembung` (Sutherland–Hodgman untuk polygon cembung). Kunci unit berawalan `h`; `sumber_polygon = grid-{n}km-segienam`; keterangan "Segi enam N km …".
+
