@@ -8,12 +8,15 @@ use Illuminate\Support\Facades\Http;
 use RuntimeException;
 use Throwable;
 
-// Batas wilayah resmi per kode Kemendagri dari dataset cahyadsn/wilayah_boundaries.
-// Satu berkas SQL dataset = semua kelurahan/desa satu kota (kel/31/wilayah_boundaries_kel_31.71.sql).
-// Hasil parse disimpan ke batas_wilayah, jadi tiap kota cukup diambil sekali.
+// Batas wilayah resmi per kode Kemendagri. Sumber utama (config batas_wilayah.sumber): layanan peta BIG
+// (BatasBig) atau dataset cahyadsn/wilayah_boundaries (satu berkas SQL = semua kelurahan/desa satu kota,
+// kel/31/wilayah_boundaries_kel_31.71.sql). Kelurahan yang tidak ada di sumber utama diisi dari sumber cadangan.
+// Hasil disimpan ke batas_wilayah, jadi tiap kota cukup diambil sekali.
 class BatasWilayah
 {
     public const SUMBER = 'kemendagri-2025';
+
+    public function __construct(private BatasBig $big) {}
 
     private const TINGKAT = [2 => 'kota', 3 => 'kecamatan', 4 => 'kelurahan'];
 
@@ -31,22 +34,71 @@ class BatasWilayah
             throw new RuntimeException('Kode kota/kabupaten tidak valid: '.$kodeKota);
         }
 
-        return Cache::lock('batas-wilayah:'.$kodeKota, 120)->block(90, function () use ($kodeKota, $paksa) {
+        return Cache::lock('batas-wilayah:'.$kodeKota, 300)->block(240, function () use ($kodeKota, $paksa) {
             if (! $paksa && DB::table('batas_wilayah')->where('tingkat', 'kelurahan')->where('kode', 'like', $kodeKota.'%')->exists()) {
                 return false;
             }
 
-            $baris = array_filter(
-                $this->parse($this->ambil(self::berkasKelurahan($kodeKota))),
-                fn ($b) => $b['tingkat'] === 'kelurahan' && str_starts_with($b['kode'], $kodeKota),
-            );
-            if (! $baris) {
-                throw new RuntimeException("Berkas batas kelurahan kota {$kodeKota} kosong.");
+            $utama = (string) config('batas_wilayah.sumber', self::SUMBER);
+            $cadangan = (string) config('batas_wilayah.cadangan');
+            $cadangan = $cadangan !== '' && $cadangan !== $utama ? $cadangan : null;
+
+            try {
+                $baris = $this->dariSumber($utama, $kodeKota);
+            } catch (RuntimeException $e) {
+                if (! $cadangan) {
+                    throw $e;
+                }
+                report($e);
+                $baris = [];
             }
-            $this->simpan(array_values($baris));
+            $tersimpan = $baris ? $this->simpan($baris, $this->labelSumber($utama)) : 0;
+
+            // Kelurahan master yang tidak ada di sumber utama (mis. desa pemekaran baru) diisi dari cadangan.
+            if ($cadangan) {
+                $ada = array_flip(array_column($baris, 'kode'));
+                $kurang = DB::table('kelurahan')->where('kode', 'like', $kodeKota.'%')->pluck('kode')
+                    ->map(fn ($k) => preg_replace('/\D/', '', (string) $k))
+                    ->filter(fn ($k) => strlen($k) === 10 && ! isset($ada[$k]))->flip();
+                if (! $baris || $kurang->isNotEmpty()) {
+                    try {
+                        $lain = array_filter($this->dariSumber($cadangan, $kodeKota), fn ($b) => ! $baris || isset($kurang[$b['kode']]));
+                        $tersimpan += $lain ? $this->simpan(array_values($lain), $this->labelSumber($cadangan)) : 0;
+                    } catch (RuntimeException $e) {
+                        if (! $tersimpan) {
+                            throw $e;
+                        }
+                    }
+                }
+            }
+
+            if (! $tersimpan) {
+                throw new RuntimeException("Batas kelurahan kota {$kodeKota} tidak ditemukan di sumber resmi.");
+            }
 
             return true;
         });
+    }
+
+    /** Batas kelurahan satu kota dari satu sumber. */
+    public function dariSumber(string $sumber, string $kodeKota): array
+    {
+        if ($sumber === 'big') {
+            return $this->big->kelurahanKota($kodeKota);
+        }
+        if ($sumber !== self::SUMBER) {
+            throw new RuntimeException("Sumber batas wilayah tidak dikenal: {$sumber}");
+        }
+
+        return array_values(array_filter(
+            $this->parse($this->ambil(self::berkasKelurahan($kodeKota))),
+            fn ($b) => $b['tingkat'] === 'kelurahan' && str_starts_with($b['kode'], $kodeKota),
+        ));
+    }
+
+    private function labelSumber(string $sumber): string
+    {
+        return $sumber === 'big' ? BatasBig::SUMBER : $sumber;
     }
 
     /**
