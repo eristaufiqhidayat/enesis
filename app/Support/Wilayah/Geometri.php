@@ -9,17 +9,28 @@ class Geometri
     private const R_BUMI_KM = 6371.0088;
 
     /**
-     * Ubah path dataset cahyadsn/wilayah_boundaries ([lat, lng], kedalaman 3 = satu polygon dengan
-     * cincin-cincinnya, kedalaman 4 = banyak polygon) menjadi koordinat MultiPolygon GeoJSON [lng, lat].
+     * Ubah path dataset cahyadsn/wilayah_boundaries ([lat, lng]; kedalaman 3 = satu polygon dengan
+     * cincin-cincinnya, 4 = banyak polygon) menjadi koordinat MultiPolygon GeoJSON [lng, lat].
      */
     public static function dariPathLatLng(array $path): array
     {
-        $polygons = self::kedalaman($path) >= 4 ? $path : [$path];
+        // Kedalaman 2 = satu cincin tanpa lapisan polygon. Di dataset ini isinya kotak perkiraan 0,02° di sekitar
+        // satu titik untuk kelurahan yang belum punya batas (mis. 8 kelurahan Kab. Banyuasin; Sei Sedapat malah
+        // bertitik di Jawa Tengah), jadi tidak dipakai: kelurahan itu dianggap tanpa batas resmi.
+        $polygons = match (self::kedalaman($path)) {
+            3 => [$path],
+            4 => $path,
+            default => [],
+        };
 
         $hasil = [];
         foreach ($polygons as $polygon) {
             $cincin = [];
             foreach ($polygon as $ring) {
+                // Lewati bagian yang formatnya tidak dikenal (bukan daftar titik [lat, lng]).
+                if (! is_array($ring) || ! is_array($ring[0] ?? null) || ! is_numeric($ring[0][0] ?? null)) {
+                    continue;
+                }
                 $titik = array_map(fn ($p) => [round((float) $p[1], 6), round((float) $p[0], 6)], $ring);
                 $titik = self::tutup($titik);
                 if (count($titik) >= 4) {

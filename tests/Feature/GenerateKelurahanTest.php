@@ -25,7 +25,8 @@ DELETE FROM wilayah_boundaries WHERE kode LIKE '31.71.%' AND LENGTH(kode)=13;
 INSERT INTO wilayah_boundaries(kode,nama,lat,lng,path) VALUES
 	 ('31.71.01.1001','Gambir',-6.175,106.825,'[[[-6.17,106.82],[-6.17,106.83],[-6.18,106.83],[-6.18,106.82],[-6.17,106.82]]]'),
 	 ('31.71.01.1005','Kebon Kelapa',-6.164,106.824,'[[[[-6.16,106.82],[-6.16,106.821],[-6.161,106.821],[-6.16,106.82]]],[[[-6.162,106.822],[-6.162,106.832],[-6.172,106.832],[-6.172,106.822],[-6.162,106.822]]]]'),
-	 ('31.71.01.1006','D''Pulo',-6.163,106.804,'[[[-6.16,106.80],[-6.16,106.81],[-6.17,106.81],[-6.16,106.80]]]');
+	 ('31.71.01.1006','D''Pulo',-6.163,106.804,'[[[-6.16,106.80],[-6.16,106.81],[-6.17,106.81],[-6.16,106.80]]]'),
+	 ('31.71.01.1007','Satu Cincin',-6.15,106.80,'[[-6.15,106.80],[-6.15,106.81],[-6.16,106.81],[-6.15,106.80]]');
 SQL;
 
     protected function setUp(): void
@@ -88,6 +89,8 @@ SQL;
         $this->assertNull($kel['Setia Budi']['geometri']);
         $this->assertNull($kel['Petojo Selatan']['geometri']);
         $this->assertDatabaseHas('batas_wilayah', ['kode' => '3171011006', 'nama' => "D'Pulo"]);
+        // Satu cincin tanpa lapisan polygon = kotak perkiraan dataset (Kab. Banyuasin): dilewati, tidak error.
+        $this->assertDatabaseMissing('batas_wilayah', ['kode' => '3171011007']);
 
         // Pratinjau kedua memakai tabel batas_wilayah, tidak mengunduh lagi.
         $this->getJson('/master_area/kelurahan_polygon/pratinjau?kota_id='.$this->kota)->assertOk();
