@@ -16,14 +16,15 @@ const props = defineProps({
 const tanpaPolygon = props.peta.area.filter((a) => !a.geometri);
 
 let L = null;
-let peta = null;
+// Bukan `peta`: nama itu dipakai prop data peta, dan template akan membaca variabel setup yang null.
+let petaLeaflet = null;
 const lapisArea = new Map();
 
 const wadah = ref(null);
 useLeafletMap(wadah, {
     onSiap(map, Lib) {
         L = Lib;
-        peta = map;
+        petaLeaflet = map;
         gambar();
     },
 });
@@ -50,14 +51,14 @@ function popup(a) {
 }
 
 function gambar() {
-    const semua = L.featureGroup().addTo(peta);
+    const semua = L.featureGroup().addTo(petaLeaflet);
 
     // Area tidak aktif digambar dulu supaya area aktif berada di atasnya.
     [...props.peta.area].sort((a, b) => Number(a.rute) - Number(b.rute)).forEach((a) => {
         if (!a.geometri) return;
         const lapis = L.polygon(multiKeLatLng(a.geometri), gaya(a))
             .bindTooltip(escapeHtml((a.kode ? a.kode + ' · ' : '') + (a.nama ?? '')), { sticky: true })
-            .on('click', (e) => L.popup().setLatLng(e.latlng).setContent(popup(a)).openOn(peta));
+            .on('click', (e) => L.popup().setLatLng(e.latlng).setContent(popup(a)).openOn(petaLeaflet));
         lapis.addTo(semua);
         lapisArea.set(a.areaId, lapis);
     });
@@ -76,7 +77,7 @@ function gambar() {
             .addTo(semua);
     }
 
-    if (semua.getLayers().length) peta.fitBounds(semua.getBounds(), { padding: [20, 20], maxZoom: 16 });
+    if (semua.getLayers().length) petaLeaflet.fitBounds(semua.getBounds(), { padding: [20, 20], maxZoom: 16 });
 }
 
 // Dipanggil dari badge area di kartu outlet: zoom ke area dan buka popupnya.
@@ -84,8 +85,8 @@ function fokus(areaId) {
     const lapis = lapisArea.get(areaId);
     const a = props.peta.area.find((x) => x.areaId === areaId);
     if (!lapis || !a) return;
-    peta.fitBounds(lapis.getBounds(), { maxZoom: 17 });
-    L.popup().setLatLng(lapis.getBounds().getCenter()).setContent(popup(a)).openOn(peta);
+    petaLeaflet.fitBounds(lapis.getBounds(), { maxZoom: 17 });
+    L.popup().setLatLng(lapis.getBounds().getCenter()).setContent(popup(a)).openOn(petaLeaflet);
 }
 
 defineExpose({ fokus });
@@ -97,7 +98,7 @@ defineExpose({ fokus });
         <div class="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-gray-500">
             <span><span class="legenda-peta legenda-peta-aktif"></span>Area aktif (rute HP)</span>
             <span><span class="legenda-peta legenda-peta-nonaktif"></span>Area tidak aktif</span>
-            <span><span class="legenda-peta legenda-peta-outlet"></span>Outlet area rute ({{ angka(peta.outlet.length) }}{{ peta.outletTerpotong ? '+, sebagian' : '' }})</span>
+            <span><span class="legenda-peta legenda-peta-outlet"></span>Outlet area rute ({{ angka(props.peta.outlet.length) }}{{ props.peta.outletTerpotong ? '+, sebagian' : '' }})</span>
             <span>Klik area untuk melihat kode Master Area-nya.</span>
         </div>
         <p v-if="tanpaPolygon.length" class="text-xs text-amber-700 mt-1">
