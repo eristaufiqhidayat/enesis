@@ -162,9 +162,14 @@ class Pengaturan
     /** Poin produk fokus dan batas poin per invoice dari data produk. */
     public static function poinProduk(object $produk): array
     {
+        // Kolom master (menu Produk) diutamakan; kolom kosong = nilai lama di JSON "data" hasil tarikan.
         $data = json_decode((string) ($produk->data ?? ''), true) ?: [];
-        $fokus = HalamanParser::aktif($data['produk_fokus'] ?? null) === true;
-        $maks = HalamanParser::angka(isset($data['maksimal_poin_per_invoice']) ? (string) $data['maksimal_poin_per_invoice'] : null);
+        $fokus = isset($produk->produk_fokus)
+            ? (bool) $produk->produk_fokus
+            : HalamanParser::aktif($data['produk_fokus'] ?? null) === true;
+        $maks = isset($produk->maks_poin_per_invoice)
+            ? (float) $produk->maks_poin_per_invoice
+            : HalamanParser::angka(isset($data['maksimal_poin_per_invoice']) ? (string) $data['maksimal_poin_per_invoice'] : null);
 
         return ['fokus' => $fokus, 'maks_poin' => $maks ? (int) $maks : null];
     }

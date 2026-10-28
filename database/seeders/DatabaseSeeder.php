@@ -18,6 +18,8 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             ReferenceDataSeeder::class,
             MarketamaDataSeeder::class,
+            // Sesudah data Marketama: melengkapi mk_produk yang mungkin sudah dimuat dari CSV tarikan.
+            MasterProdukSeeder::class,
         ]);
     }
 }

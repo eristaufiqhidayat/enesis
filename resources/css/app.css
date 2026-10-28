@@ -431,3 +431,12 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     .progress-bar { @apply h-2 rounded bg-blue-600 transition-all; }
     .alert-warning { @apply bg-amber-50 text-amber-800 border border-amber-200; }
 }
+
+/* Master produk (Produk, Produk Kompetitor): foto produk di daftar dan form. */
+@layer components {
+    .foto-produk { @apply flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md border border-dashed border-gray-300 bg-gray-50 text-center text-xs text-gray-500; }
+    .foto-produk img { @apply h-full w-full object-cover; }
+    .foto-produk-kecil { @apply flex h-9 w-9 items-center justify-center overflow-hidden rounded border border-gray-200 bg-gray-50 text-gray-400; }
+    .foto-produk-kecil img { @apply h-full w-full object-cover; }
+    .kode-mono { @apply font-mono text-xs; }
+}
