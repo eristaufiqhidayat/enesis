@@ -12,7 +12,7 @@ import Modal from '@/Components/ui/molecules/Modal.vue';
 import PageHeader from '@/Components/ui/molecules/PageHeader.vue';
 import DataTable from '@/Components/ui/organisms/DataTable.vue';
 import FormProduk from './partials/FormProduk.vue';
-import FormSkeleton from './partials/FormSkeleton.vue';
+import FormSkeleton from '@/Components/ui/molecules/FormSkeleton.vue';
 import { useAmbilData } from '@/Support/ambilData.js';
 import { angka } from '@/Support/format.js';
 
