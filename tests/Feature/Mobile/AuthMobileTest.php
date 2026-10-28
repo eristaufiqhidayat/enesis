@@ -150,6 +150,8 @@ class AuthMobileTest extends MobileApiTestCase
         $this->assertError($this->api('POST', 'depot-visits/check-in', $this->diDepo(), $kunci), 409, 'idempotency_key_reused');
 
         // Respons gagal tidak disimpan: kunci yang sama boleh dipakai setelah diperbaiki.
+        // (Absen kini sekaligus checkin depo; checkin depo dihapus untuk meniru absen sebelum aturan itu.)
+        DB::table('trx_checkin_depo')->delete();
         $kunci2 = (string) Str::uuid();
         $this->assertError($this->api('POST', 'depot-visits/check-in', ['lat' => -6.3, 'lng' => 106.8], $kunci2), 422, 'outside_depot_radius');
         $this->api('POST', 'depot-visits/check-in', $this->diDepo(), $kunci2)->assertCreated();

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Enesis Mobile API
-  version: 1.2.0
+  version: 1.3.0
   description: |
     API aplikasi mobile Enesis untuk **sales motoris** (Beranda, Absen, Terima barang, Rute, Kunjungan,
     Order, Outlet baru, Tutup hari) dan **koordinator** (Absen, Tim hari ini, Join Visit, Tracking GPS).
@@ -263,6 +263,8 @@ paths:
         Ditolak bila libur / bukan hari kerja (`409 holiday`), di luar jam aktif (`409 outside_active_hours`),
         sudah absen (`409 already_checked_in`), atau di luar radius depo (`422 outside_depot_radius`, fields
         `distance_m`, `radius_m`). Lewat batas masuk diterima dengan `is_late: true`.
+        **Absen = checkin depo** (seperti Marketama): absen masuk sekaligus mencatat checkin depo (`depot_visit_id`;
+        null bila akun tanpa depo). Aplikasi tidak perlu lagi memanggil `/depot-visits/check-in`.
       parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
       requestBody:
         required: true
@@ -289,6 +291,7 @@ paths:
                     type: object
                     properties:
                       attendance_id: { type: integer }
+                      depot_visit_id: { type: [integer, 'null'], description: Checkin depo yang ikut dibuat }
                       date: { type: string, format: date }
                       checked_in_at: { type: string, format: date-time }
                       is_late: { type: boolean }
@@ -301,7 +304,11 @@ paths:
     post:
       tags: [Absensi]
       summary: Absen pulang — Idempotency-Key
-      description: "409: not_checked_in, already_checked_out, visit_open (sales), join_visit_open (koordinator)."
+      description: |
+        Absen pulang = checkout depo: sekaligus menutup checkin depo hari ini.
+        409: not_checked_in, already_checked_out, visit_open (sales), join_visit_open (koordinator),
+        return_pending (sisa barang canvassing belum diserahkan). Bila hari sudah ditutup lewat
+        `/depot-visits/check-out`, dijawab 200 dengan jam pulang yang sama.
       parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
       requestBody:
         content:
@@ -339,8 +346,11 @@ paths:
   /depot-visits/check-in:
     post:
       tags: [Absensi]
-      summary: Checkin depo (syarat terima barang) — Idempotency-Key
-      description: "Wajib sudah absen (409 not_checked_in); dalam radius depo (422 outside_depot_radius); 409 already_checked_in, no_depot."
+      summary: Checkin depo (syarat terima barang) — Idempotency-Key, untuk aplikasi versi lama
+      description: |
+        Sejak v1.3.0 checkin depo tercatat otomatis saat absen masuk; endpoint ini menjawab 200 dengan
+        `depot_visit_id` yang sama. Hanya membuat checkin baru (201) untuk absen sebelum aturan itu.
+        Wajib sudah absen (409 not_checked_in); dalam radius depo (422 outside_depot_radius); 409 no_depot.
       parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
       requestBody:
         required: true
@@ -348,6 +358,8 @@ paths:
           application/json:
             schema: { allOf: [{ $ref: '#/components/schemas/Umum' }, { $ref: '#/components/schemas/Lokasi' }] }
       responses:
+        '200':
+          description: Sudah tercatat saat absen masuk
         '201':
           description: Tercatat
           content:
@@ -362,8 +374,10 @@ paths:
   /depot-visits/check-out:
     post:
       tags: [Absensi]
-      summary: Checkout depo (setelah sisa barang diserahkan) — Idempotency-Key
-      description: "409: not_checked_in, already_checked_out, visit_open, return_pending."
+      summary: Checkout depo (setelah sisa barang diserahkan) — Idempotency-Key, untuk aplikasi versi lama
+      description: |
+        Sama dengan absen pulang: sekaligus mengisi jam pulang absen. Bila hari sudah ditutup lewat
+        `/attendances/check-out`, dijawab 200. 409: not_checked_in, already_checked_out, visit_open, return_pending.
       parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
       requestBody:
         content:
