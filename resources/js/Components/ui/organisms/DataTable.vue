@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref, useSlots, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, onUpdated, reactive, ref, useSlots, watch } from 'vue';
 import Card from '@/Components/ui/molecules/Card.vue';
 import Pagination from '@/Components/ui/molecules/Pagination.vue';
 import Badge from '@/Components/ui/atoms/Badge.vue';
@@ -35,6 +35,12 @@ const props = defineProps({
     filterOperator: { type: Object, default: () => ({}) },
     // Kolom tanggal (bagian dari filterable) yang difilter dengan datepicker dan operator.
     filterTanggal: { type: Array, default: () => [] },
+    // Kolom yang menempel di kiri saat tabel digeser horizontal, urut dari kiri (mis. ['foto', 'nama']).
+    stickyColumns: { type: Array, default: () => [] },
+    // Tabel mengisi sisa tinggi layar: header kolom tetap terlihat saat baris di-scroll (scroll vertikal di dalam tabel).
+    tinggiPenuh: { type: Boolean, default: false },
+    // Data sedang diambil ulang (mis. pencarian): baris diganti placeholder skeleton, bukan teks.
+    memuat: { type: Boolean, default: false },
 });
 
 // Kolom yang punya pilihan operator: kolom angka dan kolom tanggal.
@@ -185,15 +191,73 @@ function hapusFilter(kolom) {
     jadwalkanFilter();
 }
 
+// Kolom sticky disusun berurutan: offset `left` tiap kolom = total lebar kolom sticky di sebelah kirinya.
+// Lebar diukur dari header (sel tbody memakai kolom yang sama, jadi lebarnya ikut).
+const tabel = ref(null);
+
+function kelasSticky(kolom) {
+    return props.stickyColumns.includes(kolom) ? 'kolom-sticky' : null;
+}
+
+function aturSticky() {
+    if (!tabel.value || props.stickyColumns.length === 0) {
+        return;
+    }
+
+    let kiri = 0;
+
+    Object.keys(props.columns).forEach((kolom, index) => {
+        if (!props.stickyColumns.includes(kolom)) {
+            return;
+        }
+
+        const sel = tabel.value.querySelectorAll(`tr > :nth-child(${index + 1})`);
+
+        sel.forEach((el) => {
+            el.style.left = `${kiri}px`;
+        });
+
+        kiri += sel[0]?.offsetWidth ?? 0;
+    });
+}
+
+// Tinggi tabel = sisa tinggi layar dari posisi tabel sampai bawah viewport, dikurangi footer kartu dan
+// padding bawah <main> (1.5rem, lihat app.css) supaya halaman tidak ikut ter-scroll. Dihitung ulang saat
+// data/footer berubah dan saat ukuran jendela berubah. Sama dengan pola sesuaikanTinggi() di SummaryDepoTabel.vue.
+const scrollEl = ref(null);
+const footerEl = ref(null);
+const PADDING_BAWAH_MAIN = 24 + 2;
+
+function sesuaikanTinggi() {
+    if (!props.tinggiPenuh || !scrollEl.value) {
+        return;
+    }
+
+    const atas = Math.round(scrollEl.value.getBoundingClientRect().top);
+    const bawah = (footerEl.value?.closest('.card-footer')?.offsetHeight ?? 0) + PADDING_BAWAH_MAIN;
+
+    scrollEl.value.style.maxHeight = `calc(100vh - ${atas}px - ${bawah}px)`;
+}
+
+function perbaruiTampilan() {
+    aturSticky();
+    sesuaikanTinggi();
+}
+
 onMounted(() => {
     document.addEventListener('click', tutupFlyoutSaatKlikLuar);
     document.addEventListener('keydown', tutupFlyoutSaatEsc);
+    window.addEventListener('resize', sesuaikanTinggi);
+    perbaruiTampilan();
 });
+
+onUpdated(perbaruiTampilan);
 
 onBeforeUnmount(() => {
     clearTimeout(jedaFilter);
     document.removeEventListener('click', tutupFlyoutSaatKlikLuar);
     document.removeEventListener('keydown', tutupFlyoutSaatEsc);
+    window.removeEventListener('resize', sesuaikanTinggi);
 });
 </script>
 
@@ -204,13 +268,14 @@ onBeforeUnmount(() => {
             <slot name="header">{{ title }}</slot>
         </template>
 
-        <table class="data-table">
+        <div ref="scrollEl" class="overflow-auto">
+        <table ref="tabel" class="data-table" :class="{ 'tabel-header-sticky': tinggiPenuh }">
             <thead>
                 <tr>
                     <th
                         v-for="[kolom, label] in Object.entries(columns)"
                         :key="kolom"
-                        :class="classHeaderSort(kolom)"
+                        :class="[classHeaderSort(kolom), kelasSticky(kolom)]"
                         :aria-sort="sortable.includes(kolom) ? ariaSort(kolom) : null"
                     >
                         <div class="th-isi">
@@ -268,9 +333,15 @@ onBeforeUnmount(() => {
                     <th v-if="slots.aksi">Aksi</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody v-if="memuat" class="animate-pulse" aria-busy="true" aria-live="polite">
+                <tr v-for="baris in 8" :key="baris">
+                    <td v-for="column in Object.keys(columns)" :key="column"><div class="h-3 rounded bg-gray-200"></div></td>
+                    <td v-if="slots.aksi"><div class="h-3 w-12 rounded bg-gray-200"></div></td>
+                </tr>
+            </tbody>
+            <tbody v-else>
                 <tr v-for="(row, index) in rows" :key="index">
-                    <td v-for="column in Object.keys(columns)" :key="column">
+                    <td v-for="column in Object.keys(columns)" :key="column" :class="kelasSticky(column)">
                         <slot v-if="slots[`cell-${column}`]" :name="`cell-${column}`" :row="row" />
                         <Badge v-else-if="badgeColumns.includes(column)" :variant="badgeVariant(column, row[column])">{{ row[column] || '-' }}</Badge>
                         <template v-else>{{ row[column] }}</template>
@@ -284,9 +355,10 @@ onBeforeUnmount(() => {
                 </tr>
             </tbody>
         </table>
+        </div>
 
         <template #footer>
-            <div class="flex justify-between items-center">
+            <div ref="footerEl" class="flex justify-between items-center">
                 <small class="text-gray-500">Total {{ formatTotal(total) }} data</small>
                 <Pagination :links="links" :only="paginationOnly" />
             </div>

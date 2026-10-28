@@ -17,6 +17,12 @@
 }
 
 body { background: var(--color-surface); font-size: .875rem; }
+/* Scrollbar global: abu-abu kebiruan yang lembut, senada dengan latar #edf2f9. Sidebar punya warnanya sendiri (lihat .sidebar-scroll). */
+:root { scrollbar-color: #d9e1ec transparent; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d9e1ec; border-radius: 9999px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: #c4cfdf; border: 2px solid transparent; background-clip: padding-box; }
 /* Warna sidebar sama dengan Marketama (tema Falcon "navbar-vibrant"). */
 /* z-index eksplisit: tanpa ini .sidebar diperlakukan sebagai z-index:0 di root stacking context (position:fixed
    membentuk stacking context baru tapi z-index:auto ikut level "auto"), jadi flyout-nya (z-index:50 di dalam
@@ -146,7 +152,8 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
 .settings-layout { display: flex; align-items: flex-start; gap: 1.5rem; }
 .settings-content { flex: 1 1 auto; min-width: 0; }
 /* Ukuran teks dan warna aktif disamakan dengan menu sidebar (.nav-link) dan tombol .btn-primary. */
-.settings-side-nav { flex: 0 0 12rem; position: sticky; top: 1rem; font-size: .75rem; line-height: 1rem; }
+/* top mengikuti tinggi .topbar (fixed, 3.5rem) + jarak yang sama dengan padding atas <main>, supaya tidak tertutup topbar saat di-scroll. */
+.settings-side-nav { flex: 0 0 12rem; position: sticky; top: calc(3.5rem + 1rem); font-size: .75rem; line-height: 1rem; }
 .settings-side-nav ul { display: flex; flex-direction: column; gap: .125rem; list-style: none; margin: 0; padding: 0; }
 .settings-side-nav-link { display: block; padding: .35rem .5rem; border-radius: .25rem; color: var(--color-ink-muted); text-decoration: none; }
 .settings-side-nav-link:hover { background: rgba(0, 0, 0, .04); }
@@ -238,6 +245,7 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
 @layer components {
     .btn { @apply appearance-none inline-flex items-center justify-center gap-1 rounded-md border border-transparent font-medium whitespace-nowrap transition cursor-pointer select-none; }
     .btn-sm { @apply px-2.5 py-1 text-xs; }
+    .btn svg { @apply h-3.5 w-3.5 shrink-0; }
     .btn-primary { @apply bg-blue-600 text-white hover:bg-blue-700; }
     .btn-success { @apply bg-green-600 text-white hover:bg-green-700; }
     .btn-light { @apply bg-gray-100 text-gray-700 hover:bg-gray-200; }
@@ -390,6 +398,13 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     .modal-content-xl .modal-body { @apply overflow-auto; }
     .modal-header-primary { @apply rounded-t-md border-0 bg-gradient-to-r from-blue-600 to-sky-400 text-white; }
     .modal-header-primary .btn-close { @apply text-white/80 hover:text-white; }
+    /* Drawer: panel setinggi layar yang menempel di kanan (Modal.vue placement="kanan"). Header dan footer tetap, body yang bergulir. */
+    .modal-container-kanan { @apply items-stretch justify-end p-0; }
+    .modal-drawer { @apply flex h-full w-full max-w-3xl flex-col bg-white shadow-lg; }
+    .modal-drawer .modal-header, .modal-drawer .modal-footer { @apply shrink-0; }
+    .modal-drawer .modal-body { @apply min-h-0 flex-1 overflow-auto; }
+    @keyframes modal-drawer-masuk { from { transform: translateX(100%); } to { transform: translateX(0); } }
+    @keyframes modal-drawer-keluar { from { transform: translateX(0); } to { transform: translateX(100%); } }
 
     /* Transisi buka/tutup modal (lihat <Transition> di Modal.vue). */
     .modal-backdrop-enter-active, .modal-backdrop-leave-active { @apply transition-opacity duration-200; }
@@ -397,6 +412,9 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     .modal-content-enter-active { @apply transition duration-200 ease-out; }
     .modal-content-leave-active { @apply transition duration-150 ease-in; }
     .modal-content-enter-from, .modal-content-leave-to { @apply opacity-0 scale-95; }
+    /* Masuk & keluar drawer: animasi CSS (lihat Modal.vue, keluar dipicu kelas .modal-drawer-tutup lalu animationend). */
+    .modal-drawer { animation: modal-drawer-masuk 200ms ease-out; }
+    .modal-drawer-tutup { animation: modal-drawer-keluar 150ms ease-in forwards; }
 
     /* Tombol ikon info + panelnya (lihat InfoPopover.vue). Sisi/arah panel dihitung di JS, lebar dibatasi agar tidak terpotong di layar sempit. */
     .info-popover-btn { @apply inline-flex items-center justify-center text-gray-400 hover:text-blue-600 transition-colors cursor-pointer; }

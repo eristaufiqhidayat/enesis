@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, onUnmounted } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 
 // Dialog konfirmasi (padanan molecule Blade modal). Judul & isi lewat props/slot, tombol aksi lewat slot footer.
 const props = defineProps({
@@ -7,13 +7,37 @@ const props = defineProps({
     title: { type: String, required: true },
     // 'md' (bawaan, lihat .modal-content) atau 'xl' (.modal-content-xl - tabel lebar, scroll sendiri, maks 92vh).
     size: { type: String, default: 'md' },
+    // 'tengah' (bawaan) atau 'kanan': drawer setinggi layar yang geser dari kanan (.modal-drawer). Prop size diabaikan.
+    placement: { type: String, default: 'tengah' },
 });
 
 const emit = defineEmits(['close']);
 
+const kanan = computed(() => props.placement === 'kanan');
+
+// Drawer keluar lewat animasi CSS (.modal-drawer-tutup); 'close' baru dikirim setelah animasi selesai.
+const sedangTutup = ref(false);
+
+function mintaTutup() {
+    if (!kanan.value) {
+        emit('close');
+
+        return;
+    }
+
+    sedangTutup.value = true;
+}
+
+function selesaiTutup(e) {
+    if (e.target !== e.currentTarget || !sedangTutup.value) return;
+
+    sedangTutup.value = false;
+    emit('close');
+}
+
 // Esc ditangkap di document: fokus biasanya tetap di tombol pemicu di luar dialog.
 function tutupDenganEsc(e) {
-    if (props.show && e.key === 'Escape') emit('close');
+    if (props.show && e.key === 'Escape') mintaTutup();
 }
 
 onMounted(() => document.addEventListener('keydown', tutupDenganEsc));
@@ -22,12 +46,19 @@ onUnmounted(() => document.removeEventListener('keydown', tutupDenganEsc));
 
 <template>
     <Transition name="modal-backdrop">
-        <div v-if="show" class="modal-container" @click.self="emit('close')">
-            <Transition name="modal-content">
-                <div class="modal-content" :class="{ 'modal-content-xl': size === 'xl' }" role="dialog" aria-modal="true" :aria-label="title">
+        <div v-if="show" class="modal-container" :class="{ 'modal-container-kanan': kanan }" @click.self="mintaTutup">
+            <!-- Drawer tidak memakai transisi Vue (:css="false"): masuk & keluarnya animasi CSS sendiri. -->
+            <Transition :name="kanan ? 'modal-drawer' : 'modal-content'" :css="!kanan">
+                <div
+                    :class="kanan ? ['modal-drawer', { 'modal-drawer-tutup': sedangTutup }] : ['modal-content', { 'modal-content-xl': size === 'xl' }]"
+                    role="dialog"
+                    aria-modal="true"
+                    :aria-label="title"
+                    @animationend="kanan && selesaiTutup($event)"
+                >
                     <div class="modal-header">
                         <h6 class="mb-0 font-semibold">{{ title }}</h6>
-                        <button type="button" class="btn-close" aria-label="Tutup" @click="emit('close')">&times;</button>
+                        <button type="button" class="btn-close" aria-label="Tutup" @click="mintaTutup">&times;</button>
                     </div>
                     <div class="modal-body"><slot /></div>
                     <div v-if="$slots.footer" class="modal-footer"><slot name="footer" /></div>

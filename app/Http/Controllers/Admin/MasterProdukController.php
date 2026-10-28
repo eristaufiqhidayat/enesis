@@ -7,6 +7,7 @@ use App\Support\Akses\Akses;
 use App\Support\Master\MasterProduk;
 use App\Support\Mobile\Pengaturan;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -57,14 +58,16 @@ class MasterProdukController extends Controller
 
     public function create(Request $request): Response
     {
-        return $this->form($request, null);
+        return Inertia::render('MasterProduk/Form', $this->propsForm($request, null));
     }
 
-    public function edit(Request $request, int $id): Response
+    // Edit dibuka sebagai modal di daftar: permintaan JSON mengembalikan data form yang sama dengan props halaman.
+    public function edit(Request $request, int $id): Response|JsonResponse
     {
         $slug = $this->slug($request);
+        $props = $this->propsForm($request, DB::table(MasterProduk::def($slug)['tabel'])->find($id) ?? abort(404));
 
-        return $this->form($request, DB::table(MasterProduk::def($slug)['tabel'])->find($id) ?? abort(404));
+        return $request->expectsJson() ? response()->json($props) : Inertia::render('MasterProduk/Form', $props);
     }
 
     public function store(Request $request): RedirectResponse
@@ -104,7 +107,8 @@ class MasterProdukController extends Controller
             Akses::catat($request->user(), $slug, $id, 'diubah', $baris);
         }
 
-        return redirect("/{$slug}/{$id}/edit")->with('sukses', ucfirst($def['nama']).' '.($data['nama'] ?? '').' disimpan.');
+        // Kembali ke halaman asal: daftar (modal edit) atau halaman edit langsung.
+        return back()->with('sukses', ucfirst($def['nama']).' '.($data['nama'] ?? '').' disimpan.');
     }
 
     public function destroy(Request $request, int $id): RedirectResponse
@@ -158,7 +162,8 @@ class MasterProdukController extends Controller
         }, $slug.'_'.now()->format('Ymd_His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
-    private function form(Request $request, ?object $item): Response
+    /** @return array<string, mixed> props halaman/modal form tambah (item null) atau edit */
+    private function propsForm(Request $request, ?object $item): array
     {
         $slug = $this->slug($request);
         $def = MasterProduk::def($slug);
@@ -189,7 +194,7 @@ class MasterProdukController extends Controller
 
         $bisa = $this->bisa($request, $slug);
 
-        return Inertia::render('MasterProduk/Form', [
+        return [
             'slug' => $slug,
             'judul' => $def['judul'],
             'nama' => $def['nama'],
@@ -207,7 +212,7 @@ class MasterProdukController extends Controller
                 ->orderByDesc('id')->limit(15)->get(['aktor_nama', 'aksi', 'keterangan', 'created_at'])
                 ->map(fn ($r) => ['oleh' => $r->aktor_nama, 'aksi' => $r->aksi, 'keterangan' => $r->keterangan, 'pada' => $this->waktu($r->created_at)]) : [],
             'bisa' => $bisa,
-        ]);
+        ];
     }
 
     /** @return array<string, mixed> data siap simpan (tanpa foto) */

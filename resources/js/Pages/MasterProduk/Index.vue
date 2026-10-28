@@ -7,8 +7,12 @@ import Button from '@/Components/ui/atoms/Button.vue';
 import Icon from '@/Components/ui/atoms/Icon.vue';
 import Input from '@/Components/ui/atoms/Input.vue';
 import Label from '@/Components/ui/atoms/Label.vue';
+import Alert from '@/Components/ui/molecules/Alert.vue';
+import Modal from '@/Components/ui/molecules/Modal.vue';
 import PageHeader from '@/Components/ui/molecules/PageHeader.vue';
 import DataTable from '@/Components/ui/organisms/DataTable.vue';
+import FormProduk from './partials/FormProduk.vue';
+import FormSkeleton from './partials/FormSkeleton.vue';
 import { useAmbilData } from '@/Support/ambilData.js';
 import { angka } from '@/Support/format.js';
 
@@ -38,6 +42,37 @@ function kirimCari() {
     const q = cari.value.trim();
     ambil(base, q ? { q } : {}, { preserveState: true, replace: true });
 }
+
+// Edit produk dibuka di modal. Data form diambil sebagai JSON dari route edit yang sama.
+const editId = ref(null);
+const editData = ref(null);
+const editGagal = ref(false);
+const editSedangSimpan = ref(false);
+
+async function bukaEdit(id) {
+    editId.value = id;
+    editData.value = null;
+    editGagal.value = false;
+
+    try {
+        const respons = await fetch(`${base}/${id}/edit`, { headers: { Accept: 'application/json' } });
+
+        if (!respons.ok) {
+            throw new Error(`HTTP ${respons.status}`);
+        }
+
+        editData.value = await respons.json();
+    } catch {
+        editGagal.value = true;
+    }
+}
+
+function tutupEdit() {
+    editId.value = null;
+    editData.value = null;
+    editGagal.value = false;
+    editSedangSimpan.value = false;
+}
 </script>
 
 <template>
@@ -46,13 +81,16 @@ function kirimCari() {
         <PageHeader :title="judul" :subtitle="`${angka(total)} ${nama} · ${keterangan}`">
             <template #actions>
                 <Button v-if="bisa.ekspor" tag="a" variant="outline-secondary" :href="`${base}/ekspor`"><Icon name="download" class="me-1" /> Ekspor CSV</Button>
-                <Button v-if="bisa.tambah" :tag="Link" :href="`${base}/tambah`"><Icon name="plus" class="me-1" /> Tambah {{ nama }}</Button>
+                <Button v-if="bisa.tambah" :tag="Link" variant="success" :href="`${base}/tambah`"><Icon name="plus" class="me-1" /> Tambah {{ nama }}</Button>
             </template>
         </PageHeader>
 
         <DataTable
             :columns="kolom"
+            :sticky-columns="['foto', 'nama']"
+            tinggi-penuh
             :rows="baris.data"
+            :memuat="memuat"
             :total="baris.total"
             :links="baris.links"
             :empty-text="q ? `Tidak ada ${nama} yang cocok dengan “${q}”.` : `Belum ada ${nama}.`"
@@ -75,7 +113,7 @@ function kirimCari() {
             </template>
             <template #cell-kode="{ row }"><span class="kode-mono">{{ row.kode }}</span></template>
             <template #cell-nama="{ row }">
-                <Link :href="`${base}/${row.id}/edit`" class="font-semibold">{{ row.nama }}</Link>
+                <button type="button" class="cursor-pointer font-semibold text-blue-600 hover:underline" @click="bukaEdit(row.id)">{{ row.nama }}</button>
             </template>
             <template #cell-merk="{ row }">
                 {{ row.merk ?? '-' }}
@@ -91,8 +129,31 @@ function kirimCari() {
             <template #cell-diubah="{ row }"><span class="text-gray-500">{{ row.diubah ?? '-' }}</span></template>
 
             <template #aksi="{ row }">
-                <Button :tag="Link" variant="outline-secondary" :href="`${base}/${row.id}/edit`">{{ bisa.ubah ? 'Edit' : 'Lihat' }}</Button>
+                <Button variant="outline-secondary" @click="bukaEdit(row.id)">{{ bisa.ubah ? 'Edit' : 'Lihat' }}</Button>
             </template>
         </DataTable>
+
+        <Modal :show="editId !== null" :title="editData ? `${bisa.ubah ? 'Edit' : 'Detail'} ${nama}: ${editData.item.nama}` : nama" placement="kanan" @close="tutupEdit">
+            <Alert v-if="editGagal" variant="danger" role="alert">Data {{ nama }} tidak bisa dimuat. Coba lagi.</Alert>
+            <FormSkeleton v-else-if="!editData" />
+            <FormProduk
+                v-else
+                id="form-produk-edit"
+                :slug="slug"
+                :nama="nama"
+                :item="editData.item"
+                :field="editData.field"
+                :nilai="editData.nilai"
+                :bisa="bisa"
+                :aksi-bawah="false"
+                @tersimpan="tutupEdit"
+                @proses="editSedangSimpan = $event"
+            />
+
+            <template v-if="editData" #footer>
+                <Button variant="light" @click="tutupEdit">Batal</Button>
+                <Button v-if="bisa.ubah" type="submit" form="form-produk-edit" :loading="editSedangSimpan">Simpan</Button>
+            </template>
+        </Modal>
     </AppLayout>
 </template>
