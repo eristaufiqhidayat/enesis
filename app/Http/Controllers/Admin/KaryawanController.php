@@ -551,9 +551,13 @@ class KaryawanController extends Controller
             $hasil[] = "{$bawahan} sales di bawahnya";
         }
 
-        foreach (['trx_absensi' => 'absensi', 'trx_kunjungan' => 'kunjungan', 'trx_penjualan' => 'penjualan', 'trx_canvassing' => 'canvassing',
-            'trx_join_visit' => 'join visit', 'trx_outlet_baru' => 'outlet baru'] as $tabel => $label) {
-            if (Schema::hasTable($tabel) && ($n = DB::table($tabel)->where('karyawan_id', $id)->count())) {
+        // [tabel, kolom karyawan, label]; join visit mencatat koordinator dan sales di kolom terpisah.
+        foreach ([['trx_absensi', ['karyawan_id'], 'absensi'], ['trx_kunjungan', ['karyawan_id'], 'kunjungan'],
+            ['trx_penjualan', ['karyawan_id'], 'penjualan'], ['trx_canvassing', ['karyawan_id'], 'canvassing'],
+            ['trx_join_visit', ['koordinator_id', 'sales_id'], 'join visit'], ['trx_outlet_baru', ['karyawan_id'], 'outlet baru']] as [$tabel, $kolom, $label]) {
+            $kolom = array_values(array_filter($kolom, fn ($k) => Schema::hasColumn($tabel, $k)));
+
+            if ($kolom && ($n = DB::table($tabel)->where(fn ($w) => array_map(fn ($k) => $w->orWhere($k, $id), $kolom))->count())) {
                 $hasil[] = number_format($n, 0, ',', '.')." {$label}";
             }
         }
@@ -639,11 +643,12 @@ class KaryawanController extends Controller
     {
         $daftar = collect(self::JABATAN);
 
-        if (Schema::hasTable('kategori_karyawan')) {
-            $daftar = $daftar->merge(DB::table('kategori_karyawan')->pluck('nama'));
+        // Tabel salinan Kategori Karyawan Marketama: kolom "kategori", kategori bawaan berakhiran " Default".
+        if (Schema::hasColumn('kategori_karyawan', 'kategori')) {
+            $daftar = $daftar->merge(DB::table('kategori_karyawan')->pluck('kategori'));
         }
 
-        return $daftar->push($sekarang)->filter()->map(fn ($j) => trim((string) $j))
+        return $daftar->push($sekarang)->filter()->map(fn ($j) => trim(preg_replace('/\s+Default$/i', '', (string) $j)))
             ->reject(fn ($j) => in_array(mb_strtolower($j), ['sales', 'koordinator', 'supervisor nasional'], true))
             ->unique()->sort()->values()->map(fn ($j) => ['value' => $j, 'label' => $j])->all();
     }
