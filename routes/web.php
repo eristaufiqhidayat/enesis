@@ -15,6 +15,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\AutoGridController;
 use App\Http\Controllers\DesignAreaController;
 use App\Http\Controllers\GenerateKelurahanController;
+use App\Http\Controllers\LapLoadingBarangController;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\OutletBaruController;
 use App\Http\Controllers\PetaSebaranSalesController;
@@ -169,6 +170,10 @@ Route::middleware(['auth', 'wajib-ganti-password'])->group(function () {
         Route::post('/setujui', 'setujui')->middleware('hak:outlet_all,ubah')->name('setujui');
         Route::post('/tolak', 'tolak')->middleware('hak:outlet_all,ubah')->name('tolak');
     });
+
+    // Riwayat transaksi satu distributor untuk drawer di Lap. Loading Barang (lihat Menu/Show.vue).
+    Route::get('/lap_loading_barang/riwayat-distributor', [LapLoadingBarangController::class, 'riwayatDistributor'])
+        ->middleware('hak:lap_loading_barang')->name('lap-loading-barang.riwayat-distributor');
 
     Route::prefix('role')->name('role.')->controller(RoleController::class)->group(function () {
         Route::get('/', 'index')->middleware('hak:role')->name('index');
