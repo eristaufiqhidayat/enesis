@@ -105,6 +105,12 @@ class KaryawanTest extends AdminTestCase
             'tanggal_mulai' => '2026-01-05', 'aktif' => '1'])->assertRedirect('/karyawan_koordinator');
         $this->assertSame(5, (int) DB::table('mk_karyawan')->where('id', 137)->value('wilayah_depo_id'));
 
+        // Pilihan kategori dari tabel Kategori Karyawan (kolom "kategori"), tanpa kategori bawaan sales/koordinator.
+        DB::table('kategori_karyawan')->insert([['source_id' => 1, 'kategori' => 'Koordinator Default'], ['source_id' => 3, 'kategori' => 'Supervisor Nasional Default'],
+            ['source_id' => 38, 'kategori' => 'Auditor'], ['source_id' => 40, 'kategori' => 'Merchandiser']]);
+        $this->getJson('/karyawan_lainnya/tambah')->assertOk()
+            ->assertJsonPath('opsi.jabatan', collect(['Auditor', 'Merchandiser', 'Principal', 'Supervisor'])->map(fn ($j) => ['value' => $j, 'label' => $j])->all());
+
         $this->post('/karyawan_lainnya', ['nama' => 'Agung', 'jabatan' => 'Direktur', 'aktif' => '1'])->assertSessionHasErrors('jabatan');
         $this->post('/karyawan_lainnya', ['nama' => 'Agung', 'jabatan' => 'Principal', 'aktif' => '1'])->assertRedirect('/karyawan_lainnya');
         $this->assertDatabaseHas('mk_karyawan', ['nama' => 'Agung', 'kategori' => 'lainnya', 'jabatan' => 'Principal']);
