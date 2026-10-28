@@ -12,6 +12,7 @@ import Modal from '@/Components/ui/molecules/Modal.vue';
 import PageHeader from '@/Components/ui/molecules/PageHeader.vue';
 import TableSkeleton from '@/Components/ui/molecules/TableSkeleton.vue';
 import CariForm from './partials/CariForm.vue';
+import DetailArea from './partials/DetailArea.vue';
 import DetailDepo from './partials/DetailDepo.vue';
 import DetailDepoEdit from './partials/DetailDepoEdit.vue';
 import DetailDepoPeta from './partials/DetailDepoPeta.vue';
@@ -38,6 +39,8 @@ const props = defineProps({
 const search = ref(props.search);
 // Baris depo yang nama-nya diklik di tabel master_depo; null = modal slider tertutup.
 const depoTerpilih = ref(null);
+// Baris area yang kode atau namanya diklik di tabel master_area; null = drawer tertutup.
+const areaTerpilih = ref(null);
 // Modal Edit depo terbuka di atas drawer detail depo.
 const depoDiedit = ref(false);
 // Baris depo yang petanya dibuka di drawer dari tombol Peta.
@@ -307,6 +310,12 @@ function filterTabel(table, { nilai, operator }) {
                         <template v-if="table.name === 'master_depo'" #cell-nama="{ row }">
                             <button type="button" class="tautan-depo" @click="depoTerpilih = row">{{ row.nama }}</button>
                         </template>
+                        <template v-if="table.name === 'master_area'" #cell-kode="{ row }">
+                            <button type="button" class="tautan-depo" @click="areaTerpilih = row">{{ row.kode }}</button>
+                        </template>
+                        <template v-if="table.name === 'master_area'" #cell-nama="{ row }">
+                            <button type="button" class="tautan-depo" @click="areaTerpilih = row">{{ row.nama }}</button>
+                        </template>
                         <template v-if="table.name === 'lap_loading_barang'" #cell-trans_code="{ row }">
                             <button type="button" class="tautan-depo" @click="lapTerpilih = row">{{ row.trans_code }}</button>
                         </template>
@@ -366,6 +375,10 @@ function filterTabel(table, { nilai, operator }) {
         <!-- Drawer riwayat transaksi distributor, dibuka dari Distributor Name di drawer detail (tampil di atasnya). -->
         <Modal :show="distributorTerpilih !== null" :title="`Riwayat ${distributorTerpilih?.nama ?? ''}`" placement="kanan" @close="distributorTerpilih = null">
             <RiwayatDistributor v-if="distributorTerpilih" :key="distributorTerpilih.nama" :distributor="distributorTerpilih" />
+        </Modal>
+        <!-- Drawer detail area, dibuka dari tautan Kode atau Nama di tabel master_area. -->
+        <Modal :show="areaTerpilih !== null" :title="areaTerpilih?.nama ?? ''" placement="kanan" @close="areaTerpilih = null">
+            <DetailArea v-if="areaTerpilih" :area="areaTerpilih" />
         </Modal>
         <!-- Drawer peta lokasi depo, dibuka dari tombol Peta di tabel master_depo. -->
         <Modal :show="depoPeta !== null" :title="depoPeta ? `Peta ${depoPeta.nama}` : ''" placement="kanan" @close="depoPeta = null">

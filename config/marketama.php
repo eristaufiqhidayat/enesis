@@ -1539,6 +1539,10 @@ return [
                 'master_area',
             ],
             'same_as' => null,
+            // Tabel mengisi sisa tinggi layar dan header kolom tetap terlihat saat di-scroll (lihat DataTable.vue).
+            'tinggi_penuh' => true,
+            // Kode dan Nama tetap menempel di kiri saat tabel digeser horizontal (lihat DataTable.vue).
+            'sticky_columns' => ['kode', 'nama'],
         ],
         // Halaman sendiri (KuotaMotorisController): kuota sales motoris per depo isian admin, untuk Motoris Report.
         'kuota_motoris' => [
