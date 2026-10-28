@@ -128,9 +128,6 @@ function tutupEdit() {
             <template #cell-total_produk="{ row }">{{ angka(row.total_produk) }}</template>
             <template #cell-diubah="{ row }"><span class="text-gray-500">{{ row.diubah ?? '-' }}</span></template>
 
-            <template #aksi="{ row }">
-                <Button variant="outline-secondary" @click="bukaEdit(row.id)">{{ bisa.ubah ? 'Edit' : 'Lihat' }}</Button>
-            </template>
         </DataTable>
 
         <Modal :show="editId !== null" :title="editData ? `${bisa.ubah ? 'Edit' : 'Detail'} ${nama}: ${editData.item.nama}` : nama" placement="kanan" @close="tutupEdit">
