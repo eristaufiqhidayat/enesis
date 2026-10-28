@@ -221,9 +221,10 @@ function aturSticky() {
     });
 }
 
-// Tinggi tabel = sisa tinggi layar dari posisi tabel sampai bawah viewport, dikurangi footer kartu dan
-// padding bawah <main> (1.5rem, lihat app.css) supaya halaman tidak ikut ter-scroll. Dihitung ulang saat
-// data/footer berubah dan saat ukuran jendela berubah. Sama dengan pola sesuaikanTinggi() di SummaryDepoTabel.vue.
+// Tinggi tabel = sisa tinggi layar dari posisi tabel sampai bawah viewport, dikurangi footer kartu, margin bawah
+// kartu (mis. mb-3 dari pemanggil), dan padding bawah <main> (1.5rem, lihat app.css) supaya halaman tidak ikut
+// ter-scroll. Dihitung ulang saat data/footer berubah dan saat ukuran jendela berubah. Sama dengan pola
+// sesuaikanTinggi() di SummaryDepoTabel.vue.
 const scrollEl = ref(null);
 const footerEl = ref(null);
 const PADDING_BAWAH_MAIN = 24 + 2;
@@ -233,8 +234,10 @@ function sesuaikanTinggi() {
         return;
     }
 
+    const kartu = footerEl.value?.closest('.card');
     const atas = Math.round(scrollEl.value.getBoundingClientRect().top);
-    const bawah = (footerEl.value?.closest('.card-footer')?.offsetHeight ?? 0) + PADDING_BAWAH_MAIN;
+    const marginKartu = parseFloat(kartu ? getComputedStyle(kartu).marginBottom : 0) || 0;
+    const bawah = (footerEl.value?.closest('.card-footer')?.offsetHeight ?? 0) + marginKartu + PADDING_BAWAH_MAIN;
 
     scrollEl.value.style.maxHeight = `calc(100vh - ${atas}px - ${bawah}px)`;
 }

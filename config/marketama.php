@@ -1016,6 +1016,10 @@ return [
                 'lap_loading_barang',
             ],
             'same_as' => null,
+            // Tabel mengisi sisa tinggi layar dan header kolom tetap terlihat saat di-scroll (lihat DataTable.vue).
+            'tinggi_penuh' => true,
+            // Kolom yang tetap menempel di kiri saat tabel digeser horizontal (lihat DataTable.vue).
+            'sticky_columns' => ['trans_code'],
         ],
         'lap_loading_barang_detail' => [
             'title' => 'Lap. Loading Barang Detail',
@@ -2282,9 +2286,9 @@ return [
             'sumber' => SumberCheckinPagi::class,
             'columns' => [
                 'no' => 'No',
-                'depo' => 'Depo',
-                'koordinator' => 'Koordinator',
                 'nama_sales' => 'Nama Sales',
+                'koordinator' => 'Koordinator',
+                'depo' => 'Depo',
                 'checkin_pertama_hari_ini' => 'Checkin Pertama Hari Ini',
             ],
         ],
@@ -2323,9 +2327,7 @@ return [
         'lap_loading_barang' => [
             'title' => 'Lap. Loading Barang',
             'columns' => [
-                'source_id' => 'ID',
                 'trans_code' => 'Trans Code',
-                'date_trans' => 'Date Trans',
                 'datetime_trans' => 'Datetime Trans',
                 'distributor_name' => 'Distributor Name',
                 'koordinator_name' => 'Koordinator Name',

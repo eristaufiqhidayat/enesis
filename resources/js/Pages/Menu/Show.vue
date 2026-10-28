@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import { Deferred, Head, Link, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import Badge from '@/Components/ui/atoms/Badge.vue';
 import Button from '@/Components/ui/atoms/Button.vue';
 import Input from '@/Components/ui/atoms/Input.vue';
 import Select from '@/Components/ui/atoms/Select.vue';
@@ -14,9 +15,12 @@ import CariForm from './partials/CariForm.vue';
 import DetailDepo from './partials/DetailDepo.vue';
 import DetailDepoEdit from './partials/DetailDepoEdit.vue';
 import DetailDepoPeta from './partials/DetailDepoPeta.vue';
+import DetailLapLoadingBarang from './partials/DetailLapLoadingBarang.vue';
+import RiwayatDistributor from './partials/RiwayatDistributor.vue';
 import Tabs from '@/Components/ui/molecules/Tabs.vue';
 import DataTable from '@/Components/ui/organisms/DataTable.vue';
 import { useAmbilData } from '@/Support/ambilData.js';
+import { tanggalWaktuPendek } from '@/Support/format.js';
 
 const props = defineProps({
     slug: { type: String, required: true },
@@ -38,6 +42,11 @@ const depoTerpilih = ref(null);
 const depoDiedit = ref(false);
 // Baris depo yang petanya dibuka di drawer dari tombol Peta.
 const depoPeta = ref(null);
+// Baris lap_loading_barang yang detailnya dibuka di drawer dari tautan Trans Code; null = tertutup.
+const lapTerpilih = ref(null);
+// Distributor { id, nama } yang riwayat transaksinya dibuka di drawer kedua, di atas drawer detail; null = tertutup.
+const distributorTerpilih = ref(null);
+const kolomLapLoadingBarang = computed(() => visibleTables.value.find((table) => table.name === 'lap_loading_barang')?.columns ?? {});
 
 function tutupDetailDepo() {
     depoTerpilih.value = null;
@@ -298,6 +307,16 @@ function filterTabel(table, { nilai, operator }) {
                         <template v-if="table.name === 'master_depo'" #cell-nama="{ row }">
                             <button type="button" class="tautan-depo" @click="depoTerpilih = row">{{ row.nama }}</button>
                         </template>
+                        <template v-if="table.name === 'lap_loading_barang'" #cell-trans_code="{ row }">
+                            <button type="button" class="tautan-depo" @click="lapTerpilih = row">{{ row.trans_code }}</button>
+                        </template>
+                        <template v-if="table.name === 'lap_loading_barang'" #cell-datetime_trans="{ row }">
+                            <template v-if="tanggalWaktuPendek(row.datetime_trans)">
+                                {{ tanggalWaktuPendek(row.datetime_trans).tanggal }}
+                                <Badge variant="light">{{ tanggalWaktuPendek(row.datetime_trans).jam }}</Badge>
+                            </template>
+                            <template v-else>{{ row.datetime_trans }}</template>
+                        </template>
                         <template v-if="table.aksi === 'verifikasi_outlet_baru'" #aksi="{ row }">
                             <div class="flex gap-1">
                                 <Button v-if="row.foto_toko_id" tag="a" variant="light" :href="`/foto/${row.foto_toko_id}`" target="_blank" rel="noopener">Foto toko</Button>
@@ -339,6 +358,14 @@ function filterTabel(table, { nilai, operator }) {
         <!-- Drawer Edit di atas drawer detail: Modal paling akhir di DOM tampil paling depan. -->
         <Modal :show="depoDiedit" title="Edit Depo" placement="kanan" @close="depoDiedit = false">
             <DetailDepoEdit v-if="depoDiedit && depoTerpilih" :depo="depoTerpilih" @batal="depoDiedit = false" />
+        </Modal>
+        <!-- Drawer detail transaksi, dibuka dari tautan Trans Code di tabel lap_loading_barang. -->
+        <Modal :show="lapTerpilih !== null" :title="lapTerpilih?.trans_code ?? ''" placement="kanan" @close="lapTerpilih = null">
+            <DetailLapLoadingBarang v-if="lapTerpilih" :row="lapTerpilih" :columns="kolomLapLoadingBarang" @buka-distributor="distributorTerpilih = $event" />
+        </Modal>
+        <!-- Drawer riwayat transaksi distributor, dibuka dari Distributor Name di drawer detail (tampil di atasnya). -->
+        <Modal :show="distributorTerpilih !== null" :title="`Riwayat ${distributorTerpilih?.nama ?? ''}`" placement="kanan" @close="distributorTerpilih = null">
+            <RiwayatDistributor v-if="distributorTerpilih" :key="distributorTerpilih.nama" :distributor="distributorTerpilih" />
         </Modal>
         <!-- Drawer peta lokasi depo, dibuka dari tombol Peta di tabel master_depo. -->
         <Modal :show="depoPeta !== null" :title="depoPeta ? `Peta ${depoPeta.nama}` : ''" placement="kanan" @close="depoPeta = null">
