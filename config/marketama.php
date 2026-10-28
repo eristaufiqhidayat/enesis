@@ -52,6 +52,8 @@ return [
         // Master Data & Pengaturan yang dibaca aplikasi HP / laporan motoris
         'kuota_motoris', 'master_depo', 'master_area', 'holiday_dates', 'waktu_aktif_app', 'produk_kompetitor', 'tipe_outlet',
         'rumus_insentif_sales', 'sales_point_conversion_per_warehouse',
+        // Master produk (CRUD tabel mk_*, dibaca aplikasi HP lewat /api/mobile/v1/master)
+        'produk', 'kategori_produk', 'merk_produk', 'satuan_produk',
         // Grup A analisa menu (25 Okt 2026): dialihkan ke trx_* / mk_* (riwayat lama lewat enesis:migrasi-transaksi)
         'barang_canvassing', 'lap_barang_canvassing', 'lap_barang_habis_terjual', 'pengembalian_barang', 'lap_pengembalian_barang',
         'tracking_sales', 'tracking_koordinator',

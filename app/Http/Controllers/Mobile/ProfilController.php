@@ -48,24 +48,43 @@ class ProfilController extends MobileController
         $request->validate(['since' => ['nullable', 'date']]);
         $sejak = $request->filled('since') ? CarbonImmutable::parse($request->input('since'))->utc() : null;
 
-        $produk = DB::table('mk_produk')
-            ->when($sejak, fn ($q) => $q->where('ditarik_pada', '>', $sejak))
-            ->orderBy('id')->get()
+        // Produk + nama merk/kategori/satuan dari tabel master; tanpa master (data lama) dari JSON "data".
+        // Sinkron sebagian (since): produk berubah bila produknya atau master merk/kategori/satuannya berubah.
+        $master = Schema::hasTable('mk_merk_produk');
+        $produk = DB::table('mk_produk as p')
+            ->when($master, fn ($q) => $q->leftJoin('mk_merk_produk as m', 'm.id', '=', 'p.merk_id')
+                ->leftJoin('mk_kategori_produk as k', 'k.id', '=', 'p.kategori_id')
+                ->leftJoin('mk_satuan_produk as s', 's.id', '=', 'p.satuan_id')
+                ->select(['p.*', 'm.nama as merk_nama', 'k.nama as kategori_nama', 's.nama as satuan_nama',
+                    'm.diubah_pada as merk_diubah', 'k.diubah_pada as kategori_diubah', 's.diubah_pada as satuan_diubah']),
+                fn ($q) => $q->select('p.*'))
+            ->when($sejak, fn ($q) => $q->where(function ($w) use ($sejak, $master) {
+                $w->where('p.ditarik_pada', '>', $sejak);
+
+                if ($master) {
+                    foreach (['p.diubah_pada', 'm.diubah_pada', 'k.diubah_pada', 's.diubah_pada'] as $kolom) {
+                        $w->orWhere($kolom, '>', $sejak);
+                    }
+                }
+            }))
+            ->orderBy('p.id')->get()
             ->map(function ($p) {
                 $data = json_decode((string) $p->data, true) ?: [];
                 $poin = Pengaturan::poinProduk($p);
+                $diubah = collect([$p->ditarik_pada, $p->diubah_pada ?? null, $p->merk_diubah ?? null, $p->kategori_diubah ?? null, $p->satuan_diubah ?? null])
+                    ->filter()->max();
 
                 return [
                     'id' => (int) $p->id,
                     'code' => $p->kode,
                     'name' => $p->nama,
-                    'brand' => $data['merk'] ?? null,
-                    'category' => $data['kategori'] ?? null,
-                    'unit' => $data['satuan'] ?? null,
+                    'brand' => ($p->merk_nama ?? null) ?? $data['merk'] ?? null,
+                    'category' => ($p->kategori_nama ?? null) ?? $data['kategori'] ?? null,
+                    'unit' => ($p->satuan_nama ?? null) ?? $data['satuan'] ?? null,
                     'price' => $p->harga_jual !== null ? (int) round((float) $p->harga_jual) : null,
                     'is_focus' => $poin['fokus'],
                     'max_points_per_invoice' => $poin['maks_poin'],
-                    'updated_at' => $this->waktu($p->ditarik_pada),
+                    'updated_at' => $this->waktu($diubah),
                 ];
             });
 
@@ -75,13 +94,25 @@ class ProfilController extends MobileController
 
         return $this->ok([
             'products' => $produk,
-            'competitor_products' => Schema::hasTable('produk_kompetitor')
-                ? DB::table('produk_kompetitor')->orderBy('nama_produk')->get(['id', 'nama_produk', 'satuan'])
-                    ->map(fn ($k) => ['id' => (int) $k->id, 'name' => $k->nama_produk, 'unit' => $k->satuan])
-                : [],
+            'competitor_products' => $this->produkKompetitor(),
             'outlet_types' => $tipe ?: config('mobile.tipe_outlet_default'),
             'no_sale_reasons' => collect(config('mobile.alasan_tidak_beli'))->map(fn ($label, $kode) => ['code' => $kode, 'label' => $label])->values(),
         ], ['server_time' => $this->waktu(now()), 'full' => $sejak === null]);
+    }
+
+    /** Produk kompetitor dari master menu Produk Kompetitor (ID asli Marketama); tabel lama sebagai cadangan. */
+    private function produkKompetitor(): array
+    {
+        if (Schema::hasTable('mk_produk_kompetitor') && DB::table('mk_produk_kompetitor')->exists()) {
+            return DB::table('mk_produk_kompetitor as k')->leftJoin('mk_satuan_produk as s', 's.id', '=', 'k.satuan_id')
+                ->orderBy('k.nama')->get(['k.id', 'k.nama', 's.nama as satuan'])
+                ->map(fn ($k) => ['id' => (int) $k->id, 'name' => $k->nama, 'unit' => $k->satuan])->all();
+        }
+
+        return Schema::hasTable('produk_kompetitor')
+            ? DB::table('produk_kompetitor')->orderBy('nama_produk')->get(['id', 'nama_produk', 'satuan'])
+                ->map(fn ($k) => ['id' => (int) $k->id, 'name' => $k->nama_produk, 'unit' => $k->satuan])->all()
+            : [];
     }
 
     public function config(Request $request): JsonResponse

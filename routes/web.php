@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AkunController;
 use App\Http\Controllers\Admin\BackupDataController;
 use App\Http\Controllers\Admin\KehadiranController;
 use App\Http\Controllers\Admin\KuotaMotorisController;
+use App\Http\Controllers\Admin\MasterProdukController;
 use App\Http\Controllers\Admin\MotorisReportController;
 use App\Http\Controllers\Admin\RekapPencapaianSkuController;
 use App\Http\Controllers\Admin\RoleController;
@@ -19,6 +20,7 @@ use App\Http\Controllers\OutletBaruController;
 use App\Http\Controllers\PetaSebaranSalesController;
 use App\Http\Controllers\TrackingKoordinatorController;
 use App\Http\Controllers\TrackingSalesController;
+use App\Support\Master\MasterProduk;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -178,6 +180,26 @@ Route::middleware(['auth', 'wajib-ganti-password'])->group(function () {
         Route::post('/{id}/pindah', 'pindahkan')->middleware('hak:role,ubah')->whereNumber('id')->name('pindah');
         Route::delete('/{id}', 'destroy')->middleware('hak:role,hapus')->whereNumber('id')->name('destroy');
     });
+
+    // Master produk (Produk, Produk Kompetitor, Kategori, Brand, Satuan): CRUD tabel mk_*; parameter "menu" = slug menu.
+    foreach (array_keys(MasterProduk::DEFINISI) as $slug) {
+        Route::prefix($slug)->name("master-produk.{$slug}.")->controller(MasterProdukController::class)->group(function () use ($slug) {
+            foreach ([
+                // [method, uri, aksi controller, hak, nama]
+                ['get', '/', 'index', 'lihat', 'index'],
+                ['get', '/ekspor', 'ekspor', 'ekspor', 'ekspor'],
+                ['get', '/tambah', 'create', 'tambah', 'create'],
+                ['post', '/', 'store', 'tambah', 'store'],
+                ['get', '/{id}/edit', 'edit', 'lihat', 'edit'],
+                ['get', '/{id}/foto', 'foto', 'lihat', 'foto'],
+                ['put', '/{id}', 'update', 'ubah', 'update'],
+                ['delete', '/{id}', 'destroy', 'hapus', 'destroy'],
+            ] as [$method, $uri, $aksi, $hak, $nama]) {
+                Route::{$method}($uri, $aksi)->middleware("hak:{$slug},{$hak}")
+                    ->defaults('menu', $slug)->whereNumber('id')->name($nama);
+            }
+        });
+    }
 
     // Redirect slug lama menu yang sudah digabung jadi satu halaman bertab; query string ikut diteruskan.
     // Hak dicek di sini juga (sama dengan menu tujuan) supaya pengecekan bolehWeb tidak terlewat di hop redirect ini.

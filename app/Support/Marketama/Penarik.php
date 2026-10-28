@@ -226,6 +226,15 @@ class Penarik
                 'satuan_id' => $this->int($f['unit_id'] ?? null),
                 'harga_beli' => HalamanParser::angka($f['cost'] ?? null),
                 'harga_jual' => HalamanParser::angka($f['price'] ?? null),
+                // Kolom master produk (menu Produk Enesis). Harga pokok tidak ditarik: di form Marketama field-nya
+                // bernama "cost" juga, jadi nilainya tidak bisa dibedakan dari harga beli.
+                'packsize' => ($f['packsize'] ?? '') !== '' ? $f['packsize'] : null,
+                'produk_fokus' => isset($f['product_focus_status']) && $f['product_focus_status'] !== '' ? $f['product_focus_status'] === '1' : null,
+                'drop_size' => HalamanParser::angka($f['drop_size'] ?? null),
+                'maks_poin_per_invoice' => $this->int($f['maksimal_poin_per_invoice'] ?? null),
+                'keterangan' => ($f['info'] ?? '') !== '' ? $f['info'] : null,
+                'harga_spreading' => HalamanParser::angka($f['spreading_price'] ?? null),
+                'het' => HalamanParser::angka($f['max_retail_price'] ?? null),
             ], fn ($v) => $v !== null));
         });
     }
