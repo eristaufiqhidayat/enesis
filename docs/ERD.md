@@ -2,6 +2,8 @@
 
 Dibuat dari skema hasil semua migrasi (`php artisan migrate`, 150 tabel) per 28 Okt 2026. Database **tidak memakai foreign key formal**; relasi di bawah adalah relasi lewat kolom `*_id` (dan beberapa lewat nama atau kode) yang dipakai kode aplikasi.
 
+Versi satu file (semua diagram digabung jadi satu ERD, 55 tabel / 80 relasi): [`erwin.mmd`](erwin.mmd) — bisa dibuka di [mermaid.live](https://mermaid.live) atau editor yang mendukung Mermaid.
+
 **Cara membaca**
 - Garis **tegas** = relasi lewat kolom ID (`depo_id` → `mk_depo.id`).
 - Garis **putus-putus** = relasi lewat nama, kode, atau penyalinan (mis. wilayah dihubungkan lewat nama induk; `area_polygon` disalin ke `mk_area` oleh `AreaMk`).
