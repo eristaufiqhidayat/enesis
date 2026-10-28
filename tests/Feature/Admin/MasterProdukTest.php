@@ -65,6 +65,9 @@ class MasterProdukTest extends AdminTestCase
         $this->get('/satuan_produk/tambah')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('MasterProduk/Form')->where('item', null));
 
+        // Tambah dari modal (JSON) tanpa item.
+        $this->getJson('/satuan_produk/tambah')->assertOk()->assertJsonPath('item', null)->assertJsonStructure(['field', 'nilai', 'bisa']);
+
         $this->post('/satuan_produk', ['nama' => 'Pcs'])->assertSessionHasErrors('nama');
         $this->post('/satuan_produk', ['nama' => 'Renceng'])->assertRedirect('/satuan_produk');
 

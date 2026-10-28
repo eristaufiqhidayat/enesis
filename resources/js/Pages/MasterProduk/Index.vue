@@ -1,6 +1,6 @@
 <script setup>
-import { ref } from 'vue';
-import { Head, Link, usePage } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
+import { Head, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Badge from '@/Components/ui/atoms/Badge.vue';
 import Button from '@/Components/ui/atoms/Button.vue';
@@ -43,35 +43,38 @@ function kirimCari() {
     ambil(base, q ? { q } : {}, { preserveState: true, replace: true });
 }
 
-// Edit produk dibuka di modal. Data form diambil sebagai JSON dari route edit yang sama.
-const editId = ref(null);
-const editData = ref(null);
-const editGagal = ref(false);
-const editSedangSimpan = ref(false);
+// Tambah & edit produk dibuka di modal yang sama. Data form diambil sebagai JSON dari route halaman form-nya
+// (/produk/tambah atau /produk/{id}/edit). formUrl null = modal tertutup.
+const formUrl = ref(null);
+const formData = ref(null);
+const formGagal = ref(false);
+const formSedangSimpan = ref(false);
 
-async function bukaEdit(id) {
-    editId.value = id;
-    editData.value = null;
-    editGagal.value = false;
+const bolehSimpan = computed(() => (formData.value?.item ? props.bisa.ubah : props.bisa.tambah));
+
+async function bukaForm(url) {
+    formUrl.value = url;
+    formData.value = null;
+    formGagal.value = false;
 
     try {
-        const respons = await fetch(`${base}/${id}/edit`, { headers: { Accept: 'application/json' } });
+        const respons = await fetch(url, { headers: { Accept: 'application/json' } });
 
         if (!respons.ok) {
             throw new Error(`HTTP ${respons.status}`);
         }
 
-        editData.value = await respons.json();
+        formData.value = await respons.json();
     } catch {
-        editGagal.value = true;
+        formGagal.value = true;
     }
 }
 
-function tutupEdit() {
-    editId.value = null;
-    editData.value = null;
-    editGagal.value = false;
-    editSedangSimpan.value = false;
+function tutupForm() {
+    formUrl.value = null;
+    formData.value = null;
+    formGagal.value = false;
+    formSedangSimpan.value = false;
 }
 </script>
 
@@ -81,7 +84,7 @@ function tutupEdit() {
         <PageHeader :title="judul" :subtitle="`${angka(total)} ${nama} · ${keterangan}`">
             <template #actions>
                 <Button v-if="bisa.ekspor" tag="a" variant="outline-secondary" :href="`${base}/ekspor`"><Icon name="download" class="me-1" /> Ekspor CSV</Button>
-                <Button v-if="bisa.tambah" :tag="Link" variant="success" :href="`${base}/tambah`"><Icon name="plus" class="me-1" /> Tambah {{ nama }}</Button>
+                <Button v-if="bisa.tambah" variant="success" @click="bukaForm(`${base}/tambah`)"><Icon name="plus" class="me-1" /> Tambah {{ nama }}</Button>
             </template>
         </PageHeader>
 
@@ -113,7 +116,7 @@ function tutupEdit() {
             </template>
             <template #cell-kode="{ row }"><span class="kode-mono">{{ row.kode }}</span></template>
             <template #cell-nama="{ row }">
-                <button type="button" class="cursor-pointer font-semibold text-blue-600 hover:underline" @click="bukaEdit(row.id)">{{ row.nama }}</button>
+                <button type="button" class="cursor-pointer font-semibold text-blue-600 hover:underline" @click="bukaForm(`${base}/${row.id}/edit`)">{{ row.nama }}</button>
             </template>
             <template #cell-merk="{ row }">
                 {{ row.merk ?? '-' }}
@@ -130,27 +133,33 @@ function tutupEdit() {
 
         </DataTable>
 
-        <Modal :show="editId !== null" :title="editData ? `${bisa.ubah ? 'Edit' : 'Detail'} ${nama}: ${editData.item.nama}` : nama" placement="kanan" @close="tutupEdit">
-            <Alert v-if="editGagal" variant="danger" role="alert">Data {{ nama }} tidak bisa dimuat. Coba lagi.</Alert>
-            <FormSkeleton v-else-if="!editData" />
+        <Modal
+            :show="formUrl !== null"
+            :title="formData ? (formData.item ? `${bisa.ubah ? 'Edit' : 'Detail'} ${nama}: ${formData.item.nama}` : `Tambah ${nama}`) : nama"
+            placement="kanan"
+            @close="tutupForm"
+        >
+            <Alert v-if="formGagal" variant="danger" role="alert">Form {{ nama }} tidak bisa dimuat. Coba lagi.</Alert>
+            <FormSkeleton v-else-if="!formData" :harga="slug === 'produk'" :foto="['produk', 'produk_kompetitor'].includes(slug)" :jumlah-field="{ kategori_produk: 2, satuan_produk: 1 }[slug] ?? 4" />
             <FormProduk
                 v-else
-                id="form-produk-edit"
+                id="form-produk"
                 :slug="slug"
                 :nama="nama"
-                :item="editData.item"
-                :field="editData.field"
-                :nilai="editData.nilai"
+                :item="formData.item"
+                :field="formData.field"
+                :nilai="formData.nilai"
                 :bisa="bisa"
                 :aksi-bawah="false"
-                @tersimpan="tutupEdit"
-                @proses="editSedangSimpan = $event"
+                @tersimpan="tutupForm"
+                @proses="formSedangSimpan = $event"
             />
 
-            <template v-if="editData" #footer>
-                <Button variant="light" @click="tutupEdit">Batal</Button>
-                <Button v-if="bisa.ubah" type="submit" form="form-produk-edit" :loading="editSedangSimpan">Simpan</Button>
+            <template v-if="formData" #footer>
+                <Button variant="light" @click="tutupForm">Batal</Button>
+                <Button v-if="bolehSimpan" type="submit" form="form-produk" :loading="formSedangSimpan">Simpan</Button>
             </template>
         </Modal>
+
     </AppLayout>
 </template>

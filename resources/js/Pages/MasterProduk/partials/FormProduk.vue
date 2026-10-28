@@ -57,7 +57,10 @@ function simpan() {
             },
         });
     } else {
-        form.post(base, { forceFormData: true });
+        form.post(base, {
+            forceFormData: true,
+            onSuccess: () => emit('tersimpan'),
+        });
     }
 }
 </script>
