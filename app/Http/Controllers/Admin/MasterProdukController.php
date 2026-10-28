@@ -56,9 +56,12 @@ class MasterProdukController extends Controller
         ]);
     }
 
-    public function create(Request $request): Response
+    // Tambah produk dibuka sebagai modal di daftar: permintaan JSON mengembalikan data form kosong.
+    public function create(Request $request): Response|JsonResponse
     {
-        return Inertia::render('MasterProduk/Form', $this->propsForm($request, null));
+        $props = $this->propsForm($request, null);
+
+        return $request->expectsJson() ? response()->json($props) : Inertia::render('MasterProduk/Form', $props);
     }
 
     // Edit dibuka sebagai modal di daftar: permintaan JSON mengembalikan data form yang sama dengan props halaman.

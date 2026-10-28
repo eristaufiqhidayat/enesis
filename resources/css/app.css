@@ -428,6 +428,7 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     .stat-row { @apply flex items-center justify-between gap-2 border-b border-dashed border-gray-200 py-1; }
 
     .spinner { @apply inline-block h-3 w-3 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600 align-[-2px]; }
+    .spinner-md { @apply h-5 w-5 align-middle; }
 }
 
 /* Halaman Backup Data: kartu pilihan format, grup tabel yang bisa dibuka-tutup, progres. */
