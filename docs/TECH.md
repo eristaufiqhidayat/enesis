@@ -9,7 +9,7 @@ Dokumen ini merangkum teknologi yang dipakai di aplikasi Enesis Canvassing, berd
 | Bahasa server | PHP ^8.3 |
 | Framework backend | Laravel 13 (`laravel/framework` ^13.17) |
 | Rendering halaman | Inertia.js + Vue 3 (root template Blade `resources/views/app.blade.php`) |
-| Database | MySQL (default `.env.example`), PostgreSQL 16 (didukung), SQLite (default `config/database.php` dan dipakai di test) |
+| Database | PostgreSQL 16 (default `.env.example`), MySQL (didukung), SQLite (default `config/database.php` dan dipakai di test) |
 | Styling | Tailwind CSS 4 (lewat Vite) |
 | Ikon | Lucide (SVG self-hosted di `public/vendor/lucide/`) |
 | JavaScript | Vue 3 lewat Inertia.js (navigasi halaman tanpa full reload) |
@@ -32,8 +32,8 @@ Dokumen ini merangkum teknologi yang dipakai di aplikasi Enesis Canvassing, berd
 ## Database
 
 - Default konfigurasi aplikasi: `DB_CONNECTION=sqlite` (`config/database.php`).
-- Contoh `.env` (`.env.example`): `DB_CONNECTION=mysql`, database `enesis`, charset `utf8mb4`.
-- PostgreSQL 16 didukung; butuh ekstensi PHP `pdo_pgsql`.
+- Contoh `.env` (`.env.example`): `DB_CONNECTION=pgsql`, database `enesis`; butuh ekstensi PHP `pdo_pgsql`.
+- MySQL juga didukung (charset `utf8mb4`).
 - Test memakai SQLite in-memory.
 - Data transaksi, karyawan, user, dan outlet tidak ada di repo (data pribadi, sampai 1,7 juta baris per tabel). Folder `storage/app` masuk `.gitignore`.
 
