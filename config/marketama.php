@@ -1268,8 +1268,9 @@ return [
         ],
         'outlet_noo' => [
             'title' => 'New Open Outlet',
+            // Seperti Marketama: outlet yang didaftarkan pada tanggal terpilih (bawaan hari ini). Lap. Outlet NOO = semua tanggal.
             'tables' => [
-                'lap_outlet_noo',
+                ['table' => 'lap_outlet_noo', 'date_filter_column' => 'b.tanggal'],
             ],
             'same_as' => 'lap_outlet_noo',
         ],

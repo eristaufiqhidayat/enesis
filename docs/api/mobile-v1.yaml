@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Enesis Mobile API
-  version: 1.1.0
+  version: 1.2.0
   description: |
     API aplikasi mobile Enesis untuk **sales motoris** (Beranda, Absen, Terima barang, Rute, Kunjungan,
     Order, Outlet baru, Tutup hari) dan **koordinator** (Absen, Tim hari ini, Join Visit, Tracking GPS).
@@ -564,6 +564,11 @@ paths:
                       - $ref: '#/components/schemas/Outlet'
                       - type: object
                         properties:
+                          owner_name: { type: [string, 'null'] }
+                          owner_name_2: { type: [string, 'null'] }
+                          phone: { type: [string, 'null'] }
+                          phone_2: { type: [string, 'null'] }
+                          type: { type: [string, 'null'] }
                           province: { type: [string, 'null'] }
                           city: { type: [string, 'null'] }
                           district: { type: [string, 'null'] }
@@ -580,6 +585,7 @@ paths:
         Foto toko wajib. Bila ada outlet lain dalam radius duplikat → `422 possible_duplicate` dengan
         `fields.candidates`; kirim ulang dengan `confirm_not_duplicate: true` bila memang berbeda.
         Status awal `menunggu` verifikasi di web; sudah bisa dikunjungi lewat `new_outlet_id`.
+        Provinsi s/d kelurahan dihitung server dari titik GPS (batas kelurahan resmi, cadangan wilayah area).
       parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
       requestBody:
         required: true
@@ -593,8 +599,10 @@ paths:
                   required: [name, photo_store_id]
                   properties:
                     name: { type: string, maxLength: 150 }
-                    owner_name: { type: string }
+                    owner_name: { type: string, description: Contact person 1 }
+                    owner_name_2: { type: string, description: Contact person 2 (opsional) }
                     phone: { type: string, example: 0812 3456 7890 }
+                    phone_2: { type: string, description: No HP kedua (opsional) }
                     type: { type: string, description: Salah satu dari /master outlet_types }
                     address: { type: string }
                     area_id: { type: integer, description: Bawaan area rute pertama sales }
