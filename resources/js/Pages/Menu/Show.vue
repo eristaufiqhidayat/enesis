@@ -7,9 +7,13 @@ import Input from '@/Components/ui/atoms/Input.vue';
 import Select from '@/Components/ui/atoms/Select.vue';
 import Alert from '@/Components/ui/molecules/Alert.vue';
 import Card from '@/Components/ui/molecules/Card.vue';
+import Modal from '@/Components/ui/molecules/Modal.vue';
 import PageHeader from '@/Components/ui/molecules/PageHeader.vue';
 import TableSkeleton from '@/Components/ui/molecules/TableSkeleton.vue';
 import CariForm from './partials/CariForm.vue';
+import DetailDepo from './partials/DetailDepo.vue';
+import DetailDepoEdit from './partials/DetailDepoEdit.vue';
+import DetailDepoPeta from './partials/DetailDepoPeta.vue';
 import Tabs from '@/Components/ui/molecules/Tabs.vue';
 import DataTable from '@/Components/ui/organisms/DataTable.vue';
 import { useAmbilData } from '@/Support/ambilData.js';
@@ -28,6 +32,17 @@ const props = defineProps({
 });
 
 const search = ref(props.search);
+// Baris depo yang nama-nya diklik di tabel master_depo; null = modal slider tertutup.
+const depoTerpilih = ref(null);
+// Modal Edit depo terbuka di atas drawer detail depo.
+const depoDiedit = ref(false);
+// Baris depo yang petanya dibuka di drawer dari tombol Peta.
+const depoPeta = ref(null);
+
+function tutupDetailDepo() {
+    depoTerpilih.value = null;
+    depoDiedit.value = false;
+}
 const tanggal = ref(props.tanggal);
 const depo = ref(props.filter.depo ?? '');
 const koordinator = ref(props.filter.koordinator ?? '');
@@ -248,6 +263,8 @@ function filterTabel(table, { nilai, operator }) {
 
                     <DataTable
                         class="mb-3"
+                        :tinggi-penuh="page.tinggi_penuh === true"
+                        :sticky-columns="page.sticky_columns ?? []"
                         :title="visibleTables.length > 1 ? table.title : null"
                         :columns="table.columns"
                         :rows="table.rows.data"
@@ -278,6 +295,9 @@ function filterTabel(table, { nilai, operator }) {
                                 </div>
                             </div>
                         </template>
+                        <template v-if="table.name === 'master_depo'" #cell-nama="{ row }">
+                            <button type="button" class="tautan-depo" @click="depoTerpilih = row">{{ row.nama }}</button>
+                        </template>
                         <template v-if="table.aksi === 'verifikasi_outlet_baru'" #aksi="{ row }">
                             <div class="flex gap-1">
                                 <Button v-if="row.foto_toko_id" tag="a" variant="light" :href="`/foto/${row.foto_toko_id}`" target="_blank" rel="noopener">Foto toko</Button>
@@ -291,6 +311,9 @@ function filterTabel(table, { nilai, operator }) {
                         <template v-else-if="table.aksi === 'foto'" #aksi="{ row }">
                             <Button v-if="row.foto_id" tag="a" variant="light" :href="`/foto/${row.foto_id}`" target="_blank" rel="noopener">Foto</Button>
                         </template>
+                        <template v-else-if="table.name === 'master_depo'" #aksi="{ row }">
+                            <Button variant="light" @click="depoPeta = row">Peta</Button>
+                        </template>
                     </DataTable>
                 </template>
             </template>
@@ -301,5 +324,25 @@ function filterTabel(table, { nilai, operator }) {
         <Card v-else-if="!page.same_as" body-class="card-body text-gray-500">
             Halaman ini di Marketama berupa peta atau grafik, jadi tidak ada tabel data yang ditarik.
         </Card>
+        <Modal :show="depoTerpilih !== null" :title="depoTerpilih?.nama ?? ''" placement="kanan" @close="tutupDetailDepo">
+            <DetailDepo v-if="depoTerpilih" :depo="depoTerpilih" />
+            <template #footer>
+                <div class="flex w-full items-center justify-between gap-2">
+                    <div class="flex flex-col text-xs text-gray-500">
+                        <span>Diupdate oleh: {{ depoTerpilih?.diupdate_oleh || '-' }}</span>
+                        <span>Diupdate pada: {{ depoTerpilih?.diupdate_pada || '-' }}</span>
+                    </div>
+                    <Button variant="primary" @click="depoDiedit = true">Edit</Button>
+                </div>
+            </template>
+        </Modal>
+        <!-- Drawer Edit di atas drawer detail: Modal paling akhir di DOM tampil paling depan. -->
+        <Modal :show="depoDiedit" title="Edit Depo" placement="kanan" @close="depoDiedit = false">
+            <DetailDepoEdit v-if="depoDiedit && depoTerpilih" :depo="depoTerpilih" @batal="depoDiedit = false" />
+        </Modal>
+        <!-- Drawer peta lokasi depo, dibuka dari tombol Peta di tabel master_depo. -->
+        <Modal :show="depoPeta !== null" :title="depoPeta ? `Peta ${depoPeta.nama}` : ''" placement="kanan" @close="depoPeta = null">
+            <DetailDepoPeta v-if="depoPeta" :depo="depoPeta" drawer />
+        </Modal>
     </AppLayout>
 </template>
