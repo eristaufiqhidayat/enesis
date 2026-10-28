@@ -46,8 +46,13 @@ class HariKerjaSalesTest extends MobileApiTestCase
         $this->assertSame(1, DB::table('trx_absensi')->count());
         $this->assertSame($kunci, DB::table('trx_absensi')->value('client_ref'));
 
-        // 2. Checkin depo.
-        $this->api('POST', 'depot-visits/check-in', $this->diDepo())->assertCreated();
+        // 2. Absen = checkin depo (disatukan seperti Marketama): checkin depo sudah tercatat dengan jam & titik absen.
+        $depo = DB::table('trx_checkin_depo')->first();
+        $this->assertSame($absen->json('data.depot_visit_id'), (int) $depo->id);
+        $this->assertSame((string) DB::table('trx_absensi')->value('masuk_at'), (string) $depo->checkin_at);
+        // Aplikasi versi lama tetap memanggil checkin depo: dijawab sukses dengan data yang sama.
+        $this->api('POST', 'depot-visits/check-in', $this->diDepo())->assertOk()->assertJsonPath('data.depot_visit_id', (int) $depo->id);
+        $this->assertSame(1, DB::table('trx_checkin_depo')->count());
 
         // Belum terima barang: belum boleh kunjungan.
         $this->assertError($this->api('POST', 'visits', ['outlet_id' => 11] + $this->diOutlet(11)), 409, 'no_canvassing');
@@ -129,6 +134,7 @@ class HariKerjaSalesTest extends MobileApiTestCase
 
         // 5. Tutup hari: sisa barang harus cocok, selisih wajib beralasan.
         $this->assertError($this->api('POST', 'depot-visits/check-out', []), 409, 'return_pending');
+        $this->assertError($this->api('POST', 'attendances/check-out', $this->diDepo()), 409, 'return_pending');
         $this->assertError($this->api('POST', "canvassing/$nomor/return", ['items' => [['product_id' => 3, 'qty_returned' => 6]]]), 422, 'return_mismatch')
             ->assertJsonStructure(['error' => ['fields' => ['items.0.reason']]]);
         $this->api('POST', "canvassing/$nomor/return", ['items' => [['product_id' => 3, 'qty_returned' => 7]]])
@@ -136,8 +142,11 @@ class HariKerjaSalesTest extends MobileApiTestCase
         $this->assertEquals(3, DB::table('trx_canvassing_item')->where('produk_id', 4)->value('qty_kembali'));
 
         $this->assertError($this->api('POST', 'visits', ['outlet_id' => 12] + $this->diOutlet(12)), 409, 'day_closed');
-        $this->api('POST', 'depot-visits/check-out', [])->assertOk();
+        // Absen pulang = checkout depo; checkout depo dari aplikasi lama sesudahnya dijawab sukses.
         $this->api('POST', 'attendances/check-out', $this->diDepo())->assertOk();
+        $this->assertNotNull(DB::table('trx_checkin_depo')->value('checkout_at'));
+        $this->assertSame((string) DB::table('trx_absensi')->value('pulang_at'), (string) DB::table('trx_checkin_depo')->value('checkout_at'));
+        $this->api('POST', 'depot-visits/check-out', [])->assertOk();
         $this->assertError($this->api('POST', 'attendances/check-out', []), 409, 'already_checked_out');
 
         $this->api('GET', 'me/summary')->assertOk()->assertJsonPath('data.steps.4.status', 'done');
