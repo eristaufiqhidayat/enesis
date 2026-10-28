@@ -97,6 +97,8 @@ Daftar yang bisa diklik (area tersimpan, daftar sales/koordinator) pakai `list-g
 ### Modal
 Modal kecil untuk form simpan: `<div class="modal-container hidden" id="...">` berisi `.modal-content` (header/body/footer), ditampilkan/ditutup lewat `classList.toggle('hidden')` (bukan Bootstrap `bootstrap.Modal`). Tombol/area yang menutup modal pakai `data-modal-dismiss="<id>"`. Header `<h6 class="font-semibold m-0">` + tombol close `.btn-close`, footer `btn-sm btn-light` (batal) + `btn-sm btn-primary` (simpan). Lihat contoh lengkap di [area/design.blade.php](../resources/views/area/design.blade.php).
 
+**Varian Vue (`Modal.vue`)**: `size="xl"` untuk modal lebar di tengah layar, `placement="kanan"` untuk drawer setinggi layar yang geser dari kanan (`.modal-drawer`, body bergulir, header dan footer tetap). Footer aksi memakai `<template #footer>` dengan `btn-light` (Batal) dan `btn-primary` (Simpan).
+
 ### Alert
 `alert alert-info` untuk info non-blocking (contoh: "data menu ini sama dengan ...").
 

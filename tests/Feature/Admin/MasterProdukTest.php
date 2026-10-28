@@ -72,7 +72,7 @@ class MasterProdukTest extends AdminTestCase
         $this->assertSame(7, (int) $baru->id); // melanjutkan ID asli terbesar (6)
         $this->assertSame('admin', $baru->diubah_oleh);
 
-        $this->put('/satuan_produk/7', ['nama' => 'Renteng'])->assertRedirect('/satuan_produk/7/edit');
+        $this->from('/satuan_produk/7/edit')->put('/satuan_produk/7', ['nama' => 'Renteng'])->assertRedirect('/satuan_produk/7/edit');
         $this->assertSame('Renteng', DB::table('mk_satuan_produk')->where('id', 7)->value('nama'));
         $this->assertDatabaseHas('riwayat_admin', ['objek' => 'satuan_produk', 'objek_id' => 7, 'aksi' => 'diubah', 'keterangan' => 'Nama: Renceng → Renteng']);
 
@@ -109,8 +109,10 @@ class MasterProdukTest extends AdminTestCase
         // Produk lama ber-merk Plossa tetap bisa disimpan dengan merk itu.
         $this->get('/produk/17/edit')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('field', fn ($f) => collect(collect($f)->firstWhere('nama', 'merk_id')['opsi'])->contains('value', '4')));
-        $this->put('/produk/17', ['kode' => 'plosasctr', 'nama' => 'Plossa Sachet Citrus', 'merk_id' => '4', 'kategori_id' => '1', 'satuan_id' => '2',
-            'drop_size' => '1', 'harga_beli' => '3000', 'harga_jual' => '3500'])->assertRedirect('/produk/17/edit');
+        // Edit dari modal (JSON) dan simpan kembali ke halaman daftar.
+        $this->getJson('/produk/17/edit')->assertOk()->assertJsonPath('item.id', 17)->assertJsonStructure(['field', 'nilai', 'bisa']);
+        $this->from('/produk')->put('/produk/17', ['kode' => 'plosasctr', 'nama' => 'Plossa Sachet Citrus', 'merk_id' => '4', 'kategori_id' => '1', 'satuan_id' => '2',
+            'drop_size' => '1', 'harga_beli' => '3000', 'harga_jual' => '3500'])->assertRedirect('/produk');
         $this->assertDatabaseHas('riwayat_admin', ['objek' => 'produk', 'objek_id' => 17, 'keterangan' => 'Harga jual: 3000 → 3500']);
     }
 

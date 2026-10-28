@@ -21,7 +21,7 @@ class MasterProduk
             'nama' => 'produk',
             'keterangan' => 'Dipakai aplikasi HP untuk order, stok outlet, dan canvassing.',
             'kolom' => [
-                'foto' => 'Foto', 'kode' => 'Kode', 'nama' => 'Nama Produk', 'merk' => 'Merk', 'kategori' => 'Kategori', 'satuan' => 'Satuan',
+                'foto' => 'Foto', 'nama' => 'Nama Produk', 'kode' => 'Kode', 'merk' => 'Merk', 'kategori' => 'Kategori', 'satuan' => 'Satuan',
                 'harga_beli' => 'Harga Beli', 'harga_jual' => 'Harga Jual', 'produk_fokus' => 'Produk Fokus', 'drop_size' => 'Drop Size',
                 'maks_poin_per_invoice' => 'Maks Poin/Invoice', 'diubah' => 'Diubah',
             ],
