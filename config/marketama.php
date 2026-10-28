@@ -54,6 +54,8 @@ return [
         'rumus_insentif_sales', 'sales_point_conversion_per_warehouse',
         // Master produk (CRUD tabel mk_*, dibaca aplikasi HP lewat /api/mobile/v1/master)
         'produk', 'kategori_produk', 'merk_produk', 'satuan_produk',
+        // Karyawan (CRUD mk_karyawan, dipakai aplikasi HP, akun login, dan laporan motoris)
+        'karyawan_sales', 'karyawan_koordinator', 'karyawan_supervisor', 'karyawan_lainnya',
         // Grup A analisa menu (25 Okt 2026): dialihkan ke trx_* / mk_* (riwayat lama lewat enesis:migrasi-transaksi)
         'barang_canvassing', 'lap_barang_canvassing', 'lap_barang_habis_terjual', 'pengembalian_barang', 'lap_pengembalian_barang',
         'tracking_sales', 'tracking_koordinator',

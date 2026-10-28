@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import Card from '@/Components/ui/molecules/Card.vue';
 
-// Placeholder abu-abu saat form master (modal tambah/edit) masih diambil. Tata letaknya mengikuti FormProduk:
+// Placeholder abu-abu saat form master (modal tambah/edit: master produk, karyawan) masih diambil:
 // kartu data di kiri; kartu harga dan/atau foto di kanan hanya bila menu punya field itu.
 const props = defineProps({
     harga: { type: Boolean, default: false },

@@ -261,7 +261,7 @@ class Penarik
                     continue;
                 }
 
-                DB::table('mk_karyawan')->where('id', $karyawanId)->update([
+                DB::table('mk_karyawan')->where('id', $karyawanId)->whereNull('diubah_pada')->update([
                     'depo_id' => $this->idNama('mk_depo', $data['depo'] ?? null),
                     'no_hp' => $data['no_hp'] ?? null,
                     'aktif' => HalamanParser::aktif($data['status'] ?? null),
@@ -319,7 +319,7 @@ class Penarik
         }
 
         // Form edit sales: ID depo, ID koordinator, daftar area. Gaji/tunjangan tidak disimpan.
-        $ids = DB::table('mk_karyawan')->where('kategori', 'sales')->where('detail_lengkap', false)->orderBy('id')->pluck('id')->all();
+        $ids = DB::table('mk_karyawan')->where('kategori', 'sales')->where('detail_lengkap', false)->whereNull('diubah_pada')->orderBy('id')->pluck('id')->all();
         $this->detail('karyawan_sales', $ids, function (int $id, array $f, string $html) {
             $areas = HalamanParser::areaKaryawan($html);
             DB::transaction(function () use ($id, $f, $areas) {
@@ -619,6 +619,12 @@ class Penarik
     /** Upsert per potongan (aman untuk batas placeholder MySQL/PostgreSQL). */
     private function simpan(string $table, array $rows, array $unik, array $update): void
     {
+        // Karyawan yang sudah diubah lewat menu Karyawan di Enesis tidak ditimpa data aplikasi lama.
+        if ($table === 'mk_karyawan' && $rows) {
+            $dikelola = DB::table('mk_karyawan')->whereNotNull('diubah_pada')->pluck('id')->flip();
+            $rows = array_values(array_filter($rows, fn ($r) => ! isset($dikelola[$r['id'] ?? null])));
+        }
+
         if (! $rows) {
             return;
         }

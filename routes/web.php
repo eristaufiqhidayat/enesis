@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AkunController;
 use App\Http\Controllers\Admin\BackupDataController;
+use App\Http\Controllers\Admin\KaryawanController;
 use App\Http\Controllers\Admin\KehadiranController;
 use App\Http\Controllers\Admin\KuotaMotorisController;
 use App\Http\Controllers\Admin\MasterProdukController;
@@ -185,6 +186,33 @@ Route::middleware(['auth', 'wajib-ganti-password'])->group(function () {
         Route::post('/{id}/pindah', 'pindahkan')->middleware('hak:role,ubah')->whereNumber('id')->name('pindah');
         Route::delete('/{id}', 'destroy')->middleware('hak:role,hapus')->whereNumber('id')->name('destroy');
     });
+
+    // Karyawan (Sales, Koordinator, Supervisor, Lainnya): CRUD mk_karyawan; parameter "menu" = slug menu.
+    foreach (array_keys(KaryawanController::MENU) as $slug) {
+        Route::prefix($slug)->name("karyawan.{$slug}.")->controller(KaryawanController::class)->group(function () use ($slug) {
+            $rute = [
+                // [method, uri, aksi controller, hak, nama]
+                ['get', '/', 'index', 'lihat', 'index'],
+                ['get', '/ekspor', 'ekspor', 'ekspor', 'ekspor'],
+                ['get', '/opsi', 'opsi', 'lihat', 'opsi'],
+                ['get', '/tambah', 'create', 'tambah', 'create'],
+                ['post', '/', 'store', 'tambah', 'store'],
+                ['get', '/{id}/edit', 'edit', 'lihat', 'edit'],
+                ['get', '/{id}/foto', 'foto', 'lihat', 'foto'],
+                ['put', '/{id}', 'update', 'ubah', 'update'],
+                ['delete', '/{id}', 'destroy', 'hapus', 'destroy'],
+            ];
+
+            if ($slug === 'karyawan_sales') {
+                $rute[] = ['post', '/{id}/pindah-area', 'pindahArea', 'ubah', 'pindah-area'];
+            }
+
+            foreach ($rute as [$method, $uri, $aksi, $hak, $nama]) {
+                Route::{$method}($uri, $aksi)->middleware("hak:{$slug},{$hak}")
+                    ->defaults('menu', $slug)->whereNumber('id')->name($nama);
+            }
+        });
+    }
 
     // Master produk (Produk, Produk Kompetitor, Kategori, Brand, Satuan): CRUD tabel mk_*; parameter "menu" = slug menu.
     foreach (array_keys(MasterProduk::DEFINISI) as $slug) {
