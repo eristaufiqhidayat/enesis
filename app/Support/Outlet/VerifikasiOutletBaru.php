@@ -26,6 +26,10 @@ class VerifikasiOutletBaru
             $baru = $this->ambilMenunggu($id);
             $outletId = max(self::ID_AWAL, (int) DB::table('mk_outlet')->where('id', '>=', self::ID_AWAL)->max('id') + 1);
             $area = $baru->area_id ? DB::table('mk_area')->where('id', $baru->area_id)->value('nama') : null;
+            // Wilayah dihitung saat daftar; pendaftaran lama (sebelum kolom wilayah ada) dihitung sekarang.
+            $wilayah = ($baru->provinsi ?? null) || ($baru->kode_kelurahan ?? null)
+                ? array_intersect_key((array) $baru, array_flip(['provinsi', 'kota_kabupaten', 'kecamatan', 'kelurahan', 'kode_kelurahan']))
+                : app(WilayahOutlet::class)->cari((float) $baru->lat, (float) $baru->lng, $baru->area_id ? (int) $baru->area_id : null);
 
             DB::table('mk_outlet')->insert([
                 'id' => $outletId,
@@ -37,11 +41,19 @@ class VerifikasiOutletBaru
                 'latitude' => $baru->lat,
                 'longitude' => $baru->lng,
                 'verifikasi' => 'Terverifikasi',
+                'status_fiktif' => 'Tidak',
                 'dibuat_oleh' => DB::table('mk_karyawan')->where('id', $baru->karyawan_id)->value('nama'),
                 'dibuat_pada' => (string) ($baru->recorded_at ?? $baru->received_at),
-            ]);
+                'kontak1' => $baru->pemilik,
+                'kontak2' => $baru->pemilik2 ?? null,
+                'no_hp1' => $baru->no_hp,
+                'no_hp2' => $baru->no_hp2 ?? null,
+                'tipe' => $baru->tipe,
+                'foto_id' => $baru->foto_toko_id,
+                'karyawan_id' => $baru->karyawan_id,
+            ] + $wilayah);
 
-            DB::table('trx_outlet_baru')->where('id', $id)->update([
+            DB::table('trx_outlet_baru')->where('id', $id)->update($wilayah + [
                 'status' => 'disetujui',
                 'outlet_id' => $outletId,
                 'diverifikasi_oleh' => $admin->id,

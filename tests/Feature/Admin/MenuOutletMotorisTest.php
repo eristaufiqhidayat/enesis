@@ -69,7 +69,8 @@ class MenuOutletMotorisTest extends AdminTestCase
                 'lat' => -7.4, 'lng' => 112.7, 'status' => 'menunggu', 'outlet_id' => null, 'recorded_at' => '2026-10-07 02:00:00'],
         ]);
 
-        $this->get('/outlet_noo')->assertOk()->assertInertia(fn (Assert $p) => $p
+        // Lap. Outlet NOO = semua tanggal; New Open Outlet = tanggal daftar terpilih (lihat OutletBaruLengkapTest).
+        $this->get('/lap_outlet_noo')->assertOk()->assertInertia(fn (Assert $p) => $p
             ->loadDeferredProps(fn (Assert $p) => $p
                 ->where('tables.0.rows.total', 2)
                 ->where('tables.0.rows.data.0.outlet_name', 'Warung Menunggu')

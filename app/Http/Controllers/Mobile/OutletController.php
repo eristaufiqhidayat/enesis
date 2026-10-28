@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Mobile;
 
 use App\Support\Mobile\ApiError;
 use App\Support\Mobile\Lokasi;
+use App\Support\Mobile\Pengaturan;
+use App\Support\Outlet\WilayahOutlet;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -78,6 +81,11 @@ class OutletController extends MobileController
             ->where('k.outlet_id', $id)->max('k.id');
 
         return $this->ok($this->ringkas($outlet) + [
+            'owner_name' => $outlet->kontak1 ?? null,
+            'owner_name_2' => $outlet->kontak2 ?? null,
+            'phone' => $outlet->no_hp1 ?? null,
+            'phone_2' => $outlet->no_hp2 ?? null,
+            'type' => $outlet->tipe ?? null,
             'province' => $outlet->provinsi,
             'city' => $outlet->kota_kabupaten,
             'district' => $outlet->kecamatan,
@@ -107,7 +115,9 @@ class OutletController extends MobileController
         $request->validate($this->aturanUmum() + $this->aturanLokasi() + [
             'name' => ['required', 'string', 'max:150'],
             'owner_name' => ['nullable', 'string', 'max:150'],
+            'owner_name_2' => ['nullable', 'string', 'max:150'],
             'phone' => ['nullable', 'string', 'max:30', 'regex:/^[0-9+\- ]{6,30}$/'],
+            'phone_2' => ['nullable', 'string', 'max:30', 'regex:/^[0-9+\- ]{6,30}$/'],
             'type' => ['nullable', 'string', 'max:30'],
             'address' => ['nullable', 'string', 'max:500'],
             'area_id' => ['nullable', 'integer'],
@@ -127,13 +137,19 @@ class OutletController extends MobileController
             ]);
         }
 
+        $areaId = $request->input('area_id') ?? ($this->hari($request)->areaRute()[0] ?? null);
+        $umum = $this->kolomUmum($request);
+        $waktu = $umum['recorded_at'] ?? null;
+
         $id = DB::table('trx_outlet_baru')->insertGetId([
             'karyawan_id' => $karyawan->id,
             'depo_id' => $karyawan->depo_id,
-            'area_id' => $request->input('area_id') ?? ($this->hari($request)->areaRute()[0] ?? null),
+            'area_id' => $areaId,
             'nama' => trim($request->name),
             'pemilik' => $request->owner_name,
+            'pemilik2' => $request->owner_name_2,
             'no_hp' => $request->phone,
+            'no_hp2' => $request->phone_2,
             'tipe' => $request->type,
             'alamat' => $request->address,
             'lat' => $lat,
@@ -141,7 +157,9 @@ class OutletController extends MobileController
             'foto_toko_id' => $request->photo_store_id,
             'foto_rak_id' => $request->photo_shelf_id,
             'status' => 'menunggu',
-        ] + $this->kolomUmum($request));
+            // Tanggal daftar menurut jam lokal (menu New Open Outlet).
+            'tanggal' => ($waktu ? CarbonImmutable::instance($waktu) : $this->sekarang())->setTimezone(Pengaturan::zona())->toDateString(),
+        ] + app(WilayahOutlet::class)->cari($lat, $lng, $areaId ? (int) $areaId : null) + $umum);
 
         return $this->dibuat(['new_outlet_id' => $id, 'status' => 'menunggu']);
     }
