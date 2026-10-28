@@ -43,14 +43,15 @@ function buatPeta(L, elemen, pusat, zoom) {
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 20, maxNativeZoom: 19 }),
     ]);
     const roadsLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', { maxZoom: 20, maxNativeZoom: 19 });
-    satelliteLayer.addTo(map);
+    // Peta selalu dibuka dalam mode 2D Map; pengguna tetap bisa pindah ke Satelit lewat tombol di kanan atas.
+    osmLayer.addTo(map);
 
     const LayerToggle = L.Control.extend({
         options: { position: 'topright' },
         onAdd() {
             const el = L.DomUtil.create('div', 'flex flex-col items-end gap-1');
-            el.innerHTML = '<div class="flex gap-1 shadow-sm rounded-md overflow-hidden"><button type="button" class="btn btn-sm btn-primary" data-layer="sat">' + ikonSatelit + 'Satelit</button>'
-                + '<button type="button" class="btn btn-sm btn-light" data-layer="2d">' + ikonPeta + '2D Map</button></div>'
+            el.innerHTML = '<div class="flex gap-1 shadow-sm rounded-md overflow-hidden"><button type="button" class="btn btn-sm btn-light" data-layer="sat">' + ikonSatelit + 'Satelit</button>'
+                + '<button type="button" class="btn btn-sm btn-primary" data-layer="2d">' + ikonPeta + '2D Map</button></div>'
                 + '<button type="button" class="btn btn-sm btn-light shadow-sm" data-layer="roads">' + ikonRute + 'Garis Jalan</button>';
             L.DomEvent.disableClickPropagation(el);
             el.addEventListener('click', (e) => {

@@ -336,7 +336,9 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     .data-table .filter-angka .col-filter { @apply min-w-[4rem] flex-1; }
     .data-table .col-filter-op { @apply w-auto font-normal; }
     /* Tabel ringkasan (Summary All Depo): kolom pertama menempel di kiri saat digeser, header kelompok di tengah, baris total tebal. */
-    .data-table .kolom-sticky { @apply sticky left-0 z-10 bg-white border-r border-gray-200; }
+    .data-table .kolom-sticky { @apply sticky left-0 z-10 bg-white; }
+    /* Garis pemisah kanan kolom sticky: hanya untuk tabel yang memang butuh pembatas (Summary Depo). */
+    .data-table .kolom-sticky-pembatas { @apply border-r border-gray-200; }
     .data-table thead .kolom-sticky { @apply bg-gray-50; }
     /* Sel sticky harus berwarna solid (tidak transparan), jadi warna zebra baris disalin ke sini. */
     .data-table tbody tr:nth-child(odd) .kolom-sticky { @apply bg-gray-50; }
@@ -365,6 +367,28 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     .page-link { @apply inline-flex min-w-[1.75rem] items-center justify-center rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50; }
     .page-item.active .page-link { @apply bg-blue-600 text-white border-blue-600 hover:bg-blue-600; }
     .page-item.disabled .page-link { @apply opacity-50 cursor-not-allowed hover:bg-transparent; }
+
+    /* Nama depo di tabel master_depo: tombol yang membuka modal slider infografis (lihat DetailDepoSlider.vue). */
+    .tautan-depo { @apply cursor-pointer text-left font-semibold text-blue-600 hover:underline rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500; }
+
+    /* Infografis detail depo (drawer): kartu angka, batang progress kuota, dan baris detail per bagian. */
+    .detail-depo-judul { @apply flex items-center gap-2 text-sm font-semibold text-gray-700; }
+    .detail-depo-ikon { @apply inline-block w-4 h-4 text-blue-600; }
+    .detail-depo-peta-wadah { @apply relative w-full; }
+    .detail-depo-peta { @apply h-64 w-full overflow-hidden rounded-lg border border-gray-200; }
+    /* Layar penuh: wadah menutupi seluruh layar di atas drawer, peta mengisi tinggi penuh tanpa sudut membulat. */
+    /* Drawer peta: tinggi mengikuti layar dikurangi header drawer dan padding body (perkiraan tetap). */
+    .detail-depo-peta.detail-depo-peta-drawer { @apply h-[calc(100vh-8rem)]; }
+    .detail-depo-peta-wadah.detail-depo-peta-penuh { @apply fixed inset-0 z-[60] bg-white; }
+    .detail-depo-peta-penuh .detail-depo-peta { @apply h-full rounded-none border-0; }
+    /* Pojok kiri bawah: kontrol layer Leaflet ada di kanan atas, zoom di kiri atas, atribusi di kanan bawah. */
+    .detail-depo-peta-tombol { @apply absolute left-2 bottom-2 z-[1000] px-2 py-1 shadow-sm; }
+    .detail-depo-stat { @apply rounded-lg border border-blue-100 bg-blue-50 p-3; }
+    .detail-depo-stat-label { @apply text-xs text-gray-500; }
+    .detail-depo-stat-nilai { @apply text-2xl font-semibold text-gray-800; }
+    .detail-depo-batang { @apply mt-1 h-2.5 w-full overflow-hidden rounded-full bg-gray-200; }
+    .detail-depo-batang-isi { @apply h-full rounded-full bg-blue-600 transition-[width] duration-500; }
+    .detail-depo-baris { @apply grid grid-cols-[10rem_1fr] gap-3 border-b border-gray-100 py-2 text-sm; }
 
     .tab-pill { @apply px-2.5 py-1 text-xs rounded-md cursor-pointer transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200; }
     .tab-pill.active { @apply bg-blue-600 text-white font-semibold hover:bg-blue-600; }

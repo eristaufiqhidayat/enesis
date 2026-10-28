@@ -1548,6 +1548,10 @@ return [
                 'master_depo',
             ],
             'same_as' => null,
+            // Tabel mengisi sisa tinggi layar dan header kolom tetap terlihat saat di-scroll (lihat DataTable.vue).
+            'tinggi_penuh' => true,
+            // Kolom yang tetap menempel di kiri saat tabel digeser horizontal (lihat DataTable.vue).
+            'sticky_columns' => ['nama'],
         ],
         'wilayah_depo' => [
             'title' => 'Wilayah Depo',
@@ -2142,8 +2146,8 @@ return [
         'master_depo' => [
             'title' => 'Master Warehouse / Depo',
             'columns' => [
-                'kode' => 'Kode',
                 'nama' => 'Nama',
+                'kode' => 'Kode',
                 'projek' => 'Projek',
                 'kota_besar' => 'Kota Besar',
                 'minimum_sku' => 'Minimum SKU',
@@ -2153,8 +2157,6 @@ return [
                 'kecamatan' => 'Kecamatan',
                 'kelurahan_desa' => 'Kelurahan/Desa',
                 'alamat' => 'Alamat',
-                'longitude' => 'Longitude',
-                'latitude' => 'Latitude',
                 'total_koordinator' => 'Total Koordinator',
                 'jumlah_sales_aktif' => 'Jumlah Sales Aktif',
                 'jumlah_wilayah_depo' => 'Jumlah Wilayah Depo',

@@ -97,7 +97,7 @@ onUnmounted(() => window.removeEventListener('resize', sesuaikanTinggi));
         <table class="data-table tabel-header-sticky">
             <thead>
                 <tr ref="barisGrup">
-                    <th rowspan="2" class="kolom-sticky">Depo</th>
+                    <th rowspan="2" class="kolom-sticky kolom-sticky-pembatas">Depo</th>
                     <th v-for="g in KELOMPOK_KOLOM" :key="g.judul" :colspan="g.kolom.length" class="th-grup" :title="HINT_GESER">{{ g.judul }}</th>
                 </tr>
                 <tr>
@@ -119,7 +119,7 @@ onUnmounted(() => window.removeEventListener('resize', sesuaikanTinggi));
             </thead>
             <tbody>
                 <tr v-for="k in baris" :key="k.id">
-                    <td class="kolom-sticky">
+                    <td class="kolom-sticky kolom-sticky-pembatas">
                         <button type="button" class="font-semibold text-blue-600 hover:underline" @click="bukaDetail(k)">{{ k.kode ?? k.nama }}</button>
                         <span class="block text-[0.7rem] uppercase text-gray-500">{{ [k.nama, k.distributor].filter(Boolean).join(' · ') }}</span>
                     </td>
@@ -134,7 +134,7 @@ onUnmounted(() => window.removeEventListener('resize', sesuaikanTinggi));
             </tbody>
             <tfoot v-if="kartu.length">
                 <tr class="baris-total">
-                    <th class="kolom-sticky">Total ({{ kartu.length }} depo)</th>
+                    <th class="kolom-sticky kolom-sticky-pembatas">Total ({{ kartu.length }} depo)</th>
                     <td v-for="kolom in semuaKolom" :key="kolom.kunci" class="text-right" :class="classAngka(kolom, total[kolom.kunci])" :title="HINT_GESER">{{ formatSel(total[kolom.kunci], kolom.tipe) }}</td>
                 </tr>
             </tfoot>
