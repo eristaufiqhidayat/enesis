@@ -60,8 +60,11 @@ class WilayahKerjaSales
         ];
     }
 
-    /** Baris area_polygon per ID mk_area (ID Marketama lewat source_id, ID Enesis lewat offset AreaMk::ID_AWAL). */
-    private static function polygon(array $idMk): array
+    /**
+     * Baris area_polygon per ID mk_area (ID Marketama lewat source_id, ID Enesis lewat offset AreaMk::ID_AWAL).
+     * Public: dipakai juga oleh App\Support\Mobile\WilayahKerja (area kerja untuk validasi absen).
+     */
+    public static function polygon(array $idMk): array
     {
         if (! $idMk) {
             return [];
@@ -76,7 +79,8 @@ class WilayahKerjaSales
         return $baris->keyBy(fn ($r) => AreaMk::id($r))->all();
     }
 
-    private static function multi(object $p): ?array
+    /** Koordinat MultiPolygon [lng, lat] dari baris area_polygon (geometri utuh, atau polygon = satu cincin). */
+    public static function multi(object $p): ?array
     {
         if ($p->geometri) {
             return json_decode($p->geometri, true)['coordinates'] ?? null;

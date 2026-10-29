@@ -5,15 +5,19 @@ namespace App\Http\Controllers\Mobile;
 use App\Support\Mobile\ApiError;
 use App\Support\Mobile\HariKerja;
 use App\Support\Mobile\Pengaturan;
+use App\Support\Mobile\WilayahKerja;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-// Absen masuk/pulang dan checkin/checkout depo — DISATUKAN seperti Marketama (absensi = checkin depo, keputusan
-// 28 Okt 2026): absen masuk sekaligus membuat checkin depo (trx_checkin_depo), absen pulang sekaligus checkout depo,
-// dan sebaliknya. Endpoint depot-visits tetap ada untuk aplikasi HP versi lama: bila checkin/checkout depo sudah
-// tercatat lewat absen, endpoint itu menjawab 200 dengan data yang sama (bukan 409).
+// Absen masuk/pulang dan checkin/checkout depo — TERPISAH (keputusan 28 Okt 2026, lihat
+// claude/menu-absensi-master-area.md): absen dicek terhadap area kerja (Master Area; sales = areanya
+// sendiri, koordinator = gabungan area aktif tim), checkin/checkout depo dicek terhadap radius depo
+// untuk ambil & kembalikan barang canvassing. Dua aksi ini TIDAK saling membuat atau menutup satu sama
+// lain — mobile memanggil keduanya terpisah (AbsenScreen vs CheckinDepoScreen, TutupHariScreen memanggil
+// depot-visits/check-out lalu attendances/check-out). (PR #115 "satukan absen+checkin depo" — di-merge
+// 28 Okt 23:00 tanpa diketahui keputusan ini diambil 22:48 hari yang sama — dibatalkan oleh perubahan ini.)
 class AbsensiController extends MobileController
 {
     public function checkIn(Request $request): JsonResponse
@@ -42,47 +46,42 @@ class AbsensiController extends MobileController
             throw ApiError::konflik('already_checked_in', 'Anda sudah absen masuk hari ini.', ['attendance_id' => (int) $ada->id]);
         }
 
-        $depo = Pengaturan::depo($karyawan->depo_id ? (int) $karyawan->depo_id : null);
-        $jarak = config('mobile.absen_cek_radius') ? $this->cekRadiusDepo($depo, (float) $request->lat, (float) $request->lng) : null;
+        if (config('mobile.absen_cek_lokasi')) {
+            $areaKerja = WilayahKerja::untukAkun($request->user()->kategori, (int) $karyawan->id);
+
+            if (! $areaKerja) {
+                throw new ApiError('no_work_area', 'Anda belum punya area kerja aktif. Hubungi admin.', 409);
+            }
+
+            if (! WilayahKerja::titikDalam((float) $request->lat, (float) $request->lng, $areaKerja)) {
+                throw new ApiError('outside_work_area', 'Anda di luar area kerja.', 422, [
+                    'work_areas' => array_map(fn ($a) => $a['name'], $areaKerja),
+                ]);
+            }
+        }
+
         $terlambat = $pukul > $jam['batas_masuk'];
         $umum = $this->kolomUmum($request);
         $masuk = now();
 
-        [$id, $depoVisit] = DB::transaction(function () use ($karyawan, $tanggal, $masuk, $request, $terlambat, $umum, $depo, $jarak) {
-            $id = DB::table('trx_absensi')->insertGetId([
-                'karyawan_id' => $karyawan->id,
-                'depo_id' => $karyawan->depo_id,
-                'tanggal' => $tanggal,
-                'masuk_at' => $masuk,
-                'masuk_lat' => $request->lat,
-                'masuk_lng' => $request->lng,
-                'masuk_akurasi_m' => $request->filled('accuracy_m') ? (int) round((float) $request->accuracy_m) : null,
-                'masuk_foto_id' => $request->photo_id,
-                'terlambat' => $terlambat,
-                'mock_location' => $request->boolean('is_mock_location'),
-            ] + $umum);
-
-            // Absen = checkin depo (akun tanpa depo hanya absen).
-            $depoVisit = $depo ? DB::table('trx_checkin_depo')->insertGetId([
-                'karyawan_id' => $karyawan->id,
-                'depo_id' => $depo['id'],
-                'tanggal' => $tanggal,
-                'checkin_at' => $masuk,
-                'lat' => $request->lat,
-                'lng' => $request->lng,
-                'jarak_m' => $jarak,
-            ] + array_diff_key($umum, ['client_ref' => true])) : null;
-
-            return [$id, $depoVisit];
-        });
+        $id = DB::table('trx_absensi')->insertGetId([
+            'karyawan_id' => $karyawan->id,
+            'depo_id' => $karyawan->depo_id,
+            'tanggal' => $tanggal,
+            'masuk_at' => $masuk,
+            'masuk_lat' => $request->lat,
+            'masuk_lng' => $request->lng,
+            'masuk_akurasi_m' => $request->filled('accuracy_m') ? (int) round((float) $request->accuracy_m) : null,
+            'masuk_foto_id' => $request->photo_id,
+            'terlambat' => $terlambat,
+            'mock_location' => $request->boolean('is_mock_location'),
+        ] + $umum);
 
         return $this->dibuat([
             'attendance_id' => $id,
-            'depot_visit_id' => $depoVisit,
             'date' => $tanggal,
             'checked_in_at' => $sekarang->toIso8601String(),
             'is_late' => $terlambat,
-            'distance_to_depot_m' => $jarak,
         ]);
     }
 
@@ -94,30 +93,18 @@ class AbsensiController extends MobileController
         $absen = $hari->wajibAbsen();
 
         if ($absen->pulang_at) {
-            // Sudah ditutup lewat checkout depo (aplikasi lama memanggil keduanya): jawab sukses dengan data yang sama.
-            if ($absen->pulang_client_ref === null) {
-                return $this->ok(['attendance_id' => (int) $absen->id, 'checked_out_at' => $this->waktu($absen->pulang_at)]);
-            }
-
             throw ApiError::konflik('already_checked_out', 'Anda sudah absen pulang hari ini.');
         }
 
         $this->tutupHari($hari);
         $pulang = now();
 
-        DB::transaction(function () use ($absen, $hari, $request, $pulang) {
-            DB::table('trx_absensi')->where('id', $absen->id)->update([
-                'pulang_at' => $pulang,
-                'pulang_lat' => $request->lat,
-                'pulang_lng' => $request->lng,
-                'pulang_client_ref' => $request->client_ref,
-            ]);
-
-            // Absen pulang = checkout depo.
-            if (($checkin = $hari->checkinDepo()) && ! $checkin->checkout_at) {
-                DB::table('trx_checkin_depo')->where('id', $checkin->id)->update(['checkout_at' => $pulang]);
-            }
-        });
+        DB::table('trx_absensi')->where('id', $absen->id)->update([
+            'pulang_at' => $pulang,
+            'pulang_lat' => $request->lat,
+            'pulang_lng' => $request->lng,
+            'pulang_client_ref' => $request->client_ref,
+        ]);
 
         return $this->ok(['attendance_id' => (int) $absen->id, 'checked_out_at' => $this->sekarang()->toIso8601String()]);
     }
@@ -150,12 +137,9 @@ class AbsensiController extends MobileController
         $hari = $this->hari($request);
         $hari->wajibAbsen();
 
-        // Checkin depo sudah tercatat saat absen masuk: jawab sukses dengan data yang sama.
         if ($ada = $hari->checkinDepo()) {
-            return $this->ok(['depot_visit_id' => (int) $ada->id, 'distance_to_depot_m' => $ada->jarak_m === null ? null : (int) $ada->jarak_m]);
+            throw ApiError::konflik('already_checked_in', 'Anda sudah checkin depo hari ini.', ['depot_visit_id' => (int) $ada->id]);
         }
-
-        // Absen sebelum absen & checkin depo disatukan (atau akun baru diberi depo): buat checkin depo seperti dulu.
 
         $depo = Pengaturan::depo($karyawan->depo_id ? (int) $karyawan->depo_id : null)
             ?? throw new ApiError('no_depot', 'Akun belum punya depo. Hubungi admin.', 409);
@@ -182,37 +166,21 @@ class AbsensiController extends MobileController
         $checkin = $hari->checkinDepo() ?? throw ApiError::konflik('not_checked_in', 'Anda belum checkin depo hari ini.');
 
         if ($checkin->checkout_at) {
-            // Sudah ditutup lewat absen pulang: jawab sukses dengan data yang sama.
-            if ($checkin->checkout_client_ref === null) {
-                return $this->ok(['depot_visit_id' => (int) $checkin->id, 'checked_out_at' => $this->waktu($checkin->checkout_at)]);
-            }
-
             throw ApiError::konflik('already_checked_out', 'Anda sudah checkout depo hari ini.');
         }
 
         $this->tutupHari($hari);
         $pulang = now();
 
-        DB::transaction(function () use ($checkin, $hari, $request, $pulang) {
-            DB::table('trx_checkin_depo')->where('id', $checkin->id)->update([
-                'checkout_at' => $pulang,
-                'checkout_client_ref' => $request->client_ref,
-            ]);
-
-            // Checkout depo = absen pulang.
-            if (($absen = $hari->absensi()) && ! $absen->pulang_at) {
-                DB::table('trx_absensi')->where('id', $absen->id)->update([
-                    'pulang_at' => $pulang,
-                    'pulang_lat' => $request->lat,
-                    'pulang_lng' => $request->lng,
-                ]);
-            }
-        });
+        DB::table('trx_checkin_depo')->where('id', $checkin->id)->update([
+            'checkout_at' => $pulang,
+            'checkout_client_ref' => $request->client_ref,
+        ]);
 
         return $this->ok(['depot_visit_id' => (int) $checkin->id, 'checked_out_at' => $this->sekarang()->toIso8601String()]);
     }
 
-    /** Syarat tutup hari (absen pulang = checkout depo): tidak ada kunjungan / join visit terbuka, sisa canvassing sudah diserahkan. */
+    /** Syarat tutup hari, berlaku untuk absen pulang maupun checkout depo (dipanggil terpisah dari dua-duanya): tidak ada kunjungan / join visit terbuka, sisa canvassing sudah diserahkan. */
     private function tutupHari(HariKerja $hari): void
     {
         $hari->tanpaKunjunganTerbuka();

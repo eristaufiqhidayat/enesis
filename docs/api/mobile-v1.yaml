@@ -216,6 +216,21 @@ paths:
                           lat: { type: [number, 'null'] }
                           lng: { type: [number, 'null'] }
                           radius_m: { type: integer, example: 100 }
+                      work_areas:
+                        type: array
+                        description: |
+                          Area kerja untuk absen (Master Area, BUKAN radius depo — itu untuk /depot-visits saja):
+                          sales = areanya sendiri; koordinator = gabungan area aktif seluruh sales di timnya.
+                          Kosong = belum punya area kerja aktif (absen akan ditolak 409 no_work_area).
+                          Polygon = cincin terluar saja (satu cincin, tanpa lubang).
+                        items:
+                          type: object
+                          properties:
+                            id: { type: integer, description: ID mk_area }
+                            name: { type: [string, 'null'] }
+                            polygon:
+                              type: array
+                              items: { type: object, properties: { lat: { type: number }, lng: { type: number } } }
                       outlet_radius_m: { type: integer, example: 100 }
                       duplicate_outlet_radius_m: { type: integer, example: 20 }
                       gps_interval_s: { type: integer, example: 180 }
@@ -261,10 +276,12 @@ paths:
       summary: Absen masuk (selfie + lokasi) — Idempotency-Key
       description: |
         Ditolak bila libur / bukan hari kerja (`409 holiday`), di luar jam aktif (`409 outside_active_hours`),
-        sudah absen (`409 already_checked_in`), atau di luar radius depo (`422 outside_depot_radius`, fields
-        `distance_m`, `radius_m`). Lewat batas masuk diterima dengan `is_late: true`.
-        **Absen = checkin depo** (seperti Marketama): absen masuk sekaligus mencatat checkin depo (`depot_visit_id`;
-        null bila akun tanpa depo). Aplikasi tidak perlu lagi memanggil `/depot-visits/check-in`.
+        sudah absen (`409 already_checked_in`), belum punya area kerja aktif (`409 no_work_area`), atau di luar
+        area kerja (`422 outside_work_area`, field `work_areas` = nama area yang diperiksa). Lewat batas masuk
+        diterima dengan `is_late: true`.
+        **Absen TERPISAH dari checkin depo** (keputusan 28 Okt 2026, lihat `/depot-visits/check-in`): lokasi
+        diperiksa terhadap Master Area (`work_areas` dari `/config`), bukan radius depo — sales bisa absen di
+        area kerjanya meski jauh dari depo. Checkin depo tetap wajib dipanggil terpisah saat tiba di depo.
       parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
       requestBody:
         required: true
@@ -291,11 +308,9 @@ paths:
                     type: object
                     properties:
                       attendance_id: { type: integer }
-                      depot_visit_id: { type: [integer, 'null'], description: Checkin depo yang ikut dibuat }
                       date: { type: string, format: date }
                       checked_in_at: { type: string, format: date-time }
                       is_late: { type: boolean }
-                      distance_to_depot_m: { type: [integer, 'null'] }
         '200': { $ref: '#/components/responses/Duplikat' }
         '409': { $ref: '#/components/responses/Error' }
         '422': { $ref: '#/components/responses/Validasi' }
@@ -305,10 +320,10 @@ paths:
       tags: [Absensi]
       summary: Absen pulang — Idempotency-Key
       description: |
-        Absen pulang = checkout depo: sekaligus menutup checkin depo hari ini.
+        Terpisah dari checkout depo (`/depot-visits/check-out`) — tidak saling menutup satu sama lain;
+        aplikasi memanggil keduanya (urutan bebas) saat tutup hari.
         409: not_checked_in, already_checked_out, visit_open (sales), join_visit_open (koordinator),
-        return_pending (sisa barang canvassing belum diserahkan). Bila hari sudah ditutup lewat
-        `/depot-visits/check-out`, dijawab 200 dengan jam pulang yang sama.
+        return_pending (sisa barang canvassing belum diserahkan).
       parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
       requestBody:
         content:
@@ -346,11 +361,11 @@ paths:
   /depot-visits/check-in:
     post:
       tags: [Absensi]
-      summary: Checkin depo (syarat terima barang) — Idempotency-Key, untuk aplikasi versi lama
+      summary: Checkin depo (syarat terima barang canvassing) — Idempotency-Key
       description: |
-        Sejak v1.3.0 checkin depo tercatat otomatis saat absen masuk; endpoint ini menjawab 200 dengan
-        `depot_visit_id` yang sama. Hanya membuat checkin baru (201) untuk absen sebelum aturan itu.
-        Wajib sudah absen (409 not_checked_in); dalam radius depo (422 outside_depot_radius); 409 no_depot.
+        Terpisah dari absen masuk (`/attendances/check-in`): dicek terhadap radius depo (`config.depot.radius_m`),
+        bukan area kerja. Wajib sudah absen (409 not_checked_in); dalam radius depo (422 outside_depot_radius,
+        fields `distance_m`, `radius_m`); 409 no_depot; 409 already_checked_in bila sudah checkin depo hari ini.
       parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
       requestBody:
         required: true
@@ -358,8 +373,6 @@ paths:
           application/json:
             schema: { allOf: [{ $ref: '#/components/schemas/Umum' }, { $ref: '#/components/schemas/Lokasi' }] }
       responses:
-        '200':
-          description: Sudah tercatat saat absen masuk
         '201':
           description: Tercatat
           content:
@@ -374,10 +387,11 @@ paths:
   /depot-visits/check-out:
     post:
       tags: [Absensi]
-      summary: Checkout depo (setelah sisa barang diserahkan) — Idempotency-Key, untuk aplikasi versi lama
+      summary: Checkout depo (setelah sisa barang diserahkan) — Idempotency-Key
       description: |
-        Sama dengan absen pulang: sekaligus mengisi jam pulang absen. Bila hari sudah ditutup lewat
-        `/attendances/check-out`, dijawab 200. 409: not_checked_in, already_checked_out, visit_open, return_pending.
+        Terpisah dari absen pulang (`/attendances/check-out`) — tidak saling menutup satu sama lain;
+        aplikasi memanggil keduanya (urutan bebas) saat tutup hari.
+        409: not_checked_in, already_checked_out, visit_open, return_pending.
       parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
       requestBody:
         content:
@@ -1281,7 +1295,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
     Validasi:
-      description: "validation_failed (fields = pesan per field) atau kode aturan bisnis: outside_depot_radius, too_far_from_outlet, exceeds_stock, product_inactive, possible_duplicate, return_mismatch, too_many_points, idempotency_key_required"
+      description: "validation_failed (fields = pesan per field) atau kode aturan bisnis: outside_work_area, outside_depot_radius, too_far_from_outlet, exceeds_stock, product_inactive, possible_duplicate, return_mismatch, too_many_points, idempotency_key_required"
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }

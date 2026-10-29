@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Mobile;
 
 use App\Models\User;
 use App\Support\Mobile\Pengaturan;
+use App\Support\Mobile\WilayahKerja;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -142,6 +143,9 @@ class ProfilController extends MobileController
                 'lng' => $depo['lng'],
                 'radius_m' => config('mobile.radius_depo_m'),
             ] : null,
+            // Area kerja untuk absen (Master Area, bukan radius depo): sales → areanya sendiri;
+            // koordinator → gabungan area aktif tim. Kosong = belum punya area kerja (absen ditolak).
+            'work_areas' => WilayahKerja::untukAkun($request->user()->kategori, (int) $karyawan->id),
             'outlet_radius_m' => config('mobile.radius_outlet_m'),
             'duplicate_outlet_radius_m' => config('mobile.radius_duplikat_m'),
             'gps_interval_s' => $depo['interval_gps_detik'] ?? 180,

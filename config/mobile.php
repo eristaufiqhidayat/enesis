@@ -62,8 +62,10 @@ return [
     // Tipe outlet bila tabel tipe_outlet kosong.
     'tipe_outlet_default' => ['Warung', 'Toko', 'Grosir', 'Minimarket', 'Kios'],
 
-    // Pemeriksaan radius depo saat absen masuk (mockup: absen di depo).
-    'absen_cek_radius' => (bool) env('MOBILE_ABSEN_CEK_RADIUS', true),
+    // Pemeriksaan lokasi saat absen masuk: titik GPS harus di dalam salah satu area kerja aktif
+    // (Master Area) — sales: areanya sendiri; koordinator: gabungan area aktif tim. Bukan radius
+    // depo (itu untuk checkin depo saja, lihat radius_depo_m). Keputusan 28 Okt 2026.
+    'absen_cek_lokasi' => (bool) env('MOBILE_ABSEN_CEK_LOKASI', true),
 
     // Tracking GPS.
     'tracking_maks_titik' => 500,
