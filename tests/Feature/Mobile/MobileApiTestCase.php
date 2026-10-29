@@ -34,6 +34,10 @@ abstract class MobileApiTestCase extends TestCase
             'latitude' => '-6.2', 'longitude' => '106.8', 'minimal_value_transaksi' => '35.000', 'target_call' => '40', 'target_ec' => '25',
         ])]);
         DB::table('mk_area')->insert([['id' => 10, 'nama' => 'Area Rute'], ['id' => 99, 'nama' => 'Area Lain']]);
+        // Polygon untuk area 10 (dipakai validasi absen berbasis area kerja): kotak yang mencakup
+        // diDepo()/diOutlet(11)/diOutlet(12) tapi TIDAK titik -6.21,106.8 ke bawah (dipakai tes "di luar area").
+        DB::table('area_polygon')->insert(['source_id' => 10, 'code' => 'AREA-10', 'name' => 'Area Rute',
+            'polygon' => json_encode([[106.795, -6.206], [106.806, -6.206], [106.806, -6.195], [106.795, -6.195]])]);
         DB::table('mk_karyawan')->insert([
             ['id' => 1, 'kategori' => 'sales', 'nama' => 'Andi Motoris', 'depo_id' => 46, 'koordinator_id' => 137, 'aktif' => true],
             ['id' => 2, 'kategori' => 'sales', 'nama' => 'Budi Motoris', 'depo_id' => 46, 'koordinator_id' => 137, 'aktif' => true],

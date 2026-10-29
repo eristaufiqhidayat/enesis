@@ -29,12 +29,12 @@ class HariKerjaSalesTest extends MobileApiTestCase
         // Belum absen: tidak bisa checkin depo.
         $this->assertError($this->api('POST', 'depot-visits/check-in', $this->diDepo()), 409, 'not_checked_in');
 
-        // 1. Absen masuk: selfie wajib, harus di radius depo; lewat 08:00 ditandai terlambat.
+        // 1. Absen masuk: selfie wajib, harus di dalam area kerja aktif (bukan radius depo); lewat 08:00 ditandai terlambat.
         $this->assertError($this->api('POST', 'attendances/check-in', $this->diDepo()), 422, 'validation_failed')
             ->assertJsonStructure(['error' => ['fields' => ['photo_id']]]);
         $selfie = $this->foto();
-        $this->assertError($this->api('POST', 'attendances/check-in', ['lat' => -6.21, 'lng' => 106.8, 'photo_id' => $selfie]), 422, 'outside_depot_radius')
-            ->assertJsonPath('error.fields.radius_m', 100);
+        $this->assertError($this->api('POST', 'attendances/check-in', ['lat' => -6.21, 'lng' => 106.8, 'photo_id' => $selfie]), 422, 'outside_work_area')
+            ->assertJsonPath('error.fields.work_areas.0', 'Area Rute');
 
         $kunci = (string) Str::uuid();
         $absen = $this->api('POST', 'attendances/check-in', $this->diDepo() + ['photo_id' => $selfie, 'recorded_at' => '2026-10-26T08:59:00+07:00'], $kunci)
@@ -46,13 +46,13 @@ class HariKerjaSalesTest extends MobileApiTestCase
         $this->assertSame(1, DB::table('trx_absensi')->count());
         $this->assertSame($kunci, DB::table('trx_absensi')->value('client_ref'));
 
-        // 2. Absen = checkin depo (disatukan seperti Marketama): checkin depo sudah tercatat dengan jam & titik absen.
-        $depo = DB::table('trx_checkin_depo')->first();
-        $this->assertSame($absen->json('data.depot_visit_id'), (int) $depo->id);
-        $this->assertSame((string) DB::table('trx_absensi')->value('masuk_at'), (string) $depo->checkin_at);
-        // Aplikasi versi lama tetap memanggil checkin depo: dijawab sukses dengan data yang sama.
-        $this->api('POST', 'depot-visits/check-in', $this->diDepo())->assertOk()->assertJsonPath('data.depot_visit_id', (int) $depo->id);
+        // 2. Checkin depo: aksi terpisah dari absen, radius depo (bukan area kerja).
+        $this->assertSame(0, DB::table('trx_checkin_depo')->count());
+        $checkin = $this->api('POST', 'depot-visits/check-in', $this->diDepo())->assertCreated()->json('data');
         $this->assertSame(1, DB::table('trx_checkin_depo')->count());
+        $this->assertNotNull($checkin['depot_visit_id']);
+        $this->assertLessThanOrEqual(100, $checkin['distance_to_depot_m']);
+        $this->assertError($this->api('POST', 'depot-visits/check-in', $this->diDepo()), 409, 'already_checked_in');
 
         // Belum terima barang: belum boleh kunjungan.
         $this->assertError($this->api('POST', 'visits', ['outlet_id' => 11] + $this->diOutlet(11)), 409, 'no_canvassing');
@@ -142,12 +142,14 @@ class HariKerjaSalesTest extends MobileApiTestCase
         $this->assertEquals(3, DB::table('trx_canvassing_item')->where('produk_id', 4)->value('qty_kembali'));
 
         $this->assertError($this->api('POST', 'visits', ['outlet_id' => 12] + $this->diOutlet(12)), 409, 'day_closed');
-        // Absen pulang = checkout depo; checkout depo dari aplikasi lama sesudahnya dijawab sukses.
-        $this->api('POST', 'attendances/check-out', $this->diDepo())->assertOk();
-        $this->assertNotNull(DB::table('trx_checkin_depo')->value('checkout_at'));
-        $this->assertSame((string) DB::table('trx_absensi')->value('pulang_at'), (string) DB::table('trx_checkin_depo')->value('checkout_at'));
+        // Checkout depo dan absen pulang independen: mobile (TutupHariScreen) memanggil keduanya terpisah.
         $this->api('POST', 'depot-visits/check-out', [])->assertOk();
+        $this->assertNotNull(DB::table('trx_checkin_depo')->value('checkout_at'));
+        $this->assertNull(DB::table('trx_absensi')->value('pulang_at'));
+        $this->api('POST', 'attendances/check-out', $this->diDepo())->assertOk();
+        $this->assertNotNull(DB::table('trx_absensi')->value('pulang_at'));
         $this->assertError($this->api('POST', 'attendances/check-out', []), 409, 'already_checked_out');
+        $this->assertError($this->api('POST', 'depot-visits/check-out', []), 409, 'already_checked_out');
 
         $this->api('GET', 'me/summary')->assertOk()->assertJsonPath('data.steps.4.status', 'done');
         $this->api('GET', 'sync/status')->assertOk()

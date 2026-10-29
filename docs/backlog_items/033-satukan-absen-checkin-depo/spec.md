@@ -1,5 +1,10 @@
 # Satukan absen dan checkin depo (seperti Marketama)
 
+> **Dibatalkan untuk aplikasi mobile** oleh `docs/backlog_items/035-pisahkan-absen-checkin-depo-area-kerja`
+> (keputusan product owner sore 28 Okt 2026, sebelum PR ini sempat di-merge malamnya — lihat spec #035
+> untuk kronologinya). Migration `2026_10_28_000003` (pelengkap data historis) tetap dipakai; perilaku
+> endpoint di bawah ini **tidak lagi berlaku**.
+
 ## Problem Statement
 Di Marketama absensi = checkin depo. Pencocokan 27 Okt 2026 menunjukkan jam masuk/keluar Lap. Absensi Sales sama persis dengan Lap. Checkin Checkout untuk 324 dari 325 sales. Aplikasi HP Enesis memisahkan dua langkah di tempat yang sama: absen (`trx_absensi`) lalu checkin depo (`trx_checkin_depo`). Akibatnya laporan absensi dan Lap. Checkin Checkout bisa berbeda bila sales melewatkan salah satunya. Keputusan product owner (28 Okt 2026): **disatukan**.
 
