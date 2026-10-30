@@ -32,6 +32,11 @@ body { background: var(--color-surface); font-size: .875rem; }
 /* Hanya menu yang di-scroll; .brand (tombol di atasnya) tetap di tempat. */
 .sidebar .sidebar-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; padding-bottom: 2rem; scrollbar-color: rgba(255, 255, 255, .3) transparent; }
 .sidebar .brand { flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: .5rem; font-weight: 700; font-size: 1.1rem; color: #fff; padding: 0 .5rem 1rem; border-bottom: 1px solid rgba(255, 255, 255, .2); text-shadow: 0 1px 2px rgba(0, 0, 0, .35); }
+/* Logo Enesis: baris sendiri di atas tombol collapse + pencarian. */
+.sidebar .brand .brand-logo { flex: 0 0 100%; display: flex; align-items: center; gap: .5rem; color: #fff; text-decoration: none; letter-spacing: .04em; }
+.sidebar .brand .brand-logo img { height: 1.75rem; width: auto; flex: 0 0 auto; }
+body.sidebar-collapsed .sidebar .brand .brand-logo { justify-content: center; }
+body.sidebar-collapsed .sidebar .brand .brand-logo-text { display: none; }
 /* Input pencarian menu di bawah tombol collapse; dropdown hasilnya mengambang di atas daftar menu. */
 .sidebar .brand .sidebar-search { position: relative; flex: 1 1 0; min-width: 0; }
 .sidebar .brand .sidebar-search-results { position: absolute; top: 100%; left: auto; right: -20px; width: 260px; z-index: 40; margin: .25rem 0 0; padding: .25rem 0; list-style: none; max-height: 16rem; overflow-y: auto; background: #002a5c; border-radius: .375rem; box-shadow: 0 4px 12px rgba(0, 0, 0, .25); font-size: .85rem; font-weight: 400; text-shadow: none; }

@@ -115,6 +115,10 @@ function openActiveResult() {
 <template>
     <nav class="sidebar">
         <div class="brand">
+            <Link href="/" class="brand-logo">
+                <img src="/images/enesis-icon.png" alt="Enesis" />
+                <span class="brand-logo-text">ENESIS</span>
+            </Link>
             <div class="brand-actions">
                 <button type="button" data-sidebar-toggle aria-label="Persempit/lebarkan sidebar" @click="setCollapsedFull(!collapsedFull)"><Icon name="menu" /></button>
             </div>
