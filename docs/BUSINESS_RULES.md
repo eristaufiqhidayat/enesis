@@ -8,8 +8,9 @@ Dokumen ini adalah **sumber utama dan satu-satunya** tentang aturan bisnis Marke
   - **Dikonfirmasi** — sudah diverifikasi dengan product owner PT. Marketama dan/atau sudah diimplementasikan & diuji (sebutkan PR/spec/kode terkait).
   - **Asumsi** — disimpulkan dari data/perilaku aplikasi lama, belum divalidasi dengan product owner.
   - **Belum diketahui** — pertanyaan terbuka, perlu ditelusuri atau ditanyakan.
-- Tiap aturan mencantumkan sumber: nomor spec (`docs/backlog_items/NNN-.../spec.md`), lokasi kode (`App\...`), atau "Marketama (observasi UI)".
-- Perubahan aturan (bukan sekadar implementasi ulang) dicatat di bagian [Riwayat perubahan aturan](#riwayat-perubahan-aturan) di bagian bawah, dengan tanggal dan alasan — supaya histori keputusan yang saling membatalkan (lihat contoh absen vs checkin depo) tidak hilang.
+- **Setiap poin memuat keputusan akhir yang berlaku saat ini — bukan narasi historis.** Jangan menulis "sebelumnya X, lalu diubah jadi Y" di badan aturan; cukup tulis Y sebagai aturan yang berlaku. Riwayat keputusan yang berubah/saling membatalkan dicatat **khusus** di bagian [Riwayat perubahan aturan](#riwayat-perubahan-aturan).
+- **Catatan kesenjangan kode vs aturan (⚠️) ditulis sekali saja**, terkumpul di bagian [Status implementasi](#14-status-implementasi), bukan diselipkan di tiap poin aturan — supaya badan aturan tetap bersih, dan status kode mudah dipantau di satu tempat.
+- Tiap aturan mencantumkan sumber bila relevan: nomor spec (`docs/backlog_items/NNN-.../spec.md`), lokasi kode (`App\...`), atau "Marketama (observasi UI)".
 - Istilah Marketama yang dipakai apa adanya didaftar di [Glosarium](#glosarium) agar konsisten di seluruh dokumen.
 
 ## Daftar isi
@@ -27,8 +28,9 @@ Dokumen ini adalah **sumber utama dan satu-satunya** tentang aturan bisnis Marke
 11. [Penggajian](#11-penggajian)
 12. [Outlet: status, duplikat & fiktif](#12-outlet-status-duplikat--fiktif)
 13. [Notifikasi & eskalasi](#13-notifikasi--eskalasi)
-14. [Glosarium](#glosarium)
-15. [Riwayat perubahan aturan](#riwayat-perubahan-aturan)
+14. [Status implementasi](#14-status-implementasi)
+15. [Glosarium](#glosarium)
+16. [Riwayat perubahan aturan](#riwayat-perubahan-aturan)
 
 ---
 
@@ -36,53 +38,63 @@ Dokumen ini adalah **sumber utama dan satu-satunya** tentang aturan bisnis Marke
 
 _Siapa yang melakukan apa: motoris/sales, koordinator, staf depo/warehouse, HR/penggajian, Super Admin. Hierarki `mk_karyawan.koordinator_id`, siapa boleh menyetujui apa._
 
-- **Dikonfirmasi** (2026-10-30, klarifikasi product owner) — Salah satu tugas Koordinator adalah **memvalidasi (setujui/tolak) NOO** (outlet baru) yang dibuat motoris bawahannya. Detail alur & implementasi: lihat §12.
+- **Dikonfirmasi** — Salah satu tugas Koordinator adalah **memvalidasi (setujui/tolak) NOO** (outlet baru) yang dibuat motoris bawahannya. Detail alur: lihat §12.
+- **Dikonfirmasi** — Koordinator berkewajiban melakukan **Absen Pulang atas nama motoris bawahannya** bila motoris itu sudah retur barang bawaan dan sudah setoran hasil penjualan, tapi belum Absen Pulang sendiri. Detail: lihat §3.
 - _(TBD lainnya)_
 
 ## 2. Area kerja & master wilayah
 
 _Bagaimana area kerja ditentukan dan dipakai untuk validasi — bukan hanya struktur data (sudah dijelaskan di CLAUDE.md), tapi aturan: siapa punya area aktif, apa yang terjadi kalau tidak ada area aktif, bagaimana area koordinator dihitung dari gabungan tim._
 
-- ~~**Dikonfirmasi** — Absen sales divalidasi terhadap **area kerja** (polygon `mk_karyawan_area` aktif), bukan radius depo~~ — **dibatalkan 2026-10-30** (lihat §3 dan [Riwayat perubahan aturan](#riwayat-perubahan-aturan)): Absen Datang/Pulang terjadi di Depo, jadi semestinya divalidasi terhadap lokasi Depo, bukan area kerja. Implementasi saat ini (`App\Support\Mobile\WilayahKerja`, kode `409 no_work_area` / `422 outside_work_area`) masih memakai aturan lama — **belum disesuaikan**.
-- **Dikonfirmasi** — Area kerja (polygon, union tim untuk koordinator) tetap relevan untuk hal lain selain absen — misalnya batas rute/kunjungan outlet (lihat §5 "di luar rute"). Area kerja tanpa polygon aktif → `409 no_work_area` untuk fitur yang memang memakainya.
-- _(TBD: setelah §3 ditinjau ulang, pastikan di sini hanya menyisakan aturan area kerja yang benar-benar masih berlaku)_
+- **Dikonfirmasi** — Area kerja (polygon `mk_karyawan_area` aktif milik sales; untuk koordinator = gabungan/union area aktif seluruh sales bawahannya) dipakai untuk membatasi **rute & kunjungan outlet** (lihat §5 "di luar rute") — **bukan** untuk validasi Absen (lihat §3). Akun tanpa area kerja aktif ditolak oleh fitur yang memakainya (`409 no_work_area`).
+- _(TBD lainnya)_
 
 ## 3. Absen Datang/Pulang di Depo
 
 _Istilah yang benar: motoris melakukan **Absen Datang** dan **Absen Pulang** di Depo (bukan "checkin depo") — bukan di outlet. "Check In" sebagai istilah dipakai khusus untuk outlet (lihat §5). Jam absen, selfie, validasi lokasi, absen ganda, hari libur, cuti — kapan "hari kerja" dianggap mulai/selesai._
 
-- **Dikonfirmasi** (2026-10-30, klarifikasi product owner) — Absen Datang dan Absen Pulang terjadi **di lokasi Depo**: validasi GPS saat absen semestinya terhadap lokasi/radius Depo, bukan terhadap area kerja (polygon). Ini **membatalkan sebagian keputusan spec 035**, yang memvalidasi absen terhadap area kerja justru karena beranggapan motoris sudah di lapangan saat jam absen. Implementasi di `App\Support\Mobile\WilayahKerja` dan endpoint `attendances/check-in|check-out` perlu ditinjau ulang agar sesuai — **belum dikerjakan**, lihat [Riwayat perubahan aturan](#riwayat-perubahan-aturan).
-- _(TBD: jam batas absen datang, syarat selfie, apa yang terjadi jika absen telat, aturan absen ganda per hari, dll.)_
+- **Dikonfirmasi** — Absen Datang dan Absen Pulang terjadi **di lokasi Depo**: validasi GPS saat absen divalidasi terhadap lokasi/radius Depo, bukan terhadap area kerja (polygon).
+- **Dikonfirmasi** — Jika motoris sudah **retur barang bawaan** (§4) dan sudah **setoran hasil penjualan** (§8) tapi **belum Absen Pulang**, maka **Koordinator wajib melakukan Absen Pulang atas nama motoris itu**.
+- **Dikonfirmasi** — Konsekuensi absen telat (toleransi 3x/bulan, denda potongan mulai telat ke-4): lihat §10.
+- **Dikonfirmasi** — Absen Datang **dan** Absen Pulang di Depo wajib disertai **foto selfie**.
+- _(TBD: jam batas absen datang, aturan absen ganda per hari, dll.)_
 
 ## 4. Loading barang di Depo
 
 _Apa yang terjadi di Depo selain Absen Datang/Pulang: loading barang canvassing (jumlah, stok depo, siapa yang approve), retur, setor margin (lihat juga §8)._
 
-- **Dikonfirmasi** — Sebelum klarifikasi 2026-10-30, "Checkin/Checkout Depo" (`POST /depot-visits/check-in|check-out`, divalidasi terhadap radius depo `mobile.radius_depo_m`) dipakai sebagai event terpisah dari absen — _spec 035_. Dengan koreksi istilah di §3 (absen sendiri yang terjadi di Depo), status event "checkin/checkout depo" ini sebagai hal yang berbeda dari Absen Datang/Pulang **perlu dikonfirmasi ulang**: apakah masih ada event terpisah untuk loading barang (datang ke Depo untuk ambil barang, bukan sekadar absen), atau keduanya sebenarnya satu kejadian yang sama.
-- _(TBD: aturan loading barang — batas jumlah, approval, hubungan dengan stok depo)_
+- **Dikonfirmasi** — Motoris baru bisa melakukan loading barang canvassing setelah **Absen Datang** (§3): nama motoris baru muncul di **daftar loading barang canvassing** pada aplikasi Sales Koordinator setelah motoris itu Absen Datang hari itu. Motoris yang belum Absen Datang tidak muncul di daftar, sehingga belum bisa di-loading-kan barang.
+- _(TBD: apakah loading barang adalah event tersendiri yang perlu dicatat terpisah dari Absen Datang/Pulang, atau menyatu dengannya; batas jumlah loading, approval, hubungan dengan stok depo)_
 
 ## 5. Rute & Check In Outlet
 
 _Istilah yang benar: "Check In" dipakai motoris **hanya untuk Outlet (toko)** — bukan untuk Depo (lihat §3). Urutan kunjungan outlet, radius checkin outlet, status NOO/AC/EC/RO/OSS dan kapan outlet pindah status, Join Visit._
 
-- **Dikonfirmasi** (2026-10-30, klarifikasi product owner) — Check In hanya berlaku untuk kunjungan Outlet (toko), bukan Depo.
-- **Dikonfirmasi** (2026-10-30, klarifikasi product owner) — Urutan kunjungan outlet: Check In → (boleh buat & submit transaksi) → Check Out. Motoris baru boleh membuat transaksi penjualan setelah Check In; Check Out dilakukan setelah transaksi di-submit.
-- **Dikonfirmasi** (2026-10-30, klarifikasi product owner) — Check In outlet divalidasi terhadap posisi GPS motoris vs titik GPS outlet, **toleransi 5 meter** — di luar itu Check In ditolak.
-  - ⚠️ **Perlu ditinjau** — implementasi saat ini (`App\Http\Controllers\Mobile\KunjunganController::checkIn`, error `too_far_from_outlet`) memvalidasi terhadap `config('mobile.radius_outlet_m')`, default **100 meter** (`MOBILE_RADIUS_OUTLET_M`, [config/mobile.php:21](../config/mobile.php)) — bukan 5 meter. Perlu diputuskan: ubah konfigurasi jadi 5 m, atau 5 m di sini maksudnya toleransi akurasi GPS yang berbeda dari radius batas Check In.
+- **Dikonfirmasi** — Check In/Check Out hanya berlaku untuk kunjungan Outlet (toko), bukan Depo.
+- **Dikonfirmasi** — Urutan kunjungan outlet: Check In → (boleh buat & submit transaksi) → Check Out. Motoris baru boleh membuat transaksi penjualan setelah Check In; Check Out dilakukan setelah transaksi di-submit.
+- **Dikonfirmasi** — Check In outlet divalidasi terhadap posisi GPS motoris vs titik GPS outlet, **toleransi 5 meter** — di luar itu Check In ditolak.
+- **Dikonfirmasi** — Check In outlet **pertama** pada hari kerja punya batas waktu: paling lambat **jam 11.00 waktu setempat**. Lewat jam itu, motoris **tidak dapat Check In outlet sama sekali pada hari itu** (bukan hanya Check In pertama yang ditolak — seluruh Check In outlet hari itu tertutup).
+- _(TBD: apa yang harus dilakukan motoris pada sisa hari itu setelah terlewat batas jam Check In — langsung Absen Pulang, atau tetap bertugas di Depo/aktivitas lain lalu Absen Pulang normal di sore hari; belum diputuskan product owner)_
+- **Asumsi** — Setelah Check In outlet, motoris dapat melakukan salah satu dari aktivitas berikut sebelum Check Out: (1) melakukan penjualan (§6), (2) laporan stok barang Enesis yang habis di outlet (§7), (3) laporan jumlah stok barang kompetitor di outlet (§7), atau (4) laporan toko tutup (§7). Belum divalidasi dengan product owner apakah ini daftar lengkap atau ada aktivitas lain.
 - _(TBD: status NOO/AC/EC/RO/OSS dan kapan outlet pindah status, aturan Join Visit, outlet di luar rute)_
 
 ## 6. Penjualan (transaksi canvassing)
 
 _Aturan harga, diskon, retur saat transaksi, syarat outlet boleh dijual (status, utang, dll.), effective call._
 
-- **Dikonfirmasi** (2026-10-30, klarifikasi product owner) — Transaksi penjualan hanya boleh dibuat dalam kunjungan outlet yang sudah Check In dan belum Check Out; setelah transaksi di-submit, motoris melakukan Check Out untuk menutup kunjungan. — _lihat §5; kode: `App\Http\Controllers\Mobile\KunjunganController::terbuka()`_
-- _(TBD: aturan harga, diskon, retur saat transaksi, syarat outlet boleh dijual, effective call)_
+- **Dikonfirmasi** — Transaksi penjualan hanya boleh dibuat dalam kunjungan outlet yang sudah Check In dan belum Check Out; setelah transaksi di-submit, motoris melakukan Check Out untuk menutup kunjungan. — _lihat §5; kode: `App\Http\Controllers\Mobile\KunjunganController::terbuka()`_
+- **Dikonfirmasi** — Motoris hanya dapat men-submit transaksi penjualan jika **totalnya melebihi ambang batas** tertentu (di bawah ambang batas, submit ditolak).
+  - **Belum diketahui** — nilai ambang batasnya. Juga belum diputuskan apakah ambang batas ini **sama dengan** `minimal_value_transaksi` per depo yang sudah ada di master data (dipakai untuk status Effective Call, lihat kode terkait di §14) atau **ambang batas baru yang berbeda**.
+  - **Rekomendasi** (bukan keputusan) — jadikan **parameter yang bisa diatur admin per depo**, bukan nilai tetap di kode: preseden sudah ada (`minimal_value_transaksi` per depo di master data, dengan fallback `config('mobile.minimal_transaksi_default')`), jadi kemungkinan besar cukup dipakai ulang jika memang ambang batas yang sama — bukan dibuat parameter terpisah.
+- _(TBD: aturan harga, diskon, retur saat transaksi, syarat outlet boleh dijual)_
 
 ## 7. Stok: outlet, kompetitor, retur
 
 _Pencatatan stok outlet & kompetitor saat visit, aturan retur barang canvassing._
 
-- _(TBD)_
+- **Asumsi** — Dalam satu kunjungan outlet (lihat §5), motoris dapat melaporkan: stok barang Enesis yang habis di outlet itu, dan jumlah stok barang kompetitor di outlet itu. — _kecocokan dengan kode: `App\Http\Controllers\Mobile\KunjunganController::stok()` menerima `items` (stok sendiri) dan `competitors` (stok kompetitor) dalam satu panggilan; belum divalidasi dengan product owner apakah ini memang aturan resminya, bukan sekadar perilaku kode yang ada._
+- **Asumsi** — Motoris dapat melaporkan **toko tutup** sebagai alasan tidak melakukan transaksi di kunjungan itu. — _kecocokan dengan kode: `toko_tutup` sudah ada sebagai salah satu `alasan_tidak_beli` ([config/mobile.php:53](../config/mobile.php)), dipakai lewat `KunjunganController::tidakBeli()`; belum divalidasi dengan product owner._
+- _(TBD: aturan retur barang canvassing)_
 
 ## 8. Setoran & setor margin
 
@@ -101,7 +113,8 @@ _Rumus insentif per depo/produk, cara target ditetapkan, konversi poin, periode 
 
 _Jenis izin, alur persetujuan, jenis potongan gaji dan pemicunya._
 
-- _(TBD)_
+- **Dikonfirmasi** — Keterlambatan absen (lihat §3) ditoleransi **3 kali per bulan** tanpa sanksi. Mulai keterlambatan ke-4 dan seterusnya **dalam bulan yang sama**, motoris dikenakan **denda potongan** (gaji — lihat §11).
+- _(TBD: jenis izin lain, alur persetujuan, jenis potongan gaji lain dan pemicunya)_
 
 ## 11. Penggajian
 
@@ -114,8 +127,7 @@ _Komponen gaji, periode, hubungan dengan absensi/insentif/potongan, siapa yang m
 
 _Kriteria outlet dianggap duplikat atau fiktif, siapa yang menandai/memvalidasi, dampaknya ke rute & penjualan._
 
-- **Dikonfirmasi** (2026-10-30, klarifikasi product owner) — NOO (outlet baru, `trx_outlet_baru`) yang didaftarkan motoris lewat HP harus **divalidasi oleh Koordinator** (setuju/tolak) sebelum masuk ke master outlet (`mk_outlet`).
-  - ⚠️ **Perlu ditinjau** — implementasi saat ini (`App\Http\Controllers\OutletBaruController::setujui/tolak`, dipakai dari menu web "All Outlet" tab "Outlet Baru dari HP") tidak mengecek peran Koordinator secara spesifik; siapa pun akun web dengan **cakupan akses** ke sales tersebut (`App\Support\Akses\Akses::batasiKaryawan` — depo/downline/diri sendiri) dan hak ke menu itu bisa menyetujui/menolak. Tidak ada endpoint di aplikasi HP (`App\Http\Controllers\Mobile\KoordinatorController`) untuk Koordinator melakukan ini dari HP-nya sendiri. Perlu diputuskan: apakah validasi NOO cukup dibatasi lewat hak menu web (role "Koordinator" di tabel role), atau perlu ditambah alur approval di aplikasi HP koordinator.
+- **Dikonfirmasi** — NOO (outlet baru, `trx_outlet_baru`) yang didaftarkan motoris lewat HP harus **divalidasi oleh Koordinator** (setuju/tolak) sebelum masuk ke master outlet (`mk_outlet`).
 - _(TBD: kriteria outlet dianggap duplikat/fiktif dan siapa yang menandainya — beda dari validasi NOO di atas)_
 
 ## 13. Notifikasi & eskalasi
@@ -125,6 +137,20 @@ _Kapan sistem/koordinator diberi tahu (absen telat, outlet fiktif, setoran kuran
 - _(TBD)_
 
 ---
+
+## 14. Status implementasi
+
+Daftar kesenjangan antara aturan di atas dan kode yang berjalan saat ini. Perbarui/hapus baris di sini begitu kode sudah disesuaikan — badan aturan di §1–§13 tidak perlu diubah karena aturannya sendiri tidak berubah.
+
+- **§2 / §3 — Lokasi validasi Absen**: kode saat ini (`App\Support\Mobile\WilayahKerja`, endpoint `attendances/check-in|check-out`) masih memvalidasi Absen terhadap **area kerja** (point-in-polygon, `422 outside_work_area`), bukan terhadap **lokasi Depo** seperti aturan §3. Perlu ditinjau ulang.
+- **§3 — Selfie wajib saat Absen Pulang**: `App\Http\Controllers\Mobile\AbsensiController::checkIn` (absen datang) sudah mewajibkan `photo_id` (`photo_id.required` "Foto selfie wajib"), tapi `checkOut` (absen pulang) tidak mewajibkan foto sama sekali — validasinya hanya `aturanUmum() + aturanLokasi(false)`, tanpa `photo_id`. Perlu ditambahkan.
+- **§3 — Absen Pulang oleh Koordinator**: tidak ada endpoint di `App\Http\Controllers\Mobile\KoordinatorController` atau `AbsensiController` untuk Koordinator mengabsenkan-pulangkan bawahannya; absen pulang (`pulang_at`, lihat `KoordinatorController.php:126-127`) hanya bisa diisi oleh motoris sendiri lewat akunnya. Terbuka: siapa/apa yang memicu pengecekan ini (otomatis oleh sistem saat retur+setoran lengkap, atau Koordinator mengecek manual di akhir hari), dan apakah ada tenggat waktu untuk Koordinator melakukannya.
+- **§4 — Daftar loading barang canvassing**: tidak ada endpoint mobile untuk "daftar loading barang canvassing" (tidak ditemukan controller loading barang di `App\Http\Controllers\Mobile`); yang ada baru laporan read-only di web (`App\Http\Controllers\LapLoadingBarangController`, menu "Lap. Loading Barang"), yang juga tidak memfilter berdasarkan status Absen Datang. Perlu dirancang: endpoint/menu daftar loading barang untuk aplikasi Koordinator, dengan filter "sudah Absen Datang hari ini".
+- **§5 — Radius Check In outlet**: `App\Http\Controllers\Mobile\KunjunganController::checkIn` (error `too_far_from_outlet`) memvalidasi terhadap `config('mobile.radius_outlet_m')`, default **100 meter** (`MOBILE_RADIUS_OUTLET_M`, [config/mobile.php:21](../config/mobile.php)) — bukan 5 meter seperti aturan §5. Perlu diputuskan: ubah konfigurasi jadi 5 m, atau 5 m di aturan itu maksudnya toleransi akurasi GPS yang berbeda dari radius batas Check In.
+- **§6 — Ambang batas submit transaksi**: `App\Http\Controllers\Mobile\PenjualanController::simpan` saat ini **tidak memblokir submit** berapa pun totalnya — `minimal_value_transaksi` per depo (fallback `config('mobile.minimal_transaksi_default')`, lihat `App\Support\Mobile\Pengaturan::depo()`) hanya dipakai untuk menandai `is_effective_call`, bukan untuk menolak transaksi. Kalau aturan §6 memang memakai ambang batas yang sama, perilaku kode ini perlu diubah dari "izinkan + tandai EC" menjadi "tolak di bawah ambang batas".
+- **§5 — Jam batas Check In outlet pertama**: `KunjunganController::checkIn` dan `App\Support\Mobile\HariKerja` saat ini tidak punya pengecekan jam sama sekali. Terbuka: "waktu setempat" dihitung dari zona waktu apa (zona outlet/area kerja, atau zona depo/akun), dan kode error baru untuk penolakan ini (mis. `check_in_window_closed`).
+- **§10 — Denda keterlambatan absen**: `App\Http\Controllers\Mobile\AbsensiController` sudah menandai setiap absen `terlambat`/`is_late` (baris 63, 76, 84, 126), tapi **tidak ada penghitungan jumlah keterlambatan per bulan** maupun logika pemicu denda/potongan di manapun di kode. Terbuka: nominal/rumus denda per keterlambatan (tetap, atau persentase gaji?), apakah hitungan 3x reset tiap tanggal 1 atau per periode gajian.
+- **§12 — Validasi NOO oleh Koordinator**: implementasi saat ini (`App\Http\Controllers\OutletBaruController::setujui/tolak`, dipakai dari menu web "All Outlet" tab "Outlet Baru dari HP") tidak mengecek peran Koordinator secara spesifik; siapa pun akun web dengan **cakupan akses** ke sales tersebut (`App\Support\Akses\Akses::batasiKaryawan` — depo/downline/diri sendiri) dan hak ke menu itu bisa menyetujui/menolak. Tidak ada endpoint di aplikasi HP (`App\Http\Controllers\Mobile\KoordinatorController`) untuk Koordinator melakukan ini dari HP-nya sendiri. Perlu diputuskan: apakah validasi NOO cukup dibatasi lewat hak menu web (role "Koordinator" di tabel role), atau perlu ditambah alur approval di aplikasi HP koordinator.
 
 ## Glosarium
 
@@ -143,9 +169,9 @@ _(Lengkapi seiring penelusuran; jangan biarkan singkatan tanpa definisi.)_
 
 ## Riwayat perubahan aturan
 
-Catat di sini hanya perubahan **aturan bisnis** (bukan refactor kode), terutama yang membatalkan keputusan sebelumnya, supaya tidak ada dua sumber yang saling kontradiksi.
+Catat di sini hanya perubahan **aturan bisnis** (bukan refactor kode), terutama yang membatalkan keputusan sebelumnya, supaya tidak ada dua sumber yang saling kontradiksi. Badan dokumen di atas selalu memuat **keputusan akhir yang berlaku sekarang**; tabel ini adalah satu-satunya tempat untuk jejak historisnya.
 
 | Tanggal | Aturan yang berubah | Dari → Ke | Alasan | Sumber |
 | --- | --- | --- | --- | --- |
 | 2026-10-28 | Validasi lokasi saat absen sales/koordinator | Radius depo → Area kerja (polygon, point-in-polygon) | Sales sudah di lapangan saat jam absen, bisa jauh dari depo; checkin depo (ambil barang) tetap soal hadir fisik di gudang | spec 035 (membatalkan spec 033, selisih keputusan 12 menit) |
-| 2026-10-30 | Istilah & lokasi Absen vs Check In | "Checkin Depo"/"Absen" dianggap dua hal tak jelas lokasinya → **Absen Datang/Pulang terjadi di Depo**; **Check In hanya untuk Outlet**. Membatalkan sebagian spec 035 (yang memvalidasi absen terhadap area kerja, bukan depo) | Klarifikasi product owner: istilah operasional yang benar | Percakapan klarifikasi 2026-10-30 — implementasi kode (`attendances/check-in`, `WilayahKerja`) **belum disesuaikan**, lihat §3 |
+| 2026-10-30 | Istilah & lokasi Absen vs Check In | "Checkin Depo"/"Absen" dianggap dua hal tak jelas lokasinya → **Absen Datang/Pulang terjadi di Depo**; **Check In hanya untuk Outlet**. Membatalkan keputusan spec 035 (yang memvalidasi absen terhadap area kerja, bukan depo) | Klarifikasi product owner: istilah operasional yang benar | Percakapan klarifikasi 2026-10-30 — implementasi kode (`attendances/check-in`, `WilayahKerja`) **belum disesuaikan**, lihat §14 |
