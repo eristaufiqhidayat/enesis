@@ -1,8 +1,15 @@
-# Enesis Canvassing
+# Marketama Motorist System
 
-Konteks untuk pembaruan Marketama Canvassing System: admin penjualan keliling (canvassing) yang mengelola sales di lapangan, koordinator, depo, outlet, stok, absensi, dan penggajian.
+Konteks untuk pembaruan Marketama Motorist System: admin penjualan keliling (canvassing) yang mengelola sales di lapangan, koordinator, depo, outlet, stok, absensi, dan penggajian.
 
 ## Bahasa
+
+### Perusahaan
+
+| Istilah | Arti | Hindari |
+| --- | --- | --- |
+| **PT. Marketama** | Perusahaan pemilik dan pengguna sistem ini; anak perusahaan dari Enesis Group. | |
+| **Enesis Group** | Perusahaan induk dari PT. Marketama. | |
 
 ### Operasi lapangan
 

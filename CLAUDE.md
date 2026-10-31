@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Laravel 13 (PHP ^8.3) clone of the "Marketama Canvassing System" admin UI. The sidebar (9 groups, 119 menus) mirrors Marketama; each menu shows a searchable, paginated table of data pulled from Marketama. UI text and code comments are in Indonesian — match that. Product background is in `docs/PRD.md` and `README.md`.
+Laravel 13 (PHP ^8.3) clone of the "Marketama Motorist System" admin UI. The sidebar (9 groups, 119 menus) mirrors Marketama; each menu shows a searchable, paginated table of data pulled from Marketama. UI text and code comments are in Indonesian — match that. Product background is in `docs/PRD.md` and `README.md`.
 
 ## Commands
 
