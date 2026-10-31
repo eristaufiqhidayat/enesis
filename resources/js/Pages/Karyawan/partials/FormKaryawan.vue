@@ -7,6 +7,8 @@ import Input from '@/Components/ui/atoms/Input.vue';
 import InputRibuan from '@/Components/ui/atoms/InputRibuan.vue';
 import Label from '@/Components/ui/atoms/Label.vue';
 import Select from '@/Components/ui/atoms/Select.vue';
+import Textarea from '@/Components/ui/atoms/Textarea.vue';
+import Alert from '@/Components/ui/molecules/Alert.vue';
 import Card from '@/Components/ui/molecules/Card.vue';
 import Combobox from '@/Components/ui/molecules/Combobox.vue';
 
@@ -43,6 +45,64 @@ const form = useForm({ ...props.nilai, foto: null });
 const pilihan = ref({ koordinator: props.opsi.koordinator ?? [], area: props.opsi.area ?? [], wilayah: props.opsi.wilayah ?? [] });
 const memuatOpsi = ref(false);
 const pratinjau = ref(null);
+
+// Baca KTP otomatis (OCR): foto KTP cuma dipakai sebentar untuk dibaca lewat /{menu}/baca-ktp, tidak diikutkan
+// ke form simpan karyawan dan tidak disimpan di server. Field hasil bacaan tetap bisa diedit sebelum disimpan.
+const fotoKtp = ref(null);
+const pratinjauKtp = ref(null);
+const memindaiKtp = ref(false);
+const statusScan = ref(null); // null | 'lengkap' | 'sebagian' | 'gagal'
+const teksMentahKtp = ref('');
+const tampilkanTeksMentah = ref(false);
+const fieldDariKtp = ref(new Set());
+
+function pilihFotoKtp(e) {
+    const file = e.target.files?.[0] ?? null;
+    fotoKtp.value = file;
+    pratinjauKtp.value = file ? URL.createObjectURL(file) : null;
+    statusScan.value = null;
+}
+
+async function bacaKtp() {
+    if (!fotoKtp.value) return;
+    memindaiKtp.value = true;
+    statusScan.value = null;
+
+    const data = new FormData();
+    data.append('foto_ktp', fotoKtp.value);
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
+
+    try {
+        const respons = await fetch(`${base}/baca-ktp`, {
+            method: 'POST',
+            headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrf },
+            body: data,
+        });
+
+        if (!respons.ok) {
+            statusScan.value = 'gagal';
+            return;
+        }
+
+        const hasil = await respons.json();
+        teksMentahKtp.value = hasil.teks_mentah ?? '';
+        const terisi = new Set();
+
+        [['nik', hasil.nik], ['nama', hasil.nama], ['tempat_lahir', hasil.tempat_lahir], ['tanggal_lahir', hasil.tanggal_lahir], ['alamat', hasil.alamat]]
+            .forEach(([kolom, nilai]) => {
+                if (nilai) {
+                    form[kolom] = nilai;
+                    terisi.add(kolom);
+                }
+            });
+        fieldDariKtp.value = terisi;
+        statusScan.value = (hasil.nik && hasil.nama && hasil.alamat) ? 'lengkap' : 'sebagian';
+    } catch {
+        statusScan.value = 'gagal';
+    } finally {
+        memindaiKtp.value = false;
+    }
+}
 
 watch(() => form.processing, (sedang) => emit('proses', sedang));
 
@@ -96,6 +156,34 @@ function simpan() {
         <fieldset :disabled="!bolehSimpan" class="contents">
             <div class="grid grid-cols-1 gap-3 mb-3 lg:grid-cols-3">
                 <div class="flex flex-col gap-3 min-w-0 lg:col-span-2">
+                    <Card v-if="kategori === 'sales'">
+                        <template #header>Baca KTP otomatis</template>
+                        <p class="text-gray-500 mb-3">Unggah foto KTP motoris untuk mengisi NIK, nama, tempat/tanggal lahir, dan alamat secara otomatis. Foto tidak disimpan, cuma dipakai sebentar untuk dibaca — hasilnya tetap bisa diedit sebelum disimpan.</p>
+                        <div class="flex flex-wrap items-start gap-3">
+                            <span class="foto-produk">
+                                <img v-if="pratinjauKtp" :src="pratinjauKtp" alt="Pratinjau KTP">
+                                <template v-else>Belum ada foto</template>
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <Label for="foto_ktp">Foto KTP</Label>
+                                <Input id="foto_ktp" type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" @change="pilihFotoKtp" />
+                                <small class="block text-gray-500 mt-1">.jpg, .jpeg, .png, maksimal 5 MB. Pastikan terang, rata, dan tidak terpotong.</small>
+                                <Button type="button" class="mt-2" :loading="memindaiKtp" :disabled="!fotoKtp || memindaiKtp" @click="bacaKtp">
+                                    Baca KTP otomatis
+                                </Button>
+
+                                <Alert v-if="statusScan === 'lengkap'" variant="success" class="mt-3">NIK, nama, dan alamat terbaca — cek sekali lagi di bawah sebelum disimpan.</Alert>
+                                <Alert v-if="statusScan === 'sebagian'" variant="warning" class="mt-3">Sebagian data tidak terbaca jelas, lengkapi manual pada field yang masih kosong.</Alert>
+                                <Alert v-if="statusScan === 'gagal'" variant="danger" class="mt-3">Foto KTP tidak bisa dibaca. Coba foto ulang dengan cahaya lebih terang dan tidak miring.</Alert>
+
+                                <button v-if="teksMentahKtp" type="button" class="text-sky-600 underline mt-2 block" @click="tampilkanTeksMentah = !tampilkanTeksMentah">
+                                    {{ tampilkanTeksMentah ? 'Sembunyikan' : 'Lihat' }} teks mentah hasil OCR
+                                </button>
+                                <pre v-if="tampilkanTeksMentah" class="bg-gray-900 text-green-200 text-xs p-3 rounded mt-2 max-h-40 overflow-auto whitespace-pre-wrap">{{ teksMentahKtp }}</pre>
+                            </div>
+                        </div>
+                    </Card>
+
                     <Card>
                         <template #header>Data {{ nama }}</template>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -103,6 +191,27 @@ function simpan() {
                                 <Label for="nama">Nama lengkap <span class="text-red-600">*</span></Label>
                                 <Input id="nama" v-model="form.nama" required maxlength="150" />
                                 <FieldError v-if="form.errors.nama">{{ form.errors.nama }}</FieldError>
+                            </div>
+
+                            <div>
+                                <Label for="nik">NIK{{ fieldDariKtp.has('nik') ? ' (dari KTP)' : '' }}</Label>
+                                <Input id="nik" v-model="form.nik" inputmode="numeric" maxlength="16" placeholder="16 digit sesuai KTP" />
+                                <FieldError v-if="form.errors.nik">{{ form.errors.nik }}</FieldError>
+                            </div>
+                            <div>
+                                <Label for="tempat_lahir">Tempat lahir{{ fieldDariKtp.has('tempat_lahir') ? ' (dari KTP)' : '' }}</Label>
+                                <Input id="tempat_lahir" v-model="form.tempat_lahir" maxlength="100" />
+                                <FieldError v-if="form.errors.tempat_lahir">{{ form.errors.tempat_lahir }}</FieldError>
+                            </div>
+                            <div>
+                                <Label for="tanggal_lahir">Tanggal lahir{{ fieldDariKtp.has('tanggal_lahir') ? ' (dari KTP)' : '' }}</Label>
+                                <Input id="tanggal_lahir" v-model="form.tanggal_lahir" type="date" />
+                                <FieldError v-if="form.errors.tanggal_lahir">{{ form.errors.tanggal_lahir }}</FieldError>
+                            </div>
+                            <div class="sm:col-span-2">
+                                <Label for="alamat">Alamat{{ fieldDariKtp.has('alamat') ? ' (dari KTP)' : '' }}</Label>
+                                <Textarea id="alamat" v-model="form.alamat" maxlength="500" />
+                                <FieldError v-if="form.errors.alamat">{{ form.errors.alamat }}</FieldError>
                             </div>
 
                             <div v-if="kategori === 'lainnya'">
