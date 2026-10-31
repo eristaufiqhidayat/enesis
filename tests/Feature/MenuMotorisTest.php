@@ -16,6 +16,11 @@ class MenuMotorisTest extends TestCase
             foreach ($grup['items'] as $item) {
                 foreach ($item['children'] ?? [$item] as $m) {
                     $hasil[$m['slug']] = $m['title'];
+
+                    // Halaman yang digabung ke entri ini di sidebar tetap menu yang ada (lihat Akses::satukanTab).
+                    foreach ($m['serumpun'] ?? [] as $slug) {
+                        $hasil[$slug] = $m['title'];
+                    }
                 }
             }
         }

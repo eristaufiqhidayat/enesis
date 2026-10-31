@@ -18,15 +18,18 @@ import DetailArea from './partials/DetailArea.vue';
 import DetailDepo from './partials/DetailDepo.vue';
 import DetailDepoEdit from './partials/DetailDepoEdit.vue';
 import DetailDepoPeta from './partials/DetailDepoPeta.vue';
+import RuteHarianPeta from './partials/RuteHarianPeta.vue';
 import DetailLapLoadingBarang from './partials/DetailLapLoadingBarang.vue';
 import DetailLoadingBarang from './partials/DetailLoadingBarang.vue';
 import DetailMuatanCanvassing from './partials/DetailMuatanCanvassing.vue';
 import RiwayatDistributor from './partials/RiwayatDistributor.vue';
 import Tabs from '@/Components/ui/molecules/Tabs.vue';
+import TabsHalaman from '@/Components/ui/molecules/TabsHalaman.vue';
 import DataTable from '@/Components/ui/organisms/DataTable.vue';
 import { useTambahMuatan } from '@/Composables/useTambahMuatan.js';
 import { useAmbilData } from '@/Support/ambilData.js';
-import { tanggalWaktuPendek } from '@/Support/format.js';
+import { tanggalSingkat, tanggalWaktuPendek } from '@/Support/format.js';
+import { infoRiwayat as infoRiwayatBaris, riwayatTabel, tabelLastSeen } from '@/Support/riwayat.js';
 
 const props = defineProps({
     slug: { type: String, required: true },
@@ -38,7 +41,7 @@ const props = defineProps({
     tanggal: { type: String, default: null },
     hasDateFilter: { type: Boolean, default: false },
     // Filter depo / koordinator untuk tabel dengan sumber bertanggal (lihat SumberBertanggal).
-    filter: { type: Object, default: () => ({ depo: null, koordinator: null }) },
+    filter: { type: Object, default: () => ({ depo: null, koordinator: null, status: null }) },
     // Punya hak tambah di menu ini (tombol Tambah yang membuka modal form, saat ini hanya barang_canvassing).
     bisaTambah: { type: Boolean, default: false },
 });
@@ -52,6 +55,8 @@ const areaTerpilih = ref(null);
 const depoDiedit = ref(false);
 // Baris depo yang petanya dibuka di drawer dari tombol Peta.
 const depoPeta = ref(null);
+// Baris Tracking Last Seen yang posisi terakhirnya dibuka di drawer peta dari tautan Lihat peta.
+const posisiTerpilih = ref(null);
 // Baris lap_loading_barang yang detailnya dibuka di drawer dari tautan Trans Code; null = tertutup.
 const lapTerpilih = ref(null);
 // Baris loading_barang yang detailnya dibuka di drawer dari tautan Kode Transaksi; null = tertutup.
@@ -74,6 +79,11 @@ const distributorTerpilih = ref(null);
 const kolomLapLoadingBarang = computed(() => visibleTables.value.find((table) => table.name === 'lap_loading_barang')?.columns ?? {});
 const kolomLoadingBarang = computed(() => visibleTables.value.find((table) => table.name === 'loading_barang')?.columns ?? {});
 
+// Baris tabel (Tracking Last Seen, rekap Motoris Ditandai) yang rutenya dibuka di drawer Riwayat:
+// { orang, slug, idParam, tanggal }. Tujuan dan izinnya ditentukan Support/riwayat.js dari prop bersama tabHalaman.
+const riwayatTerpilih = ref(null);
+const infoRiwayat = (table, row, tanggalPilih = null) => infoRiwayatBaris(table.name, row, usePage().props.tabHalaman, tanggalPilih);
+
 function tutupDetailDepo() {
     depoTerpilih.value = null;
     depoDiedit.value = false;
@@ -81,6 +91,7 @@ function tutupDetailDepo() {
 const tanggal = ref(props.tanggal);
 const depo = ref(props.filter.depo ?? '');
 const koordinator = ref(props.filter.koordinator ?? '');
+const status = ref(props.filter.status ?? '');
 const appName = usePage().props.appName;
 
 // Halaman bertab: backend hanya meng-query tabel grup aktif (lihat MenuController), jadi `tables` di sini
@@ -111,10 +122,13 @@ watch(() => props.tanggal, (value) => tanggal.value = value);
 watch(() => props.filter, (value) => {
     depo.value = value.depo ?? '';
     koordinator.value = value.koordinator ?? '';
+    status.value = value.status ?? '';
 });
 
 // Pilihan dropdown depo/koordinator dari tabel tab aktif yang menyediakannya.
 const pilihanFilter = computed(() => visibleTables.value.find((table) => table.filter_pilihan)?.filter_pilihan ?? null);
+// Pilihan status (mis. kebaruan posisi di Tracking Last Seen) dari tabel tab aktif yang menyediakannya.
+const pilihanStatus = computed(() => visibleTables.value.find((table) => table.pilihan_status)?.pilihan_status ?? null);
 const adaPilihan = (kunci) => Object.keys(pilihanFilter.value?.[kunci] ?? {}).length > 0;
 
 // KPI dari backend: daftar { label, value }.
@@ -128,11 +142,15 @@ function formatAngka(nilai) {
     return typeof nilai === 'number' ? new Intl.NumberFormat('id-ID').format(nilai) : nilai;
 }
 
+// Warna badge kolom Terakhir Terlihat di Tracking Last Seen, menurut label status (SumberLastSeen::STATUS).
+const warnaKebaruan = { 'Hari ini': 'success', '1–7 hari lalu': 'warning', 'Lebih dari 7 hari': 'danger', 'Belum ada data': 'secondary' };
+
 // Warna badge per tabel: "Belum checkin" merah, jam checkin di luar rentang kuning.
 const warnaBadge = {
     checkin_pagi: { checkin_pertama_hari_ini: { 'Belum checkin': 'danger', '*': 'warning' } },
     loading_barang: { status_retur: { 'Belum Retur': 'danger', 'Sudah Retur': 'success' } },
     barang_canvassing: { status: { Disiapkan: 'info', Diterima: 'secondary', Dikembalikan: 'warning', Selesai: 'success' } },
+    tanda_motoris_rekap: { status: { Aktif: 'danger', Dicabut: 'secondary' } },
 };
 
 // Tab "Outlet Baru dari HP" (aksi verifikasi_outlet_baru): warna status dan tombol Setujui / Tolak.
@@ -159,12 +177,14 @@ const { memuat, berubah, ambil } = useAmbilData({
         tanggal: formDateFilter.value ? tanggal.value : '',
         depo: pilihanFilter.value ? depo.value : '',
         koordinator: pilihanFilter.value ? koordinator.value : '',
+        status: pilihanStatus.value ? status.value : '',
     }),
     diterapkan: () => ({
         q: props.search.trim(),
         tanggal: formDateFilter.value ? props.tanggal : '',
         depo: pilihanFilter.value ? props.filter.depo : '',
         koordinator: pilihanFilter.value ? props.filter.koordinator : '',
+        status: pilihanStatus.value ? props.filter.status : '',
     }),
 });
 
@@ -187,6 +207,10 @@ function submitSearch() {
         if (koordinator.value) {
             query.koordinator = koordinator.value;
         }
+    }
+
+    if (pilihanStatus.value && status.value) {
+        query.status = status.value;
     }
 
     ambil(`/${props.slug}`, query, { preserveState: true, replace: true, only: PROPS_MENU });
@@ -264,6 +288,8 @@ function filterTabel(table, { nilai, operator }) {
             </template>
         </PageHeader>
 
+        <TabsHalaman />
+
         <Alert v-if="page.same_as" variant="info" class="mb-3">
             Data menu ini sama dengan
             <Link :href="`/${page.same_as}`">{{ page.same_as_title }}</Link>.
@@ -315,7 +341,7 @@ function filterTabel(table, { nilai, operator }) {
                         :total="table.rows.total"
                         :links="table.rows.links"
                         :pagination-only="PROPS_TABEL"
-                        :badge-columns="table.name === 'checkin_pagi' ? ['checkin_pertama_hari_ini'] : (table.name === 'loading_barang' ? ['status_retur'] : (table.name === 'barang_canvassing' ? ['status'] : (table.aksi === 'verifikasi_outlet_baru' ? ['status'] : [])))"
+                        :badge-columns="table.name === 'checkin_pagi' ? ['checkin_pertama_hari_ini'] : (table.name === 'loading_barang' ? ['status_retur'] : (['barang_canvassing', 'tanda_motoris_rekap'].includes(table.name) ? ['status'] : (table.aksi === 'verifikasi_outlet_baru' ? ['status'] : [])))"
                         :badge-variants="table.aksi === 'verifikasi_outlet_baru' ? warnaStatusOutletBaru : (warnaBadge[table.name] ?? {})"
                         :sortable="table.sortable_columns"
                         :sort="table.sort"
@@ -335,9 +361,33 @@ function filterTabel(table, { nilai, operator }) {
                                     <DatePicker v-if="formDateFilter" v-model="tanggal" aria-label="Tanggal data" class="w-36" />
                                     <Select v-if="adaPilihan('depo')" v-model="depo" :options="pilihanFilter.depo" placeholder="Semua depo" aria-label="Depo" class="w-auto" />
                                     <Select v-if="adaPilihan('koordinator')" v-model="koordinator" :options="pilihanFilter.koordinator" placeholder="Semua koordinator" aria-label="Koordinator" class="w-auto max-w-[12rem]" />
+                                    <Select v-if="pilihanStatus" v-model="status" :options="pilihanStatus" placeholder="Semua status" aria-label="Status" class="w-auto" />
                                     <CariForm v-model="search" :loading="memuat" :disabled="!berubah" @submit="submitSearch" />
                                 </div>
                             </div>
+                        </template>
+                        <template v-if="tabelLastSeen.includes(table.name)" #cell-terakhir_terlihat="{ row }">
+                            <Badge :variant="warnaKebaruan[row.status] ?? 'secondary'" :title="row.sejak ? row.terakhir_terlihat : null">{{ row.sejak ?? row.terakhir_terlihat }}</Badge>
+                        </template>
+                        <template v-if="table.name in riwayatTabel" #cell-riwayat="{ row }">
+                            <button v-if="infoRiwayat(table, row)" type="button" class="tautan-depo" @click="riwayatTerpilih = infoRiwayat(table, row)">Lihat riwayat</button>
+                        </template>
+                        <template v-if="table.name === 'tracking_last_seen_sales'" #cell-ditandai="{ row }">
+                            <template v-if="row.ditandai > 0">
+                                <button
+                                    v-if="infoRiwayat(table, row, row.ditandai_tanggal)"
+                                    type="button"
+                                    class="tautan-depo"
+                                    :title="`Tanda terakhir: ${tanggalSingkat(row.ditandai_tanggal)}`"
+                                    @click="riwayatTerpilih = infoRiwayat(table, row, row.ditandai_tanggal)"
+                                >
+                                    <Badge variant="danger">{{ row.ditandai }} tanda</Badge>
+                                </button>
+                                <Badge v-else variant="danger" :title="`Tanda terakhir: ${tanggalSingkat(row.ditandai_tanggal)}`">{{ row.ditandai }} tanda</Badge>
+                            </template>
+                        </template>
+                        <template v-if="tabelLastSeen.includes(table.name)" #cell-lokasi="{ row }">
+                            <button v-if="row.latitude !== null && row.longitude !== null" type="button" class="tautan-depo" @click="posisiTerpilih = row">Lihat peta</button>
                         </template>
                         <template v-if="table.name === 'master_depo'" #cell-nama="{ row }">
                             <button type="button" class="tautan-depo" @click="depoTerpilih = row">{{ row.nama }}</button>
@@ -436,6 +486,29 @@ function filterTabel(table, { nilai, operator }) {
         <!-- Drawer detail area, dibuka dari tautan Kode atau Nama di tabel master_area. -->
         <Modal :show="areaTerpilih !== null" :title="areaTerpilih?.nama ?? ''" placement="kanan" @close="areaTerpilih = null">
             <DetailArea v-if="areaTerpilih" :area="areaTerpilih" />
+        </Modal>
+        <!-- Drawer peta posisi terakhir motoris, dibuka dari tautan Lihat peta di tabel Tracking Last Seen. -->
+        <Modal :show="posisiTerpilih !== null" :title="posisiTerpilih ? `Posisi ${posisiTerpilih.nama}` : ''" placement="kanan" @close="posisiTerpilih = null">
+            <DetailDepoPeta
+                v-if="posisiTerpilih"
+                :depo="posisiTerpilih"
+                ikon="motoris"
+                :rincian="`Terakhir terlihat ${posisiTerpilih.terakhir_terlihat}${posisiTerpilih.sejak ? ` (${posisiTerpilih.sejak})` : ''}`"
+                drawer
+            />
+        </Modal>
+        <!-- Drawer rute harian, dibuka dari tombol Lihat riwayat di tabel Tracking Last Seen. -->
+        <Modal :show="riwayatTerpilih !== null" :title="riwayatTerpilih ? `Riwayat ${riwayatTerpilih.orang.nama}` : ''" placement="kanan" size="xl" @close="riwayatTerpilih = null">
+            <RuteHarianPeta
+                v-if="riwayatTerpilih"
+                :orang="riwayatTerpilih.orang"
+                :id="riwayatTerpilih.orang.id"
+                :id-param="riwayatTerpilih.idParam"
+                :tanggal="riwayatTerpilih.tanggal"
+                :locations-url="`/${riwayatTerpilih.slug}/locations`"
+                :halaman-url="`/${riwayatTerpilih.slug}?${riwayatTerpilih.idParam}=${riwayatTerpilih.orang.id}&tanggal=${riwayatTerpilih.tanggal}`"
+                :tanda-url="riwayatTerpilih.idParam === 'sales_id' ? '/tracking_sales/tanda' : null"
+            />
         </Modal>
         <!-- Drawer peta lokasi depo, dibuka dari tombol Peta di tabel master_depo. -->
         <Modal :show="depoPeta !== null" :title="depoPeta ? `Peta ${depoPeta.nama}` : ''" placement="kanan" @close="depoPeta = null">

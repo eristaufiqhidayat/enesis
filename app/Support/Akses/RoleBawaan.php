@@ -60,8 +60,9 @@ class RoleBawaan
                 default => [],
             };
 
+            // Koordinator boleh memberi tanda motoris dari drawer Riwayat Lacak Motoris (hak Tambah pada tracking_sales).
             DB::table('role_hak')->insert(array_map(fn ($m) => [
-                'role_id' => $id, 'menu' => $m, 'lihat' => true, 'tambah' => false, 'ubah' => false, 'hapus' => false,
+                'role_id' => $id, 'menu' => $m, 'lihat' => true, 'tambah' => $kode === 'koordinator' && $m === 'tracking_sales', 'ubah' => false, 'hapus' => false,
                 'ekspor' => $r['hak'] === 'lihat',
             ], array_values($menu)));
         }

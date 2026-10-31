@@ -32,6 +32,13 @@ describe('Breadcrumb', () => {
         expect(wrapper.text()).toBe('Master Data/Area/Desain Area');
     });
 
+    it('renders the trail of a merged item for its sibling page (serumpun)', () => {
+        const gabungan = [{ label: 'Canvassing', items: [{ title: 'Lacak Motoris', slug: 'tracking_sales', serumpun: ['tracking_sales_history_location'] }] }];
+        const wrapper = mount(Breadcrumb, { props: { menu: gabungan, currentSlug: 'tracking_sales_history_location' } });
+
+        expect(wrapper.text()).toBe('Canvassing/Lacak Motoris');
+    });
+
     it('renders nothing when the slug is not found', () => {
         const wrapper = mount(Breadcrumb, { props: { menu, currentSlug: 'unknown' } });
 

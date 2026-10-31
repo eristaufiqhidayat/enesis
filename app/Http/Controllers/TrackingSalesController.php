@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Akses\Akses;
+use App\Support\Tracking\AnomaliGps;
+use App\Support\Tracking\KunjunganHarian;
 use App\Support\Tracking\TitikGps;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -28,6 +31,7 @@ class TrackingSalesController extends Controller
             'countsUrl' => route('tracking-sales.counts'),
             'tanggal' => $tanggal,
             'counts' => (object) $this->countsFor($tanggal),
+            'pilihId' => $request->integer('sales_id') ?: null,
         ]);
     }
 
@@ -64,11 +68,19 @@ class TrackingSalesController extends Controller
         $locations = $lama->concat(TitikGps::untuk($id, $data['tanggal']))
             ->sortBy('waktu')->values();
 
+        // Kunjungan outlet hanya untuk motoris dalam cakupan role akun (rute GPS di atas tidak dibatasi cakupan).
+        $dalamCakupan = Akses::batasiKaryawan(DB::table('mk_karyawan as k')->where('k.id', $id), $request->user())->exists();
+
+        $kunjungan = $dalamCakupan ? KunjunganHarian::untuk($id, $data['tanggal']) : collect();
+
         return response()->json([
             'sales' => $sales,
             'depo' => $depo,
             'total' => $locations->count(),
             'locations' => $locations,
+            'kunjungan' => $kunjungan,
+            // Indikasi GPS tidak wajar pada tanggal ini saja (null bila di bawah ambang).
+            'anomali_gps' => AnomaliGps::analisis($locations, $kunjungan->where('lokasi_palsu', true)->count()),
         ]);
     }
 

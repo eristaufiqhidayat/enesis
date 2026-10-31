@@ -43,6 +43,8 @@ class HandleInertiaRequests extends Middleware
             // Data pencarian sidebar: menu() yang diratakan + entri per tab untuk halaman bertab.
             'searchMenu' => fn () => Akses::menuPencarian($request->user()),
             'currentSlug' => $request->route('slug') ?? $request->path(),
+            // Tab penghubung ke halaman sekelompok (mis. Last Seen ↔ Riwayat Lokasi), sudah disaring menurut hak.
+            'tabHalaman' => fn () => Akses::tabHalaman($request->user(), $request->route('slug') ?? $request->path()),
             'appName' => config('app.name'),
             // Boleh menambah muatan canvassing: menampilkan modal Atur Muatan Motoris dan shortcut-nya di Topbar.
             'bisaTambahMuatan' => fn () => Akses::bisa($request->user(), 'barang_canvassing', 'tambah'),

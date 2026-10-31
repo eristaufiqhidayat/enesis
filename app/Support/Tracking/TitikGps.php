@@ -18,12 +18,13 @@ class TitikGps
         $zona = Pengaturan::zona();
 
         return DB::table('trx_tracking')->where('karyawan_id', $karyawanId)->whereBetween('recorded_at', [$dari, $sampai])
-            ->get(['lat', 'lng', 'recorded_at', 'akurasi_m'])
+            ->get(['lat', 'lng', 'recorded_at', 'akurasi_m', 'mock_location'])
             ->map(fn ($t) => (object) [
                 'lat' => $t->lat,
                 'lng' => $t->lng,
                 'waktu' => CarbonImmutable::parse($t->recorded_at, 'UTC')->setTimezone($zona)->format('Y-m-d H:i:s'),
                 'akurasi' => $t->akurasi_m,
+                'mock' => (bool) $t->mock_location,
             ]);
     }
 

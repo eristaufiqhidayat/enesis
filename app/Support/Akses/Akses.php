@@ -156,7 +156,10 @@ class Akses
     {
         // Sidebar hanya tampil setelah login; tanpa user (mis. render komponen di tes) tampil utuh.
         if (! $user) {
-            return self::tandaiMotoris(config('marketama.menu'));
+            return self::tandaiMotoris(array_map(
+                fn ($grup) => ['items' => self::satukanTab($grup['items'], null)] + $grup,
+                config('marketama.menu')
+            ));
         }
 
         $hasil = [];
@@ -176,12 +179,85 @@ class Akses
                 }
             }
 
+            $items = self::satukanTab($items, $user);
+
             if ($items) {
                 $hasil[] = ['items' => $items] + $grup;
             }
         }
 
         return self::tandaiMotoris($hasil);
+    }
+
+    /**
+     * Gabungkan halaman sekelompok (config marketama.tab_halaman) jadi satu entri sidebar: induk (slug pertama
+     * kelompok) memakai 'judul_sidebar' dan membawa 'serumpun' (slug lain yang bisa dibuka akun, untuk penanda aktif
+     * dan breadcrumb); slug lain disembunyikan selama induknya bisa dibuka. Akun tanpa hak induk tetap melihat
+     * halaman yang boleh dibukanya. $user null = semua bisa dibuka.
+     *
+     * @param  array<int, array<string, mixed>>  $items
+     * @return array<int, array<string, mixed>>
+     */
+    private static function satukanTab(array $items, ?User $user): array
+    {
+        $bisa = fn (string $slug) => ! $user || self::bisa($user, $slug);
+        $hasil = [];
+
+        foreach ($items as $item) {
+            $kelompok = isset($item['slug']) ? self::kelompokTab($item['slug']) : null;
+
+            if ($kelompok === null) {
+                $hasil[] = $item;
+
+                continue;
+            }
+
+            $induk = array_key_first($kelompok);
+
+            if ($item['slug'] !== $induk) {
+                if (! $bisa($induk)) {
+                    $hasil[] = $item;
+                }
+
+                continue;
+            }
+
+            $item['serumpun'] = array_values(array_filter(array_keys($kelompok), fn ($s) => $s !== $induk && $bisa($s)));
+
+            if ($item['serumpun']) {
+                $item['title'] = $item['judul_sidebar'] ?? $item['title'];
+            }
+
+            $hasil[] = $item;
+        }
+
+        return $hasil;
+    }
+
+    /** Kelompok tab_halaman yang memuat $slug (slug => label), atau null. */
+    private static function kelompokTab(string $slug): ?array
+    {
+        foreach (config('marketama.tab_halaman', []) as $kelompok) {
+            if (isset($kelompok[$slug])) {
+                return $kelompok;
+            }
+        }
+
+        return null;
+    }
+
+    /** Judul menu di config('marketama.menu') untuk $slug (termasuk anak), atau $slug sendiri bila tak ketemu. */
+    private static function judulMenu(string $slug): string
+    {
+        foreach (self::daftarMenu() as $grup) {
+            foreach ($grup['menu'] as $m) {
+                if ($m['slug'] === $slug) {
+                    return $m['nama'];
+                }
+            }
+        }
+
+        return $slug;
     }
 
     /** Menu sudah terhubung ke data aplikasi motoris (config marketama.menu_motoris)? */
@@ -223,6 +299,11 @@ class Akses
                 foreach ($item['children'] ?? [$item] as $m) {
                     $hasil[] = ['title' => $m['title'], 'slug' => $m['slug']];
 
+                    // Halaman yang digabung ke entri ini di sidebar tetap bisa dicari lewat judul aslinya.
+                    foreach ($m['serumpun'] ?? [] as $s) {
+                        $hasil[] = ['title' => self::judulMenu($s), 'slug' => $s];
+                    }
+
                     if (config("marketama.pages.{$m['slug']}.tabs") === true) {
                         foreach (config("marketama.pages.{$m['slug']}.tables") as $grupTab) {
                             $hasil[] = ['title' => $grupTab['tab_label'], 'slug' => "{$m['slug']}?tab={$grupTab['tab_key']}"];
@@ -233,6 +314,33 @@ class Akses
         }
 
         return $hasil;
+    }
+
+    /**
+     * Tab penghubung halaman terpisah (config('marketama.tab_halaman')) untuk halaman $slug: hanya halaman
+     * yang boleh dibuka akun. Kosong bila $slug tidak berkelompok atau tersisa kurang dari dua tab.
+     *
+     * @return array<int, array{slug: string, label: string}>
+     */
+    public static function tabHalaman(?User $user, string $slug): array
+    {
+        foreach (config('marketama.tab_halaman', []) as $kelompok) {
+            if (! isset($kelompok[$slug])) {
+                continue;
+            }
+
+            $tab = [];
+
+            foreach ($kelompok as $s => $label) {
+                if (self::bisa($user, $s)) {
+                    $tab[] = ['slug' => $s, 'label' => $label];
+                }
+            }
+
+            return count($tab) > 1 ? $tab : [];
+        }
+
+        return [];
     }
 
     /**

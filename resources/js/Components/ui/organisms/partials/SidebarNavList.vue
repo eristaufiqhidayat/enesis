@@ -58,7 +58,7 @@ defineExpose({ closeFlyouts });
             @close="closeFlyout(item)"
         />
         <li v-else class="nav-item">
-            <Link class="nav-link" :class="{ active: currentSlug === item.slug }" :href="`/${item.slug}`" @mouseenter="showTip($event, item.title)" @mouseleave="hideTip">
+            <Link class="nav-link" :class="{ active: currentSlug === item.slug || item.serumpun?.includes(currentSlug) }" :href="`/${item.slug}`" @mouseenter="showTip($event, item.title)" @mouseleave="hideTip">
                 <span v-if="props.topLevel && item.icon" class="nav-link-icon">
                     <Icon :name="item.icon" class="nav-link-icon-svg" />
                 </span>
