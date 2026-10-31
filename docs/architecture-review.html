@@ -1,0 +1,300 @@
+<title>Architecture Review — Marketama Clone</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose", fontFamily: "ui-monospace, monospace" });
+</script>
+<style>
+  /* layout: editorial single column, cards as articles, mermaid + hand-built diagrams mixed */
+  :root {
+    --bg: #faf7f2;
+    --fg: #1c1a17;
+    --muted: #6b6459;
+    --card: #ffffff;
+    --line: #e4ddd2;
+    --accent: #6d5a3c;
+    --strong: #0f7a51;
+    --worth: #b5790a;
+    --spec: #6b6459;
+    --leak: #b42318;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17140f;
+      --fg: #ece6da;
+      --muted: #a79d8b;
+      --card: #211d16;
+      --line: #3a3326;
+      --accent: #cbb28a;
+      --strong: #3ecf8e;
+      --worth: #e0a73a;
+      --spec: #a79d8b;
+      --leak: #ff6b5e;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #17140f;
+    --fg: #ece6da;
+    --muted: #a79d8b;
+    --card: #211d16;
+    --line: #3a3326;
+    --accent: #cbb28a;
+    --strong: #3ecf8e;
+    --worth: #e0a73a;
+    --spec: #a79d8b;
+    --leak: #ff6b5e;
+    color-scheme: dark;
+  }
+  body { background: var(--bg); color: var(--fg); padding-left: max(16px, env(safe-area-inset-left,0px)); padding-right: max(16px, env(safe-area-inset-right,0px)); }
+  .serif { font-family: "Source Serif 4", Georgia, "Noto Serif", serif; }
+  .mono { font-family: ui-monospace, "SF Mono", Consolas, monospace; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 0.5rem; }
+  .badge { font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 0.2rem 0.55rem; border-radius: 999px; font-weight: 600; }
+  .badge-strong { background: color-mix(in srgb, var(--strong) 18%, transparent); color: var(--strong); }
+  .badge-worth { background: color-mix(in srgb, var(--worth) 18%, transparent); color: var(--worth); }
+  .badge-spec { background: color-mix(in srgb, var(--spec) 22%, transparent); color: var(--spec); }
+  .tag { font-size: 0.68rem; letter-spacing: 0.04em; text-transform: uppercase; padding: 0.2rem 0.55rem; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+  .label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .seam-line { stroke: var(--muted); stroke-dasharray: 4 4; fill: none; }
+  .leak-line { stroke: var(--leak); stroke-width: 2; fill: none; }
+  .mod-box { fill: var(--card); stroke: var(--line); stroke-width: 1.5; }
+  .deep-box { fill: var(--accent); fill-opacity: 0.15; stroke: var(--accent); stroke-width: 2; }
+  .mermaid { font-size: 13px; }
+  h1, h2, h3 { text-wrap: balance; }
+  a { color: var(--accent); }
+</style>
+
+<main class="max-w-4xl mx-auto py-10 space-y-14" style="padding-block: 2.5rem;">
+
+  <header class="space-y-3 border-b pb-6" style="border-color: var(--line);">
+    <p class="label">Architecture review</p>
+    <h1 class="serif text-3xl font-semibold">Marketama Motorist System — clone admin</h1>
+    <p class="mono text-sm" style="color: var(--muted);">31 Okt 2026 · hot spot dari 150 commit terakhir</p>
+    <div class="flex flex-wrap gap-4 pt-2 text-xs mono" style="color: var(--muted);">
+      <span class="flex items-center gap-1.5"><svg width="18" height="12"><rect x="1" y="1" width="16" height="10" class="mod-box"/></svg> module</span>
+      <span class="flex items-center gap-1.5"><svg width="18" height="12"><line x1="1" y1="6" x2="17" y2="6" class="seam-line"/></svg> seam</span>
+      <span class="flex items-center gap-1.5"><svg width="18" height="12"><line x1="1" y1="6" x2="17" y2="6" class="leak-line"/></svg> leakage</span>
+      <span class="flex items-center gap-1.5"><svg width="18" height="12"><rect x="1" y="1" width="16" height="10" class="deep-box"/></svg> deep module</span>
+    </div>
+  </header>
+
+  <section id="candidates" class="space-y-14">
+
+    <!-- Candidate 1 -->
+    <article class="card p-6 space-y-5" id="c1">
+      <div class="flex items-start justify-between gap-4 flex-wrap">
+        <h2 class="serif text-xl font-semibold">Menu/Show.vue tumbuh jadi switch per tabel</h2>
+        <div class="flex gap-2 flex-wrap shrink-0">
+          <span class="badge badge-strong">Strong</span>
+          <span class="tag">in-process</span>
+        </div>
+      </div>
+      <div class="mono text-sm space-y-0.5" style="color: var(--muted);">
+        <div>resources/js/Pages/Menu/Show.vue</div>
+        <div>resources/js/Components/ui/organisms/DataTable.vue</div>
+      </div>
+
+      <!-- before/after: interface-vs-implementation mass diagram -->
+      <div class="grid grid-cols-2 gap-4">
+        <div class="space-y-1.5">
+          <p class="label text-center">Before — shallow</p>
+          <svg viewBox="0 0 260 220" class="w-full" style="height: 280px;">
+            <rect x="30" y="10" width="200" height="130" class="mod-box" stroke-dasharray="3 3"/>
+            <text x="130" y="30" text-anchor="middle" class="mono" font-size="10" fill="var(--muted)">Show.vue — interface</text>
+            <text x="130" y="50" text-anchor="middle" class="mono" font-size="9" fill="var(--leak)">table.name === 'checkin_pagi'</text>
+            <text x="130" y="65" text-anchor="middle" class="mono" font-size="9" fill="var(--leak)">table.name === 'master_depo'</text>
+            <text x="130" y="80" text-anchor="middle" class="mono" font-size="9" fill="var(--leak)">table.name === 'master_area' ×2</text>
+            <text x="130" y="95" text-anchor="middle" class="mono" font-size="9" fill="var(--leak)">table.name === 'loading_barang'</text>
+            <text x="130" y="110" text-anchor="middle" class="mono" font-size="9" fill="var(--leak)">table.aksi === 'verifikasi_outlet_baru'</text>
+            <text x="130" y="125" text-anchor="middle" class="mono" font-size="9" fill="var(--muted)">6 refs, 5 drawer partials</text>
+            <rect x="80" y="150" width="100" height="25" class="mod-box"/>
+            <text x="130" y="167" text-anchor="middle" class="mono" font-size="9" fill="var(--muted)">implementation</text>
+          </svg>
+        </div>
+        <div class="space-y-1.5">
+          <p class="label text-center">After — deep</p>
+          <svg viewBox="0 0 260 220" class="w-full" style="height: 280px;">
+            <rect x="70" y="10" width="120" height="30" class="mod-box"/>
+            <text x="130" y="29" text-anchor="middle" class="mono" font-size="9" fill="var(--fg)">row_detail lookup</text>
+            <rect x="30" y="55" width="200" height="140" class="deep-box"/>
+            <text x="130" y="75" text-anchor="middle" class="mono" font-size="10" fill="var(--accent)">RowDrawer registry</text>
+            <text x="130" y="100" text-anchor="middle" class="mono" font-size="9" fill="var(--muted)" opacity="0.7">depo drawer</text>
+            <text x="130" y="115" text-anchor="middle" class="mono" font-size="9" fill="var(--muted)" opacity="0.7">area drawer ×2</text>
+            <text x="130" y="130" text-anchor="middle" class="mono" font-size="9" fill="var(--muted)" opacity="0.7">loading drawer</text>
+            <text x="130" y="145" text-anchor="middle" class="mono" font-size="9" fill="var(--muted)" opacity="0.7">badge maps</text>
+            <text x="130" y="175" text-anchor="middle" class="mono" font-size="9" fill="var(--muted)">config/marketama.php: 'row_detail' => X::class</text>
+          </svg>
+        </div>
+      </div>
+
+      <div class="grid sm:grid-cols-2 gap-4 text-sm pt-2">
+        <div><p class="label mb-1">Problem</p><p>Interface sudah lebar seperti implementasinya: lima <span class="mono">v-if table.name === '...'</span> dan enam ref untuk drawer per tabel.</p></div>
+        <div><p class="label mb-1">Solution</p><p>Pindahkan keputusan "tabel X pakai drawer Y" ke <span class="mono">'row_detail' => Class</span> di <span class="mono">config/marketama.php</span>, dibaca satu <span class="mono">&lt;RowDrawer&gt;</span> generik.</p></div>
+      </div>
+      <div>
+        <p class="label mb-1">Wins</p>
+        <ul class="text-sm list-disc pl-5 space-y-0.5">
+          <li>Interface menyusut; implementasi menyerap switch</li>
+          <li>Leverage: satu registry, N tabel</li>
+          <li>Locality: tabel baru cuma sentuh config</li>
+        </ul>
+      </div>
+      <div class="text-sm p-3 rounded border" style="border-color: var(--worth); background: color-mix(in srgb, var(--worth) 10%, transparent);">
+        Tegangan: beberapa drawer (peta depo, riwayat distributor) genuinely one-off — generalisasi untuk 2-3 tabel saja mungkin belum sepadan. Cek laju pertambahan drawer dulu.
+      </div>
+    </article>
+
+    <!-- Candidate 2 -->
+    <article class="card p-6 space-y-5" id="c2">
+      <div class="flex items-start justify-between gap-4 flex-wrap">
+        <h2 class="serif text-xl font-semibold">Insert area_polygon diduplikasi di dua controller</h2>
+        <div class="flex gap-2 flex-wrap shrink-0">
+          <span class="badge badge-strong">Strong</span>
+          <span class="tag">local-substitutable</span>
+        </div>
+      </div>
+      <div class="mono text-sm space-y-0.5" style="color: var(--muted);">
+        <div>app/Http/Controllers/GenerateKelurahanController.php</div>
+        <div>app/Http/Controllers/AutoGridController.php</div>
+      </div>
+
+      <div class="card p-3" style="background: color-mix(in srgb, var(--card) 100%, transparent);">
+        <pre class="mermaid">
+flowchart LR
+  G["GenerateKelurahanController::simpan"] --> R1["build $baris[]"]
+  A["AutoGridController::simpan"] --> R2["build $baris[]"]
+  G -.leak.-> D["DesignAreaController::diubah (static)"]
+  A -.leak.-> D
+  R1 --> S1["chunk insert ×100 + AreaMk::sinkronKode"]
+  R2 --> S2["chunk insert ×100 + AreaMk::sinkronKode"]
+  classDef leak stroke:#b42318,stroke-width:2px,color:#b42318;
+  class D leak
+        </pre>
+      </div>
+      <p class="label text-center">After — satu seam</p>
+      <div class="card p-3">
+        <pre class="mermaid">
+flowchart LR
+  G["GenerateKelurahanController"] --> U["unit list: kelurahan"]
+  A["AutoGridController"] --> U2["unit list: grid cell"]
+  U --> P["AreaPembuat::simpanBaru"]
+  U2 --> P
+  P --> S["chunk insert + AreaMk::sinkronKode (satu tempat)"]
+        </pre>
+      </div>
+
+      <div class="grid sm:grid-cols-2 gap-4 text-sm pt-2">
+        <div><p class="label mb-1">Problem</p><p>Dua <span class="mono">simpan()</span> membangun baris insert yang bentuknya sama persis, dan keduanya memanggil <span class="mono">DesignAreaController::diubah()</span> secara statis dari controller tetangga — tanda seam area-row mutation ada di tempat yang salah.</p></div>
+        <div><p class="label mb-1">Solution</p><p>Satu <span class="mono">AreaPembuat::simpanBaru()</span> menangani chunk-insert + <span class="mono">AreaMk::sinkronKode</span>; kedua controller hanya menyiapkan unit list domainnya.</p></div>
+      </div>
+      <div>
+        <p class="label mb-1">Wins</p>
+        <ul class="text-sm list-disc pl-5 space-y-0.5">
+          <li>Locality: bug insert hanya di satu tempat</li>
+          <li>Hapus panggilan statis antar controller</li>
+          <li>Leverage: satu implementasi, dua pemanggil</li>
+        </ul>
+      </div>
+      <div class="text-sm p-3 rounded border" style="border-color: var(--worth); background: color-mix(in srgb, var(--worth) 10%, transparent);">
+        Pengecekan "area sudah ada" TIDAK ikut digabung — dedup kelurahan (kode/nama resmi) dan dedup grid (overlap geometris) beda sifat, jangan dipaksa satu abstraksi.
+      </div>
+    </article>
+
+    <!-- Candidate 3 -->
+    <article class="card p-6 space-y-5" id="c3">
+      <div class="flex items-start justify-between gap-4 flex-wrap">
+        <h2 class="serif text-xl font-semibold">Loop registrasi rute CRUD ditulis ulang 3×</h2>
+        <div class="flex gap-2 flex-wrap shrink-0">
+          <span class="badge badge-worth">Worth exploring</span>
+          <span class="tag">in-process</span>
+        </div>
+      </div>
+      <div class="mono text-sm" style="color: var(--muted);">routes/web.php (baris 106–242)</div>
+
+      <!-- cross-section pattern -->
+      <div class="grid grid-cols-2 gap-4">
+        <div class="space-y-1.5">
+          <p class="label text-center">Before — 3 lapis tipis</p>
+          <div class="space-y-1">
+            <div class="h-10 border-l-4 flex items-center px-2 text-xs mono" style="border-color: var(--leak); background: color-mix(in srgb, var(--leak) 8%, transparent);">Akun: $rute[] + foreach Route::</div>
+            <div class="h-10 border-l-4 flex items-center px-2 text-xs mono" style="border-color: var(--leak); background: color-mix(in srgb, var(--leak) 8%, transparent);">Karyawan: $rute[] + foreach Route::</div>
+            <div class="h-10 border-l-4 flex items-center px-2 text-xs mono" style="border-color: var(--leak); background: color-mix(in srgb, var(--leak) 8%, transparent);">MasterProduk: $rute[] + foreach Route::</div>
+          </div>
+        </div>
+        <div class="space-y-1.5">
+          <p class="label text-center">After — satu band</p>
+          <div class="h-32 border-l-4 flex items-center px-3 text-xs mono" style="border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent);">
+            RotaMenu::daftarkan($slug, $controller, $rute)<br/>— dipanggil 3×, isinya sama
+          </div>
+        </div>
+      </div>
+
+      <div class="grid sm:grid-cols-2 gap-4 text-sm pt-2">
+        <div><p class="label mb-1">Problem</p><p>Tabel aturan <span class="mono">[method, uri, aksi, hak, nama]</span> itu config yang wajar, tapi loop yang mengubahnya jadi route ter-gated ditulis ulang di tiga tempat.</p></div>
+        <div><p class="label mb-1">Solution</p><p>Satu helper/macro <span class="mono">RotaMenu::daftarkan()</span> menerima tabel aturan; tiga call site menyusut jadi daftar slug + controller.</p></div>
+      </div>
+      <div>
+        <p class="label mb-1">Wins</p>
+        <ul class="text-sm list-disc pl-5 space-y-0.5">
+          <li>Leverage: satu loop, N resource CRUD</li>
+          <li>3 kopi yang harus disinkron jadi 1</li>
+        </ul>
+      </div>
+      <p class="text-sm" style="color: var(--muted);">Prioritas lebih rendah — rute dibaca sekali saat boot, biayanya cuma biaya sinkronisasi, bukan kompleksitas runtime.</p>
+    </article>
+
+    <!-- Candidate 4 -->
+    <article class="card p-6 space-y-5" id="c4">
+      <div class="flex items-start justify-between gap-4 flex-wrap">
+        <h2 class="serif text-xl font-semibold">Tiga halaman peta Area menyiapkan Leaflet sendiri-sendiri</h2>
+        <div class="flex gap-2 flex-wrap shrink-0">
+          <span class="badge badge-spec">Speculative</span>
+          <span class="tag">ports & adapters</span>
+        </div>
+      </div>
+      <div class="mono text-sm space-y-0.5" style="color: var(--muted);">
+        <div>resources/js/Pages/Area/Design.vue (554 baris)</div>
+        <div>resources/js/Pages/Area/GenerateKelurahan.vue (352 baris)</div>
+        <div>resources/js/Pages/Area/AutoGrid.vue (389 baris)</div>
+        <div>resources/js/Support/peta.js — baru menangani icon/popup</div>
+      </div>
+      <div class="card p-3">
+        <pre class="mermaid">
+flowchart LR
+  D["Design.vue — editable vertex editor"] --> L1["setup Leaflet #1"]
+  K["GenerateKelurahan.vue — preview only"] --> L2["setup Leaflet #2"]
+  A["AutoGrid.vue — preview only"] --> L3["setup Leaflet #3"]
+  L1 & L2 & L3 -.pakai bersama.-> P["peta.js — icon/popup saja"]
+        </pre>
+      </div>
+      <div class="grid sm:grid-cols-2 gap-4 text-sm pt-2">
+        <div><p class="label mb-1">Problem</p><p>Tiga page punya call-site Leaflet sendiri di luar <span class="mono">peta.js</span>; belum dibaca penuh seberapa banyak yang genuinely duplikat vs berbeda (editable vs preview-only).</p></div>
+        <div><p class="label mb-1">Solution</p><p>Kalau duplikasinya nyata: satu modul map-preview dipakai GenerateKelurahan + AutoGrid; Design.vue tetap sendiri karena editor vertex-nya memang beda interaksi.</p></div>
+      </div>
+      <div>
+        <p class="label mb-1">Wins</p>
+        <ul class="text-sm list-disc pl-5 space-y-0.5">
+          <li>Berpotensi locality, belum terverifikasi</li>
+        </ul>
+      </div>
+      <div class="text-sm p-3 rounded border" style="border-color: var(--worth); background: color-mix(in srgb, var(--worth) 10%, transparent);">
+        Baca penuh ketiga file dulu — interaksi map yang legitimately berbeda (editable vs preview) bisa membuat modul bersama jadi prop-explosion, bukan deepening.
+      </div>
+    </article>
+
+  </section>
+
+  <section id="top-recommendation" class="card p-6 space-y-3" style="border-color: var(--accent); border-width: 2px;">
+    <p class="label">Top recommendation</p>
+    <h2 class="serif text-xl font-semibold">Mulai dari <a href="#c2">#2 — Insert area_polygon</a></h2>
+    <p class="text-sm">Duplikasinya paling jelas lolos deletion test: hapus satu <span class="mono">simpan()</span> dan baris insert yang sama harus ditulis ulang di tempat lain. Juga satu-satunya kandidat dengan panggilan statis antar controller yang aktif membocorkan seam sekarang — bukan spekulasi masa depan seperti #4.</p>
+  </section>
+
+  <section class="card p-5 space-y-2" style="border-color: var(--line);">
+    <p class="label">Catatan: modul yang sudah dalam</p>
+    <p class="text-sm"><span class="mono">MenuController@show</span> dan <span class="mono">SummaryDepoController</span> dibaca juga — keduanya contoh deep module yang sudah benar (sort/filter/search uniform lewat <span class="mono">SumberTabel</span>; adapter tipis ke <span class="mono">App\Support\Motoris\SummaryDepo</span>). Tidak perlu dideepen — jadi referensi bentuk yang dituju #1 dan #2.</p>
+  </section>
+
+</main>
