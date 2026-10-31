@@ -16,7 +16,7 @@ class ImportMarketama extends Command
 
     // Tabel di luar config/marketama.php (dibuat oleh migration tersendiri).
     private const EXTRA_TABLES = ['tracking_koordinator', 'tracking_koordinator_lokasi', 'tracking_sales', 'tracking_sales_lokasi', 'area_polygon', 'area_depo',
-        'mk_depo', 'mk_distributor', 'mk_karyawan', 'mk_produk', 'trx_penjualan', 'trx_absensi', 'trx_canvassing', 'trx_canvassing_item'];
+        'mk_depo', 'mk_distributor', 'mk_karyawan', 'mk_produk', 'trx_penjualan', 'trx_absensi', 'trx_canvassing', 'trx_canvassing_item', 'mk_user'];
 
     public function handle(): int
     {
