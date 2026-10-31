@@ -67,14 +67,17 @@ class KehadiranTest extends AdminTestCase
 
     public function test_checkin_depo_dari_tabel_motoris(): void
     {
+        // Bawaan: hanya tanggal hari ini (2026-10-24), bukan rentang.
         $props = $this->inertiaProps($this->get('/checkin_depo')->assertOk(), 'Kehadiran/CheckinDepo');
-        $this->assertSame(['Rudi Hartono', 'Sinta Wulandari'], $this->sales($props));
-        $this->assertSame(['07:10', '07:05'], array_column($props['baris']['data'], 'masuk'));
+        $this->assertSame(['Rudi Hartono'], $this->sales($props));
+        $this->assertSame(['07:10'], array_column($props['baris']['data'], 'masuk'));
         $this->assertSame(35, $props['baris']['data'][0]['jarak_m']);
-        $this->assertSame('8 j 55 m', $props['baris']['data'][1]['durasi']);
-        $this->assertSame(2, $props['ringkas']['total']);
+        $this->assertSame(1, $props['ringkas']['total']);
 
-        $this->assertSame(['Sinta Wulandari'], $this->sales($this->inertiaProps($this->get('/lap_checkin_checkout?depo=22'), 'Kehadiran/CheckinDepo')));
+        // Tanggal lain lewat query `tanggal`.
+        $props = $this->inertiaProps($this->get('/lap_checkin_checkout?tanggal=2026-10-21&depo=22'), 'Kehadiran/CheckinDepo');
+        $this->assertSame(['Sinta Wulandari'], $this->sales($props));
+        $this->assertSame('8 j 55 m', $props['baris']['data'][0]['durasi']);
     }
 
     /** Nama sales per baris halaman, dalam urutan tampil. */
