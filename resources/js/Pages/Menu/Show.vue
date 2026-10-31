@@ -4,6 +4,8 @@ import { Deferred, Head, Link, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Badge from '@/Components/ui/atoms/Badge.vue';
 import Button from '@/Components/ui/atoms/Button.vue';
+import DatePicker from '@/Components/ui/atoms/DatePicker.vue';
+import Icon from '@/Components/ui/atoms/Icon.vue';
 import Input from '@/Components/ui/atoms/Input.vue';
 import Select from '@/Components/ui/atoms/Select.vue';
 import Alert from '@/Components/ui/molecules/Alert.vue';
@@ -19,6 +21,7 @@ import DetailDepoPeta from './partials/DetailDepoPeta.vue';
 import DetailLapLoadingBarang from './partials/DetailLapLoadingBarang.vue';
 import DetailLoadingBarang from './partials/DetailLoadingBarang.vue';
 import DetailMuatanCanvassing from './partials/DetailMuatanCanvassing.vue';
+import FormTambahMuatanCanvassing from './partials/FormTambahMuatanCanvassing.vue';
 import RiwayatDistributor from './partials/RiwayatDistributor.vue';
 import Tabs from '@/Components/ui/molecules/Tabs.vue';
 import DataTable from '@/Components/ui/organisms/DataTable.vue';
@@ -36,6 +39,8 @@ const props = defineProps({
     hasDateFilter: { type: Boolean, default: false },
     // Filter depo / koordinator untuk tabel dengan sumber bertanggal (lihat SumberBertanggal).
     filter: { type: Object, default: () => ({ depo: null, koordinator: null }) },
+    // Punya hak tambah di menu ini (tombol Tambah yang membuka drawer form, saat ini hanya barang_canvassing).
+    bisaTambah: { type: Boolean, default: false },
 });
 
 const search = ref(props.search);
@@ -51,8 +56,22 @@ const depoPeta = ref(null);
 const lapTerpilih = ref(null);
 // Baris loading_barang yang detailnya dibuka di drawer dari tautan Kode Transaksi; null = tertutup.
 const loadingTerpilih = ref(null);
-// Baris barang_canvassing (satu muatan) yang daftar produknya dibuka di drawer dari tautan Canvassing No; null = tertutup.
+// Baris barang_canvassing (satu muatan) yang daftar produknya dibuka di drawer dari klik baris tabel; null = tertutup.
 const muatanTerpilih = ref(null);
+// Modal form tambah muatan canvassing. Terbuka dari tombol Tambah, atau dari ?tambah=1 (ikon Topbar / tautan /add);
+// parameternya dibuang dari URL saat modal ditutup supaya muat ulang halaman tidak membuka modal lagi.
+const tambahSibuk = ref(false);
+const tambahLangkah = ref(1);
+const formTambah = ref(null);
+const tambahTerbuka = ref(props.bisaTambah && props.slug === 'barang_canvassing' && new URLSearchParams(window.location.search).has('tambah'));
+watch(tambahTerbuka, (terbuka) => {
+    const url = new URL(window.location.href);
+
+    if (terbuka || !url.searchParams.has('tambah')) return;
+
+    url.searchParams.delete('tambah');
+    window.history.replaceState(window.history.state, '', url);
+});
 // Distributor { id, nama } yang riwayat transaksinya dibuka di drawer kedua, di atas drawer detail; null = tertutup.
 const distributorTerpilih = ref(null);
 const kolomLapLoadingBarang = computed(() => visibleTables.value.find((table) => table.name === 'lap_loading_barang')?.columns ?? {});
@@ -116,7 +135,7 @@ function formatAngka(nilai) {
 const warnaBadge = {
     checkin_pagi: { checkin_pertama_hari_ini: { 'Belum checkin': 'danger', '*': 'warning' } },
     loading_barang: { status_retur: { 'Belum Retur': 'danger', 'Sudah Retur': 'success' } },
-    barang_canvassing: { status: { Diterima: 'secondary', Dikembalikan: 'warning', Selesai: 'success' } },
+    barang_canvassing: { status: { Disiapkan: 'primary', Diterima: 'secondary', Dikembalikan: 'warning', Selesai: 'success' } },
 };
 
 // Tab "Outlet Baru dari HP" (aksi verifikasi_outlet_baru): warna status dan tombol Setujui / Tolak.
@@ -242,7 +261,11 @@ function filterTabel(table, { nilai, operator }) {
 <template>
     <Head :title="`${page.title} · ${appName}`" />
     <AppLayout>
-        <PageHeader :title="page.title" :subtitle="subtitle" />
+        <PageHeader :title="page.title" :subtitle="subtitle">
+            <template v-if="slug === 'barang_canvassing' && bisaTambah" #actions>
+                <Button @click="tambahTerbuka = true"><Icon name="plus" class="me-1" /> Tambah</Button>
+            </template>
+        </PageHeader>
 
         <Alert v-if="page.same_as" variant="info" class="mb-3">
             Data menu ini sama dengan
@@ -261,7 +284,7 @@ function filterTabel(table, { nilai, operator }) {
                 <Card body-class="overflow-x-auto">
                     <template #header>
                         <div class="flex flex-wrap items-center justify-end gap-2">
-                            <Input v-if="formDateFilter" v-model="tanggal" type="date" required aria-label="Tanggal data" class="w-auto" />
+                            <DatePicker v-if="formDateFilter" v-model="tanggal" aria-label="Tanggal data" class="w-36" />
                             <Select v-if="adaPilihan('depo')" v-model="depo" :options="pilihanFilter.depo" placeholder="Semua depo" aria-label="Depo" class="w-auto" />
                             <Select v-if="adaPilihan('koordinator')" v-model="koordinator" :options="pilihanFilter.koordinator" placeholder="Semua koordinator" aria-label="Koordinator" class="w-auto max-w-[12rem]" />
                             <CariForm v-model="search" :loading="memuat" :disabled="!berubah" @submit="submitSearch" />
@@ -285,6 +308,9 @@ function filterTabel(table, { nilai, operator }) {
                     <DataTable
                         class="mb-3"
                         :tinggi-penuh="page.tinggi_penuh === true"
+                        :tinggi-tetap="page.tinggi_tetap === true"
+                        :baris-bisa-diklik="table.name === 'barang_canvassing'"
+                        @klik-baris="muatanTerpilih = $event"
                         :sticky-columns="page.sticky_columns ?? []"
                         :title="visibleTables.length > 1 ? table.title : null"
                         :columns="table.columns"
@@ -309,7 +335,7 @@ function filterTabel(table, { nilai, operator }) {
                             <div class="flex flex-wrap items-center justify-between gap-2">
                                 <span v-if="visibleTables.length > 1" class="font-semibold">{{ table.title }}</span>
                                 <div class="flex flex-wrap items-center gap-2 ml-auto">
-                                    <Input v-if="formDateFilter" v-model="tanggal" type="date" required aria-label="Tanggal data" class="w-auto" />
+                                    <DatePicker v-if="formDateFilter" v-model="tanggal" aria-label="Tanggal data" class="w-36" />
                                     <Select v-if="adaPilihan('depo')" v-model="depo" :options="pilihanFilter.depo" placeholder="Semua depo" aria-label="Depo" class="w-auto" />
                                     <Select v-if="adaPilihan('koordinator')" v-model="koordinator" :options="pilihanFilter.koordinator" placeholder="Semua koordinator" aria-label="Koordinator" class="w-auto max-w-[12rem]" />
                                     <CariForm v-model="search" :loading="memuat" :disabled="!berubah" @submit="submitSearch" />
@@ -327,9 +353,6 @@ function filterTabel(table, { nilai, operator }) {
                         </template>
                         <template v-if="table.name === 'loading_barang'" #cell-kode_transaksi="{ row }">
                             <button type="button" class="tautan-depo" @click="loadingTerpilih = row">{{ row.kode_transaksi }}</button>
-                        </template>
-                        <template v-if="table.name === 'barang_canvassing'" #cell-canvassing_no="{ row }">
-                            <button type="button" class="tautan-depo" @click="muatanTerpilih = row">{{ row.canvassing_no }}</button>
                         </template>
                         <template v-if="table.name === 'lap_loading_barang'" #cell-trans_code="{ row }">
                             <button type="button" class="tautan-depo" @click="lapTerpilih = row">{{ row.trans_code }}</button>
@@ -405,7 +428,25 @@ function filterTabel(table, { nilai, operator }) {
         <Modal :show="loadingTerpilih !== null" :title="loadingTerpilih?.kode_transaksi ?? ''" placement="kanan" @close="loadingTerpilih = null">
             <DetailLoadingBarang v-if="loadingTerpilih" :row="loadingTerpilih" :columns="kolomLoadingBarang" />
         </Modal>
-        <!-- Drawer produk muatan canvassing, dibuka dari tautan Canvassing No di tabel barang_canvassing. -->
+        <!-- Modal form tambah muatan canvassing, dibuka dari tombol Tambah di tabel barang_canvassing. -->
+        <Modal :show="tambahTerbuka" title="Atur Muatan Motoris" size="xl" tinggi @close="tambahTerbuka = false">
+            <FormTambahMuatanCanvassing v-if="tambahTerbuka" ref="formTambah" @tersimpan="tambahTerbuka = false" @sibuk="tambahSibuk = $event" @langkah="tambahLangkah = $event" />
+            <template #footer>
+                <template v-if="tambahLangkah === 1">
+                    <Button variant="light" @click="tambahTerbuka = false">Batal</Button>
+                    <Button :disabled="tambahSibuk" @click="formTambah?.lanjut()">Lanjut</Button>
+                </template>
+                <template v-else-if="tambahLangkah === 2">
+                    <Button variant="light" :disabled="tambahSibuk" @click="formTambah?.kembali()">Kembali</Button>
+                    <Button :disabled="tambahSibuk" @click="formTambah?.lanjut()">Lanjut</Button>
+                </template>
+                <template v-else>
+                    <Button variant="light" :disabled="tambahSibuk" @click="formTambah?.kembali()">Kembali</Button>
+                    <Button type="submit" form="form-tambah-muatan" :loading="tambahSibuk" :disabled="tambahSibuk">Simpan muatan</Button>
+                </template>
+            </template>
+        </Modal>
+        <!-- Drawer produk muatan canvassing, dibuka dari klik baris di tabel barang_canvassing. -->
         <Modal :show="muatanTerpilih !== null" :title="muatanTerpilih?.canvassing_no ?? ''" placement="kanan" size="2xl" @close="muatanTerpilih = null">
             <DetailMuatanCanvassing v-if="muatanTerpilih" :key="muatanTerpilih.source_id" :row="muatanTerpilih" />
         </Modal>

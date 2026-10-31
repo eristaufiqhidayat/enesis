@@ -270,6 +270,16 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     .card-header-compact { @apply py-2; }
     .card-body { @apply p-3; }
     .card-body-compact { @apply py-2; }
+    /* Penanda langkah wizard di dalam modal: nomor bulat + nama; langkah aktif biru, yang sudah lewat hijau. */
+    .wizard-langkah { @apply m-0 flex list-none items-center gap-4 p-0 text-xs text-gray-500; }
+    .wizard-langkah li { @apply flex items-center gap-2; }
+    .wizard-langkah-nomor { @apply inline-flex h-5 w-5 items-center justify-center rounded-full bg-gray-200 font-semibold text-gray-600; }
+    .wizard-langkah-aktif { @apply font-semibold text-gray-900; }
+    .wizard-langkah-aktif .wizard-langkah-nomor { @apply bg-blue-600 text-white; }
+    .wizard-langkah-selesai .wizard-langkah-nomor { @apply bg-green-100 text-green-800; }
+    /* DataTable isiWadah: kartu setinggi wadah induk; hanya area baris yang bergulir (body kartu min-h-0 flex-1). */
+    .card-isi-wadah { @apply flex h-full min-h-0 flex-col; }
+    .card-body-isi-wadah { @apply min-h-0 flex-1 overflow-hidden; }
     .card-footer { @apply px-3 py-2 border-t border-gray-200; }
 
     .form-label { @apply block text-xs font-medium text-gray-600 mb-1; }
@@ -374,6 +384,8 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     .page-item.disabled .page-link { @apply opacity-50 cursor-not-allowed hover:bg-transparent; }
 
     /* Nama depo di tabel master_depo: tombol yang membuka modal slider infografis (lihat DetailDepoSlider.vue). */
+    /* Baris tabel yang bisa diklik (DataTable prop barisBisaDiklik). */
+    .data-table tbody tr.baris-klik { @apply cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500; }
     .tautan-depo { @apply cursor-pointer text-left font-semibold text-blue-600 hover:underline rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500; }
 
     /* Infografis detail depo (drawer): kartu angka, batang progress kuota, dan baris detail per bagian. */
@@ -399,6 +411,15 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     .tab-pill.active { @apply bg-blue-600 text-white font-semibold hover:bg-blue-600; }
 
     .alert { @apply rounded-md px-3 py-2 text-sm; }
+    /* Toast (atoms/Toast.vue) di dalam .toaster (molecules/Flash.vue): melayang di tengah bawah layar, di atas modal (z-50). */
+    .toaster { @apply pointer-events-none fixed inset-x-0 bottom-4 z-[60] flex flex-col items-center gap-2 px-4; }
+    .toast { @apply pointer-events-auto flex w-full max-w-md items-start gap-3 rounded-md border px-3 py-2 text-sm shadow-lg; }
+    .toast-success { @apply border-green-200 bg-green-50 text-green-800; }
+    .toast-danger { @apply border-red-200 bg-red-50 text-red-700; }
+    .toast-isi { @apply min-w-0 flex-1; }
+    .toast-tutup { @apply text-lg leading-none opacity-60 hover:opacity-100; }
+    .toast-enter-active, .toast-leave-active { @apply transition duration-200 ease-out; }
+    .toast-enter-from, .toast-leave-to { @apply translate-y-2 opacity-0; }
     .alert-info { @apply bg-sky-50 text-sky-700 border border-sky-100; }
     .alert-danger { @apply bg-red-50 text-red-700 border border-red-100; }
     .alert-success { @apply bg-green-50 text-green-700 border border-green-100; }
@@ -408,6 +429,23 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     .page-header-icon { @apply flex h-9 w-9 flex-none items-center justify-center rounded-md bg-blue-50 text-blue-600; }
     .page-header-icon svg { @apply h-5 w-5; }
 
+    /* DatePicker (atoms/DatePicker.vue): kolom readonly + ikon kalender, menu kalender bulanan di bawahnya. */
+    .datepicker { @apply relative; }
+    .datepicker-input { @apply cursor-pointer pr-7; }
+    .datepicker-ikon { @apply pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400; }
+    .datepicker-menu { @apply absolute left-0 z-20 mt-1 w-64 rounded-md border border-gray-200 bg-white p-2 text-xs shadow-lg; }
+    .datepicker-header { @apply mb-2 flex items-center justify-between; }
+    .datepicker-judul { @apply font-semibold text-gray-800; }
+    .datepicker-nav { @apply rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700; }
+    .datepicker-grid { @apply grid grid-cols-7 gap-0.5 text-center; }
+    .datepicker-hari-nama { @apply py-1 text-gray-400; }
+    .datepicker-hari { @apply h-8 rounded text-gray-700 hover:bg-blue-50 focus:outline-none focus:ring-1 focus:ring-blue-500; }
+    .datepicker-hari-luar { @apply text-gray-300; }
+    .datepicker-hari-hariini { @apply ring-1 ring-blue-300; }
+    .datepicker-hari:disabled { @apply cursor-not-allowed text-gray-300 hover:bg-transparent; }
+    .datepicker-hari-pilih, .datepicker-hari-pilih:hover { @apply bg-blue-600 font-semibold text-white; }
+    .datepicker-footer { @apply mt-2 flex items-center justify-between border-t border-gray-100 pt-2; }
+    .datepicker-aksi { @apply text-blue-600 hover:underline disabled:cursor-not-allowed disabled:text-gray-300 disabled:no-underline; }
     .combobox { @apply relative; }
     .combobox-clear { @apply absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600; }
     .combobox-menu { @apply absolute left-0 right-0 z-20 mt-1 max-h-60 overflow-auto rounded-md border border-gray-200 bg-white py-1 text-xs shadow-lg; }
@@ -425,6 +463,9 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     /* Modal lebar untuk tabel (detail depo, daftar transaksi, grafik); isi bergulir di dalam modal. */
     .modal-content-xl { @apply flex max-h-[92vh] max-w-7xl flex-col; }
     .modal-content-xl .modal-body { @apply overflow-auto; }
+    /* Varian setinggi 90% layar (Modal.vue prop tinggi), dipakai bersama .modal-content-xl; body mengisi sisa tinggi sehingga footer selalu di dasar modal. */
+    .modal-content-tinggi { @apply h-[90vh] max-h-[90vh]; }
+    .modal-content-tinggi .modal-body { @apply min-h-0 flex-1; }
     .modal-header-primary { @apply rounded-t-md border-0 bg-gradient-to-r from-blue-600 to-sky-400 text-white; }
     .modal-header-primary .btn-close { @apply text-white/80 hover:text-white; }
     /* Drawer: panel setinggi layar yang menempel di kanan (Modal.vue placement="kanan"). Header dan footer tetap, body yang bergulir. */

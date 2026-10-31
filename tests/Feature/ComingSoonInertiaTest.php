@@ -10,7 +10,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Concerns\LoginOtomatis;
 use Tests\TestCase;
 
-// Placeholder "Tambah Loading Barang" dan "Tambah Barang Canvassing" dirender lewat Inertia.
+// Placeholder "Tambah Loading Barang" dirender lewat Inertia (form Tambah Barang Canvassing sudah dibuat sungguhan).
 class ComingSoonInertiaTest extends TestCase
 {
     use LoginOtomatis, RefreshDatabase;
@@ -40,17 +40,6 @@ class ComingSoonInertiaTest extends TestCase
                 ->where('title', 'Tambah Loading Barang')
                 ->where('back', 'loading_barang')
                 ->where('backTitle', config('marketama.pages.loading_barang.title')));
-    }
-
-    public function test_placeholder_barang_canvassing_dirender_inertia(): void
-    {
-        $this->get('/barang_canvassing/add')
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('Menu/ComingSoon')
-                ->where('title', 'Tambah Barang Canvassing')
-                ->where('back', 'barang_canvassing')
-                ->where('backTitle', config('marketama.pages.barang_canvassing.title')));
     }
 
     public function test_user_tanpa_hak_tambah_tidak_bisa_membuka_placeholder(): void

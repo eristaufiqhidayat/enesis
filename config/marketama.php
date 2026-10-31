@@ -117,7 +117,7 @@ return [
                 ],
                 [
                     'slug' => 'barang_canvassing',
-                    'title' => 'Barang Canvassing',
+                    'title' => 'Daftar Muatan Motoris',
                     'icon' => 'bike',
                 ],
                 [
@@ -913,11 +913,16 @@ return [
             'same_as' => null,
         ],
         'barang_canvassing' => [
-            'title' => 'Barang Canvassing',
+            'title' => 'Daftar Muatan Motoris',
+            // Satu hari saja, bawaan hari ini: tanggal muatan (trx_canvassing.tanggal) dipilih lewat datepicker.
             'tables' => [
-                'barang_canvassing',
+                ['table' => 'barang_canvassing', 'date_filter_column' => 'c.tanggal'],
             ],
             'same_as' => null,
+            // Tabel mengisi sisa tinggi layar dan header kolom tetap terlihat saat di-scroll (lihat DataTable.vue).
+            'tinggi_penuh' => true,
+            // Tinggi tabel dipatok setinggi sisa layar walau datanya sedikit atau kosong.
+            'tinggi_tetap' => true,
         ],
         'pengembalian_barang' => [
             'title' => 'Pengembalian Barang',
@@ -2799,20 +2804,19 @@ return [
             ],
         ],
         'barang_canvassing' => [
-            'title' => 'Barang Canvassing',
+            'title' => 'Daftar Muatan Motoris',
             'sumber' => SumberCanvassingMuatan::class,
+            // source_id (ID muatan) tidak ditampilkan, tetapi tetap ada di baris untuk membuka drawer detail (Menu/Show.vue).
             'columns' => [
-                'source_id' => 'ID',
-                'canvassing_no' => 'Canvassing No',
-                'warehouse_name' => 'Warehouse Name',
-                'salesperson_name' => 'Salesperson Name',
-                'koordinator_name' => 'Koordinator Name',
+                'canvassing_no' => 'No. Muatan',
+                'warehouse_name' => 'Depo',
+                'salesperson_name' => 'Motoris',
+                'koordinator_name' => 'Koordinator',
                 'status' => 'Status',
-                'receive_datetime' => 'Receive Datetime',
-                'return_datetime' => 'Return Datetime',
-                'jumlah_sku' => 'Jumlah SKU',
-                'total_qty_bawa' => 'Total Qty Bawa',
-                'total_qty_diterima' => 'Total Qty Diterima',
+                'receive_datetime' => 'Waktu Diterima',
+                'return_datetime' => 'Waktu Dikembalikan',
+                // Jumlah SKU / total qty bawa / total qty diterima dalam satu kolom (lihat SumberCanvassingMuatan::ubahBaris).
+                'ringkasan_muatan' => 'SKU / Qty Bawa / Qty Diterima',
                 'sumber' => 'Sumber',
             ],
         ],

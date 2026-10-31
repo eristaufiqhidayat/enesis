@@ -37,7 +37,7 @@ Semua markup UI **harus** disusun dari komponen reusable, bukan HTML mentah yang
 
 | Layer | Komponen (`resources/js/Components/ui/`) |
 | --- | --- |
-| atoms | `Button`, `Badge`, `Icon`, `Label`, `Input`, `Select`, `Textarea`, `Checkbox`, `Radio`, `FieldError`, `Tooltip` |
+| atoms | `Button`, `Badge`, `Icon`, `Label`, `Input`, `Select`, `Textarea`, `Checkbox`, `Radio`, `DatePicker`, `FieldError`, `Tooltip`, `Toast` |
 | molecules | `Card`, `Alert`, `Modal`, `Pagination`, `PageHeader`, `PasswordInput`, `Flash`, `Breadcrumb`, `Tabs` |
 | organisms | `Sidebar` (dengan `partials/`), `Topbar`, `DataTable` |
 

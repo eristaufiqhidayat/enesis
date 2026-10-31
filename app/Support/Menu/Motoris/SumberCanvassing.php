@@ -19,6 +19,16 @@ class SumberCanvassing implements SumberTabel
     /** semua | kembali | habis */
     protected string $mode = 'semua';
 
+    /** false = ikutkan muatan yang belum diterima sales (drawer detail di Barang Canvassing). */
+    protected bool $hanyaDiterima = true;
+
+    public function termasukBelumDiterima(): static
+    {
+        $this->hanyaDiterima = false;
+
+        return $this;
+    }
+
     public function tabelUtama(): string
     {
         return 'trx_canvassing_item';
@@ -26,10 +36,11 @@ class SumberCanvassing implements SumberTabel
 
     /**
      * Join dasar item canvassing → muatan → sales (k) → koordinatornya (ko) → depo/area, dibatasi hanya
-     * muatan yang penerimanya Sales Motoris dari Sales Koordinator dan sudah diterima; dibatasi pula
-     * cakupan role (alias k = sales). Dipakai bersama oleh tampilan per produk (di sini) dan per muatan.
+     * muatan yang penerimanya Sales Motoris dari Sales Koordinator (dan sudah diterima, kecuali $hanyaDiterima
+     * dimatikan); dibatasi pula cakupan role (alias k = sales). Dipakai bersama oleh tampilan per produk (di sini)
+     * dan per muatan.
      */
-    public static function dasar(?User $user, string $mode = 'semua'): Builder
+    public static function dasar(?User $user, string $mode = 'semua', bool $hanyaDiterima = true): Builder
     {
         $q = DB::table('trx_canvassing_item as ci')
             ->join('trx_canvassing as c', 'c.id', '=', 'ci.canvassing_id')
@@ -39,7 +50,7 @@ class SumberCanvassing implements SumberTabel
             ->leftJoin('mk_area as a', 'a.id', '=', 'k.area_aktif_id')
             // hanya canvassing dari Sales Koordinator ke Sales Motoris
             ->where('k.kategori', 'sales')->where('ko.kategori', 'koordinator')
-            ->whereNotNull('c.diterima_at')
+            ->when($hanyaDiterima, fn ($w) => $w->whereNotNull('c.diterima_at'))
             ->when($mode === 'kembali', fn ($w) => $w->whereNotNull('c.dikembalikan_at'));
 
         return Akses::batasiKaryawan($q, $user);
@@ -51,7 +62,7 @@ class SumberCanvassing implements SumberTabel
             ->whereNull('jp.dibatalkan_at')->whereNotNull('jp.canvassing_id')
             ->groupBy('jp.canvassing_id', 'ji.produk_id')->selectRaw('jp.canvassing_id, ji.produk_id, SUM(ji.qty) AS qty');
 
-        return self::dasar($user, $this->mode)
+        return self::dasar($user, $this->mode, $this->hanyaDiterima)
             ->leftJoin('mk_produk as pr', 'pr.id', '=', 'ci.produk_id')
             ->leftJoinSub($terjual, 'j', fn ($j) => $j->on('j.canvassing_id', '=', 'c.id')->on('j.produk_id', '=', 'ci.produk_id'))
             ->orderByDesc($this->mode === 'kembali' ? 'c.dikembalikan_at' : 'c.diterima_at')->orderBy('c.nomor')->orderBy('ci.id')

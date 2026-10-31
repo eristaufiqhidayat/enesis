@@ -81,6 +81,10 @@ class SumberPenjualan implements SumberTabel
 
     public static function label(?string $sumber): string
     {
-        return str_starts_with((string) $sumber, 'lama') ? 'Aplikasi lama' : 'Aplikasi HP';
+        return match (true) {
+            str_starts_with((string) $sumber, 'lama') => 'Aplikasi lama',
+            $sumber === 'web' => 'Web Enesis',
+            default => 'Aplikasi HP',
+        };
     }
 }

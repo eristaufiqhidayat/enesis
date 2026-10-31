@@ -214,3 +214,41 @@ describe('DataTable sort', () => {
         expect(header(wrapper, 'nama_provinsi').attributes('aria-sort')).toBe('ascending');
     });
 });
+
+describe('DataTable baris bisa diklik', () => {
+    const dua = [{ kode: '11', nama_provinsi: 'Aceh', dibuat: '2026-01-01' }, { kode: '12', nama_provinsi: 'Sumut', dibuat: '2026-01-02' }];
+
+    it('tidak mengirim klik-baris dan tidak menandai baris bila barisBisaDiklik mati', async () => {
+        const wrapper = mount(DataTable, { props: { columns, rows: dua } });
+
+        await wrapper.find('tbody tr').trigger('click');
+
+        expect(wrapper.emitted('klik-baris')).toBeUndefined();
+        expect(wrapper.find('tbody tr').classes()).not.toContain('baris-klik');
+        expect(wrapper.find('tbody tr').attributes('tabindex')).toBeUndefined();
+    });
+
+    it('mengirim klik-baris berisi data baris saat baris diklik atau Enter ditekan', async () => {
+        const wrapper = mount(DataTable, { props: { columns, rows: dua, barisBisaDiklik: true } });
+        const baris = wrapper.findAll('tbody tr');
+
+        expect(baris[1].classes()).toContain('baris-klik');
+        expect(baris[1].attributes('tabindex')).toBe('0');
+
+        await baris[1].find('td').trigger('click');
+        await baris[0].trigger('keydown', { key: 'Enter' });
+
+        expect(wrapper.emitted('klik-baris')).toEqual([[dua[1]], [dua[0]]]);
+    });
+
+    it('mengabaikan klik pada tombol atau tautan di dalam baris', async () => {
+        const wrapper = mount(DataTable, {
+            props: { columns, rows: dua, barisBisaDiklik: true },
+            slots: { 'cell-kode': '<button type="button" class="aksi-dalam">Buka</button>' },
+        });
+
+        await wrapper.find('button.aksi-dalam').trigger('click');
+
+        expect(wrapper.emitted('klik-baris')).toBeUndefined();
+    });
+});

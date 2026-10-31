@@ -10,8 +10,8 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Barang Canvassing: satu baris per muatan canvassing (trx_canvassing), dengan ringkasan jumlah SKU dan
- * total qty dibawa/diterima dari trx_canvassing_item. Sama cakupan datanya dengan SumberCanvassing (lihat
- * SumberCanvassing::dasar()) — hanya muatan dari Sales Koordinator ke Sales Motoris yang sudah diterima.
+ * total qty dibawa/diterima dari trx_canvassing_item. Memakai SumberCanvassing::dasar() — muatan dari Sales
+ * Koordinator ke Sales Motoris dari semua status, termasuk Disiapkan yang belum diterima sales.
  * Klik baris untuk detail per produk memakai SumberCanvassing::query() yang sudah ada.
  */
 class SumberCanvassingMuatan implements SumberTabel
@@ -23,9 +23,9 @@ class SumberCanvassingMuatan implements SumberTabel
 
     public function query(?User $user): Builder
     {
-        return SumberCanvassing::dasar($user)
-            ->groupBy('c.id', 'c.nomor', 'c.status', 'c.diterima_at', 'c.dikembalikan_at', 'd.nama', 'k.nama', 'ko.nama', 'c.sumber')
-            ->orderByDesc('c.diterima_at')->orderBy('c.nomor')
+        return SumberCanvassing::dasar($user, hanyaDiterima: false)
+            ->groupBy('c.id', 'c.nomor', 'c.status', 'c.diterima_at', 'c.disiapkan_at', 'c.dikembalikan_at', 'd.nama', 'k.nama', 'ko.nama', 'c.sumber')
+            ->orderByRaw('COALESCE(c.diterima_at, c.disiapkan_at) DESC')->orderBy('c.nomor')
             ->select([
                 'c.id as source_id', 'c.nomor as canvassing_no', 'd.nama as warehouse_name',
                 'k.nama as salesperson_name', 'ko.nama as koordinator_name', 'c.status',
@@ -39,6 +39,7 @@ class SumberCanvassingMuatan implements SumberTabel
     public function ubahBaris(object $baris): object
     {
         $baris->status = match ($baris->status) {
+            'disiapkan' => 'Disiapkan',
             'diterima' => 'Diterima',
             'dikembalikan' => 'Dikembalikan',
             'selesai' => 'Selesai',
@@ -49,8 +50,9 @@ class SumberCanvassingMuatan implements SumberTabel
         $baris->jumlah_sku = (int) $baris->jumlah_sku;
         $baris->total_qty_bawa = SumberPenjualan::angka($baris->total_qty_bawa);
         $baris->total_qty_diterima = SumberPenjualan::angka($baris->total_qty_diterima);
+        $baris->ringkasan_muatan = "{$baris->jumlah_sku} / {$baris->total_qty_bawa} / {$baris->total_qty_diterima}";
         $baris->sumber = SumberPenjualan::label($baris->sumber);
-        unset($baris->diterima_at, $baris->dikembalikan_at);
+        unset($baris->diterima_at, $baris->disiapkan_at, $baris->dikembalikan_at);
 
         return $baris;
     }

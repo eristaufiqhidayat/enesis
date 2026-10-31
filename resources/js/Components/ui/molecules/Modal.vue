@@ -12,6 +12,8 @@ const props = defineProps({
     size: { type: String, default: 'md' },
     // 'tengah' (bawaan) atau 'kanan': drawer setinggi layar yang geser dari kanan (.modal-drawer). Prop size 'xl' / '2xl' melebarkan drawer.
     placement: { type: String, default: 'tengah' },
+    // Modal tengah dengan size 'xl' setinggi 90% layar (.modal-content-tinggi), bukan setinggi isinya; isi bergulir di dalam body.
+    tinggi: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['close']);
@@ -72,7 +74,7 @@ onUnmounted(() => {
             <!-- Drawer tidak memakai transisi Vue (:css="false"): masuk & keluarnya animasi CSS sendiri. -->
             <Transition :name="kanan ? 'modal-drawer' : 'modal-content'" :css="!kanan">
                 <div
-                    :class="kanan ? ['modal-drawer', { 'modal-drawer-xl': size === 'xl', 'modal-drawer-2xl': size === '2xl', 'modal-drawer-tutup': sedangTutup }] : ['modal-content', { 'modal-content-xl': size === 'xl' }]"
+                    :class="kanan ? ['modal-drawer', { 'modal-drawer-xl': size === 'xl', 'modal-drawer-2xl': size === '2xl', 'modal-drawer-tutup': sedangTutup }] : ['modal-content', { 'modal-content-xl': size === 'xl', 'modal-content-tinggi': tinggi }]"
                     role="dialog"
                     aria-modal="true"
                     :aria-label="title"
