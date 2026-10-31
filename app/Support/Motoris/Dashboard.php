@@ -6,7 +6,6 @@ use App\Models\User;
 use App\Support\Akses\Akses;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -80,9 +79,9 @@ class Dashboard
      * Total sales (Rp) dan jumlah EC per tanggal dalam rentang, dibatasi cakupan depo. Tanggal tanpa transaksi
      * tetap muncul dengan nilai 0, supaya grafik tidak putus.
      *
-     * @return Collection<int, array{tanggal: string, sales: int, ec: int}>
+     * @return array<int, array{tanggal: string, sales: int, ec: int}>
      */
-    public function trenHarian(): Collection
+    public function trenHarian(): array
     {
         return Cache::remember($this->kunci('tren'), self::CACHE_TTL, function () {
             $depo = $this->depoCakupan();
@@ -96,12 +95,14 @@ class Dashboard
                 ->selectRaw('p.tanggal, COALESCE(SUM(p.total), 0) AS sales, SUM(CASE WHEN p.is_effective_call THEN 1 ELSE 0 END) AS ec')
                 ->get()->keyBy('tanggal');
 
-            $hasil = collect();
+            // Array murni (bukan Collection/stdClass): aman di-cache lewat PHP serialize() apa pun cache
+            // driver-nya, dan Inertia men-JSON-kan array persis sama dengan Collection.
+            $hasil = [];
 
             for ($t = CarbonImmutable::parse($this->dari); $t->lte(CarbonImmutable::parse($this->sampai)); $t = $t->addDay()) {
                 $tgl = $t->toDateString();
                 $b = $baris->get($tgl);
-                $hasil->push(['tanggal' => $tgl, 'sales' => (int) ($b->sales ?? 0), 'ec' => (int) ($b->ec ?? 0)]);
+                $hasil[] = ['tanggal' => $tgl, 'sales' => (int) ($b->sales ?? 0), 'ec' => (int) ($b->ec ?? 0)];
             }
 
             return $hasil;

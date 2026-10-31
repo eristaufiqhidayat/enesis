@@ -87,6 +87,35 @@ class HomeTest extends AdminTestCase
             );
     }
 
+    public function test_kunjungan_kedua_lewat_cache_tidak_korup(): void
+    {
+        // funnel/tren/ringkasanDepo di-cache 5 menit (lihat Dashboard::CACHE_TTL). Kunjungan pertama menghitung
+        // dan menyimpan ke cache; kunjungan kedua membaca baliknya lewat unserialize() — ini yang dulu gagal
+        // ("Return value must be of type Collection, __PHP_Incomplete_Class returned") karena Collection/stdClass
+        // di dalam nilai yang di-cache tidak aman di-unserialize di sebagian driver cache. Sekarang semuanya
+        // array murni sebelum di-cache (lihat Dashboard::trenHarian & HomeController::ringkasanDepo).
+        $ambil = function (): array {
+            $props = null;
+            // "use (&$props)" di fn() arrow luar tidak berlaku sampai ke sini (arrow function menangkap by
+            // value), jadi dua lapis closure biasa supaya referensinya sama-sama sampai ke $props di atas.
+            $this->get('/home?date_from=2026-10-01&date_to=2026-10-03')->assertOk()
+                ->assertInertia(function (Assert $page) use (&$props) {
+                    $page->loadDeferredProps(function (Assert $page) use (&$props) {
+                        $props = $page->toArray()['props'];
+                    });
+                });
+
+            return $props;
+        };
+
+        $pertama = $ambil();
+        $kedua = $ambil();
+
+        $this->assertSame($pertama['tren'], $kedua['tren']);
+        $this->assertSame($pertama['funnel'], $kedua['funnel']);
+        $this->assertSame($pertama['ringkasanDepo'], $kedua['ringkasanDepo']);
+    }
+
     public function test_akun_tanpa_hak_home_ditolak(): void
     {
         $staf = $this->akun('gudang', 'lainnya', 500, ['role_id' => $this->role('Gudang', 'semua', ['summary_all_depo' => ['lihat']])]);

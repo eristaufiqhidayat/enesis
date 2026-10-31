@@ -47,7 +47,7 @@ class HomeController extends Controller
      * kpi (KPI nasional) + topDepo (8 depo EC Achievement tertinggi), dari satu kartu() yang sama — lihat catatan
      * di atas. Hasilnya singkat di-cache per rentang tanggal + cakupan akun, sama seperti Dashboard::funnelOutlet.
      *
-     * @return array{kpi: array<string, int|float>, topDepo: Collection}
+     * @return array{kpi: array<string, int|float>, topDepo: array<int, array<string, mixed>>}
      */
     private static function ringkasanDepo(SummaryDepo $summary, Request $request): array
     {
@@ -57,7 +57,12 @@ class HomeController extends Controller
         return Cache::remember($kunci, self::CACHE_TTL, function () use ($summary) {
             $kartu = $summary->kartu();
 
-            return ['kpi' => self::kpi($kartu, $summary->target), 'topDepo' => $kartu->take(8)->values()];
+            // topDepo diubah ke array murni (bukan Collection berisi stdClass): aman di-cache lewat PHP
+            // serialize() apa pun cache driver-nya, dan Inertia men-JSON-kan array persis sama dengan Collection.
+            return [
+                'kpi' => self::kpi($kartu, $summary->target),
+                'topDepo' => $kartu->take(8)->values()->map(fn ($d) => (array) $d)->all(),
+            ];
         });
     }
 
