@@ -5,6 +5,7 @@ namespace App\Support\Motoris;
 use App\Models\User;
 use App\Support\Akses\Akses;
 use App\Support\Mobile\Pengaturan;
+use App\Support\Tabel\SortFilterKolom;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -179,7 +180,13 @@ class SummaryDepo
      *
      * @return array{baris: LengthAwarePaginator, total: object}
      */
-    public function penjualan(int $depoId, string $cari = '', int $perHalaman = 25): array
+    /** Kolom yang boleh diurutkan/difilter per kolom di tabel transaksi (lihat SortFilterKolom). */
+    public const KOLOM_URUT_PENJUALAN = ['tanggal' => 'p.tanggal', 'kode_outlet' => 'o.kode', 'nama_outlet' => 'o.nama',
+        'sales' => 'k.nama', 'is_effective_call' => 'p.is_effective_call', 'total' => 'p.total', 'jumlah_sku' => 'p.jumlah_sku', 'poin' => 'p.poin'];
+
+    public const KOLOM_FILTER_PENJUALAN = ['kode_outlet' => 'o.kode', 'nama_outlet' => 'o.nama', 'sales' => 'k.nama'];
+
+    public function penjualan(int $depoId, string $cari = '', int $perHalaman = 25, ?array $sort = null, array $filterAktif = []): array
     {
         $q = $this->karyawan('sales')->where('k.depo_id', $depoId)
             ->join('trx_penjualan as p', 'p.karyawan_id', '=', 'k.id')
@@ -196,7 +203,12 @@ class SummaryDepo
                 $w->where(fn ($x) => $x->whereRaw('LOWER(k.nama) LIKE ?', [$kata])
                     ->orWhereRaw('LOWER(o.nama) LIKE ?', [$kata])->orWhereRaw('LOWER(o.kode) LIKE ?', [$kata]));
             })
-            ->orderBy('p.tanggal')->orderBy('p.id')
+            ->tap(fn ($w) => SortFilterKolom::terapkanFilter($w, $filterAktif, self::KOLOM_FILTER_PENJUALAN))
+            ->when(
+                $sort,
+                fn ($w) => SortFilterKolom::terapkanSort($w, $sort, self::KOLOM_URUT_PENJUALAN, 'p.id'),
+                fn ($w) => $w->orderBy('p.tanggal')->orderBy('p.id')
+            )
             ->select(['p.tanggal', 'o.kode as kode_outlet', 'o.nama as nama_outlet', 'k.nama as sales', 'p.is_effective_call',
                 'p.total', 'p.jumlah_sku', 'p.poin'])
             ->paginate($perHalaman)->withQueryString();

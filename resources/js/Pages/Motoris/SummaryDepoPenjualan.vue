@@ -21,6 +21,10 @@ const props = defineProps({
     baris: { type: Object, default: () => ({}) },
     periode: { type: Object, required: true },
     filter: { type: Object, required: true },
+    sortableColumns: { type: Array, default: () => [] },
+    sort: { type: Object, default: null },
+    filterableColumns: { type: Array, default: () => [] },
+    filterValues: { type: Object, default: () => ({}) },
 });
 
 const appName = usePage().props.appName;
@@ -45,10 +49,38 @@ const { memuat, berubah, ambil } = useAmbilData({
     diterapkan: () => ({ q: props.filter.q }),
 });
 
+// Query dasar (periode, pencarian) yang selalu dibawa, lalu sort/filter per kolom ditambahkan di atasnya
+// (kolom lewat bracket "filter[kolom]" supaya Laravel membacanya sebagai array, sama seperti Menu/Show.vue).
+function queryDasar() {
+    return { date_from: props.filter.date_from, date_to: props.filter.date_to, q: cari.value };
+}
+
+function muatUlang(query, only = []) {
+    ambil(`/summary_all_depo/${props.depo.id}/penjualan`, bersihkanQuery(query), { only: ['baris', 'total', 'filter', ...only] });
+}
+
 function saring() {
-    ambil(`/summary_all_depo/${props.depo.id}/penjualan`, bersihkanQuery({
-        date_from: props.filter.date_from, date_to: props.filter.date_to, q: cari.value,
-    }), { only: ['baris', 'total', 'filter'] });
+    muatUlang({ ...queryDasar(), sort: props.sort?.kolom, arah: props.sort?.arah, ...filterQuery() });
+}
+
+function filterQuery() {
+    return Object.fromEntries(Object.entries(props.filterValues).map(([kolom, nilai]) => [`filter[${kolom}]`, nilai]));
+}
+
+function urutkan({ kolom, arah }) {
+    muatUlang({ ...queryDasar(), sort: arah ? kolom : undefined, arah: arah ?? undefined, ...filterQuery() }, ['sort']);
+}
+
+function filterKolom({ nilai }) {
+    const query = { ...queryDasar(), sort: props.sort?.kolom, arah: props.sort?.arah };
+
+    for (const [kolom, teks] of Object.entries(nilai)) {
+        if (teks) {
+            query[`filter[${kolom}]`] = teks;
+        }
+    }
+
+    muatUlang(query, ['filterValues']);
 }
 </script>
 
@@ -73,7 +105,19 @@ function saring() {
             <Badge variant="warning">Total Point: {{ angka(total.point) }}</Badge>
         </div>
 
-        <DataTable :columns="columns" :rows="baris.data" :total="baris.total" :links="baris.links" empty-text="Tidak ada transaksi pada periode ini.">
+        <DataTable
+            :columns="columns"
+            :rows="baris.data"
+            :total="baris.total"
+            :links="baris.links"
+            empty-text="Tidak ada transaksi pada periode ini."
+            :sortable="sortableColumns"
+            :sort="sort"
+            @sort="urutkan"
+            :filterable="filterableColumns"
+            :filter-values="filterValues"
+            @filter="filterKolom"
+        >
             <template #header>
                 <form class="flex justify-end gap-2" role="search" @submit.prevent="saring">
                     <Input v-model="cari" type="search" placeholder="Cari outlet atau sales…" aria-label="Cari outlet atau sales" class="max-w-xs" />

@@ -55,6 +55,21 @@ class KaryawanTest extends AdminTestCase
         $this->get('/karyawan_supervisor')->assertInertia(fn (Assert $page) => $page->where('baris.total', 1));
     }
 
+    public function test_sort_filter_per_kolom_daftar_karyawan(): void
+    {
+        // Sort nama Z->A mengabaikan urutan bawaan (aktif dulu).
+        $this->get('/karyawan_sales?sort=nama&arah=desc')->assertInertia(fn (Assert $page) => $page
+            ->where('sort', ['kolom' => 'nama', 'arah' => 'desc'])
+            ->where('baris.data', fn ($b) => collect($b)->pluck('nama')->all() === ['Tegar Mahendra', 'Sinta Wulandari', 'Rudi Hartono', 'Joko Lama']));
+
+        // Kolom di luar whitelist diabaikan.
+        $this->get('/karyawan_sales?sort=foto&arah=desc')->assertInertia(fn (Assert $page) => $page->where('sort', null));
+
+        // Filter per kolom (LIKE) pada depo, AND dengan status bawaan "semua".
+        $this->get('/karyawan_sales?filter[depo]=balaraja')->assertInertia(fn (Assert $page) => $page
+            ->where('filterValues', ['depo' => 'balaraja'])->where('baris.data.0.nama', 'Sinta Wulandari')->where('baris.total', 1));
+    }
+
     public function test_tambah_sales_dengan_area_koordinator_gaji_dan_foto(): void
     {
         Storage::fake('local');

@@ -16,6 +16,7 @@ import FormKaryawan from './partials/FormKaryawan.vue';
 import FormSkeleton from '@/Components/ui/molecules/FormSkeleton.vue';
 import { useAmbilData } from '@/Support/ambilData.js';
 import { angka } from '@/Support/format.js';
+import { filterTabelTeks, urutkanTabel } from '@/Support/sortFilterTabel.js';
 
 // Daftar karyawan per kategori (Sales, Koordinator, Supervisor, Lainnya) — satu halaman untuk 4 menu.
 // Tambah & edit dibuka di modal kanan; datanya JSON dari /{menu}/tambah atau /{menu}/{id}/edit.
@@ -32,6 +33,10 @@ const props = defineProps({
     jumlah: { type: Object, required: true },
     daftarDepo: { type: Array, default: () => [] },
     bisa: { type: Object, required: true },
+    sortableColumns: { type: Array, default: () => [] },
+    sort: { type: Object, default: null },
+    filterableColumns: { type: Array, default: () => [] },
+    filterValues: { type: Object, default: () => ({}) },
 });
 
 const appName = usePage().props.appName;
@@ -115,6 +120,12 @@ function tutupForm() {
             :total="baris.total"
             :links="baris.links"
             :empty-text="q ? `Tidak ada ${nama} yang cocok dengan “${q}”.` : `Belum ada ${nama}.`"
+            :sortable="sortableColumns"
+            :sort="sort"
+            @sort="urutkanTabel"
+            :filterable="filterableColumns"
+            :filter-values="filterValues"
+            @filter="filterTabelTeks"
         >
             <template #header>
                 <form class="flex flex-wrap items-end gap-2" role="search" @submit.prevent="kirimCari">

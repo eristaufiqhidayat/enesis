@@ -128,6 +128,26 @@ class SummaryDepoTest extends AdminTestCase
                     ->where('baris.data.1.kode_outlet', 'OUT-7')->where('baris.data.1.nama_outlet', 'Toko Rudi')));
     }
 
+    public function test_sort_filter_per_kolom_penjualan(): void
+    {
+        // Bawaan: urut tanggal naik -> S3 (01), S1 (02), S2 (03).
+        $j = $this->summary()->penjualan(46);
+        $this->assertSame(['2026-10-01', '2026-10-02', '2026-10-03'], $j['baris']->pluck('tanggal')->all());
+
+        // Sort total terbesar -> S1 (100000), S3 (50000), S2 (20000).
+        $jUrut = $this->summary()->penjualan(46, sort: ['kolom' => 'total', 'arah' => 'desc']);
+        $this->assertSame([100000.0, 50000.0, 20000.0], $jUrut['baris']->pluck('total')->map(fn ($v) => (float) $v)->all());
+
+        // Filter per kolom sales (LIKE), hanya baris Tegar.
+        $jFilter = $this->summary()->penjualan(46, filterAktif: ['sales' => 'tegar']);
+        $this->assertSame(1, $jFilter['baris']->total());
+        $this->assertSame('Tegar Mahendra', $jFilter['baris']->first()->sales);
+
+        $this->get('/summary_all_depo/46/penjualan?date_from=2026-10-01&date_to=2026-10-03&sort=total&arah=desc')->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->where('sort', ['kolom' => 'total', 'arah' => 'desc'])
+                ->loadDeferredProps(fn (Assert $page) => $page->where('baris.data.0.total', 100000)));
+    }
+
     public function test_halaman_kartu_dan_cari_depo(): void
     {
         // Kartu ditunda (Inertia defer): halaman tampil dulu, kartu dimuat lewat partial reload.

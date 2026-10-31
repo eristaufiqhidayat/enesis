@@ -102,12 +102,9 @@ function submit() {
             <Label for="depo">Depo</Label>
             <Combobox id="depo" v-model="form.depo" :options="daftarDepo" placeholder="Semua depo" />
         </div>
-        <div v-if="adaKoordinator">
+        <div v-if="adaKoordinator" class="min-w-48">
             <Label for="koordinator">Koordinator</Label>
-            <Select id="koordinator" v-model="form.koordinator">
-                <option value="">Semua koordinator</option>
-                <option v-for="[id, nama] in Object.entries(daftarKoordinator)" :key="id" :value="id">{{ nama }}</option>
-            </Select>
+            <Combobox id="koordinator" v-model="form.koordinator" :options="daftarKoordinator" placeholder="Semua koordinator" />
         </div>
         <div v-if="tampilkanSumber">
             <Label for="sumber">Sumber</Label>

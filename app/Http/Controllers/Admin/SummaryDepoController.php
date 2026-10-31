@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Support\Akses\Akses;
 use App\Support\Mobile\Pengaturan;
 use App\Support\Motoris\SummaryDepo;
+use App\Support\Tabel\SortFilterKolom;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -85,9 +86,17 @@ class SummaryDepoController extends Controller
         $summary = new SummaryDepo($dari, $sampai, $request->user());
         $identitas = $summary->depo($depo) ?? abort(404);
         $cari = trim((string) $request->query('q'));
+        $sort = SortFilterKolom::sort($request, SummaryDepo::KOLOM_URUT_PENJUALAN);
+        $filterAktif = SortFilterKolom::filter($request, SummaryDepo::KOLOM_FILTER_PENJUALAN);
+        $sortFilterProps = [
+            'sortableColumns' => array_keys(SummaryDepo::KOLOM_URUT_PENJUALAN),
+            'sort' => $sort,
+            'filterableColumns' => array_keys(SummaryDepo::KOLOM_FILTER_PENJUALAN),
+            'filterValues' => $filterAktif,
+        ];
 
         if ($request->wantsJson()) {
-            $hasil = $summary->penjualan($depo, $cari);
+            $hasil = $summary->penjualan($depo, $cari, sort: $sort, filterAktif: $filterAktif);
 
             return response()->json([
                 'slug' => self::MENU,
@@ -97,11 +106,11 @@ class SummaryDepoController extends Controller
                 'filter' => ['date_from' => $dari, 'date_to' => $sampai, 'q' => $cari],
                 'total' => $hasil['total'],
                 'baris' => $hasil['baris'],
-            ]);
+            ] + $sortFilterProps);
         }
 
         // Daftar transaksi dan total dihitung sekali, lalu dibagi ke dua prop yang ditunda.
-        $hasil = fn () => once(fn () => $summary->penjualan($depo, $cari));
+        $hasil = fn () => once(fn () => $summary->penjualan($depo, $cari, sort: $sort, filterAktif: $filterAktif));
 
         return Inertia::render('Motoris/SummaryDepoPenjualan', [
             'slug' => self::MENU,
@@ -111,7 +120,7 @@ class SummaryDepoController extends Controller
             'filter' => ['date_from' => $dari, 'date_to' => $sampai, 'q' => $cari],
             'total' => Inertia::defer(fn () => $hasil()['total'], 'penjualan'),
             'baris' => Inertia::defer(fn () => $hasil()['baris'], 'penjualan'),
-        ]);
+        ] + $sortFilterProps);
     }
 
     /** @return array{dari: string, sampai: string, sama: bool, hkKoordinator: int} */

@@ -47,3 +47,8 @@ Tambah dua kemampuan baru pada `DataTable` (organism bersama) dan alur data di b
 - Mengubah tab `Motoris/Report.vue` (Coverage/Performance, agregat per kota, bukan dari `DataTable`) dan `Motoris/RekapSku.vue` — keduanya pakai tabel custom (`partials/Performance.vue`, dll.), bukan organism `DataTable`, jadi di luar scope ini.
 - Export hasil filter/sort ke Excel/CSV.
 - Menyimpan preferensi sort/filter per user (semua state hanya di URL, hilang saat user membuka menu dari awal tanpa query string).
+- `Menu/partials/RiwayatDistributor.vue` (drawer kedua di Lap. Loading Barang) — bukan halaman Inertia, tidak berpaginasi (`limit(100)`, tanpa `:links`), dan diambil lewat `fetch()` JSON manual, bukan `router`/query string. Struktur fetch-nya terlalu berbeda dari pola sort/filter di spec ini untuk di-retrofit tanpa menulis ulang komponennya; jika dibutuhkan, itu pekerjaan tersendiri.
+
+## Implementation Notes (2026-10-31)
+
+Selain `Menu/Show.vue` (ticket 01–03), fitur ini sudah dipasang di 6 halaman lain yang memanggil `<DataTable>` langsung (ticket 04 & 05): `Kehadiran/Absensi.vue`, `Kehadiran/CheckinDepo.vue`, `Kehadiran/Kunjungan.vue`, `Motoris/SummaryDepoPenjualan.vue`, `Karyawan/Index.vue`, `MasterProduk/Index.vue`. Karena masing-masing controller mengelola query sendiri (bukan lewat `MenuController@muatTabel`), whitelist & penerapan `orderBy`/`where`-nya dipusatkan lewat helper baru `App\Support\Tabel\SortFilterKolom` (dipakai controller) dan `resources/js/Support/sortFilterTabel.js` (dipakai halaman Vue, pola tanpa namespace per tabel karena satu `<DataTable>` per halaman). `MasterProduk::DEFINISI` diberi key `sortable`/`filterable` per slug menu, mengikuti pola `marketama.php`.

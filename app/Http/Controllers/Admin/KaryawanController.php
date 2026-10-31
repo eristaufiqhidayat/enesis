@@ -7,6 +7,7 @@ use App\Support\Akses\Akses;
 use App\Support\Akses\HierarkiSales;
 use App\Support\Karyawan\BacaKtp;
 use App\Support\Mobile\Pengaturan;
+use App\Support\Tabel\SortFilterKolom;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\JsonResponse;
@@ -64,6 +65,14 @@ class KaryawanController extends Controller
         $jumlah = ['semua' => (clone $dasar)->count(), 'aktif' => (clone $dasar)->where('k.aktif', true)->count()];
         $jumlah['tidak_aktif'] = $jumlah['semua'] - $jumlah['aktif'];
 
+        $kolomUrut = ['nama' => 'k.nama', 'depo' => 'd.nama', 'koordinator' => 'ko.nama', 'wilayah_depo' => 'w.nama',
+            'no_hp' => 'k.no_hp', 'email' => 'k.email', 'jabatan' => 'k.jabatan', 'aktif' => 'k.aktif',
+            'total_area' => 'total_area', 'jumlah_sales' => 'jumlah_sales'];
+        $kolomFilter = ['nama' => 'k.nama', 'no_hp' => 'k.no_hp', 'email' => 'k.email', 'jabatan' => 'k.jabatan',
+            'depo' => 'd.nama', 'koordinator' => 'ko.nama', 'wilayah_depo' => 'w.nama'];
+        $sort = SortFilterKolom::sort($request, $kolomUrut);
+        $filterAktif = SortFilterKolom::filter($request, $kolomFilter);
+
         $baris = $dasar
             ->when($status !== 'semua', fn ($w) => $w->where('k.aktif', $status === 'aktif'))
             ->when($depo, fn ($w) => $w->where('k.depo_id', $depo))
@@ -72,7 +81,12 @@ class KaryawanController extends Controller
                     $x->orWhereRaw("LOWER({$kolom}) LIKE ?", ['%'.mb_strtolower($q).'%']);
                 }
             }))
-            ->orderByDesc('k.aktif')->orderBy('k.nama')
+            ->tap(fn ($w) => SortFilterKolom::terapkanFilter($w, $filterAktif, $kolomFilter))
+            ->when(
+                $sort,
+                fn ($w) => SortFilterKolom::terapkanSort($w, $sort, $kolomUrut, 'k.id'),
+                fn ($w) => $w->orderByDesc('k.aktif')->orderBy('k.nama')
+            )
             ->paginate(25)->withQueryString()->onEachSide(1);
         $areaAktif = $kategori === 'sales' ? $this->namaAreaAktif($baris->getCollection()->pluck('id')->all()) : [];
         $baris->through(fn ($k) => $this->barisDaftar($kategori, $k, $areaAktif[$k->id] ?? null));
@@ -90,6 +104,10 @@ class KaryawanController extends Controller
             'jumlah' => $jumlah,
             'daftarDepo' => in_array($kategori, ['sales', 'koordinator'], true) ? $this->daftarDepo() : [],
             'bisa' => $this->bisa($request, $slug),
+            'sortableColumns' => array_keys($kolomUrut),
+            'sort' => $sort,
+            'filterableColumns' => array_keys($kolomFilter),
+            'filterValues' => $filterAktif,
         ]);
     }
 

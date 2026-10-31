@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Support\Akses\Akses;
 use App\Support\Mobile\Pengaturan;
+use App\Support\Tabel\SortFilterKolom;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
@@ -43,12 +44,22 @@ class KehadiranController extends Controller
             'motoris' => (clone $dasar)->where('t.sumber', 'motoris')->count(),
         ];
 
+        $kolomUrut = ['tanggal' => 't.tanggal', 'sales' => 'k.nama', 'depo' => 'd.nama', 'masuk' => 't.masuk_at', 'pulang' => 't.pulang_at'];
+        $kolomFilter = ['sales' => 'k.nama', 'depo' => 'd.nama'];
+        $sort = SortFilterKolom::sort($request, $kolomUrut);
+        $filterAktif = SortFilterKolom::filter($request, $kolomFilter);
+
         $zona = Pengaturan::zona();
         $baris = $dasar
             ->when($status === 'terlambat', fn ($q) => $q->where('t.terlambat', true))
             ->when($status === 'belum_pulang', fn ($q) => $q->whereNull('t.pulang_at'))
             ->addSelect(['t.masuk_at', 't.pulang_at', 't.terlambat', 't.masuk_lat as lat', 't.masuk_lng as lng', 't.masuk_foto_id as foto_id', 't.mock_location'])
-            ->orderByDesc('t.tanggal')->orderBy('t.masuk_at')
+            ->tap(fn ($q) => SortFilterKolom::terapkanFilter($q, $filterAktif, $kolomFilter))
+            ->when(
+                $sort,
+                fn ($q) => SortFilterKolom::terapkanSort($q, $sort, $kolomUrut, 't.id'),
+                fn ($q) => $q->orderByDesc('t.tanggal')->orderBy('t.masuk_at')
+            )
             ->paginate(50)->withQueryString()
             ->through(fn ($b) => [
                 'tanggal' => $this->tanggal($b->tanggal),
@@ -69,7 +80,7 @@ class KehadiranController extends Controller
             'status' => $status,
             'ringkas' => $ringkas,
             'labelOrang' => $koordinator ? 'Koordinator' : 'Sales',
-        ]);
+        ] + $this->sortFilterProps($sort, $filterAktif, $kolomUrut, $kolomFilter));
     }
 
     public function checkinDepo(Request $request): Response
@@ -83,10 +94,20 @@ class KehadiranController extends Controller
             'motoris' => (clone $dasar)->where('t.sumber', 'motoris')->count(),
         ];
 
+        $kolomUrut = ['tanggal' => 't.tanggal', 'sales' => 'k.nama', 'depo' => 'd.nama', 'koordinator' => 'ko.nama', 'masuk' => 't.checkin_at', 'pulang' => 't.checkout_at'];
+        $kolomFilter = ['sales' => 'k.nama', 'depo' => 'd.nama', 'koordinator' => 'ko.nama'];
+        $sort = SortFilterKolom::sort($request, $kolomUrut);
+        $filterAktif = SortFilterKolom::filter($request, $kolomFilter);
+
         $zona = Pengaturan::zona();
         $baris = $dasar
             ->addSelect(['t.checkin_at as masuk_at', 't.checkout_at as pulang_at', 't.lat', 't.lng', 't.jarak_m'])
-            ->orderByDesc('t.tanggal')->orderBy('t.checkin_at')
+            ->tap(fn ($q) => SortFilterKolom::terapkanFilter($q, $filterAktif, $kolomFilter))
+            ->when(
+                $sort,
+                fn ($q) => SortFilterKolom::terapkanSort($q, $sort, $kolomUrut, 't.id'),
+                fn ($q) => $q->orderByDesc('t.tanggal')->orderBy('t.checkin_at')
+            )
             ->paginate(50)->withQueryString()
             ->through(fn ($b) => [
                 'tanggal' => $this->tanggal($b->tanggal),
@@ -100,7 +121,8 @@ class KehadiranController extends Controller
                 'jarak_m' => $b->jarak_m,
             ]);
 
-        return Inertia::render('Kehadiran/CheckinDepo', $this->dataView($menu, $filter, $baris) + ['ringkas' => $ringkas]);
+        return Inertia::render('Kehadiran/CheckinDepo', $this->dataView($menu, $filter, $baris)
+            + ['ringkas' => $ringkas] + $this->sortFilterProps($sort, $filterAktif, $kolomUrut, $kolomFilter));
     }
 
     public const STATUS_KUNJUNGAN = ['semua' => 'Semua', 'beli' => 'Beli', 'tidak_beli' => 'Tidak beli', 'di_luar_rute' => 'Di luar rute'];
@@ -128,6 +150,11 @@ class KehadiranController extends Controller
             'di_luar_rute' => (clone $dasar)->where('t.di_luar_rute', true)->count(),
         ];
 
+        $kolomUrut = ['tanggal' => 't.tanggal', 'sales' => 'k.nama', 'depo' => 'd.nama', 'koordinator' => 'ko.nama', 'outlet' => 'o.nama', 'masuk' => 't.checkin_at', 'pulang' => 't.checkout_at'];
+        $kolomFilter = ['sales' => 'k.nama', 'depo' => 'd.nama', 'koordinator' => 'ko.nama'];
+        $sort = SortFilterKolom::sort($request, $kolomUrut);
+        $filterAktif = SortFilterKolom::filter($request, $kolomFilter);
+
         $zona = Pengaturan::zona();
         $baris = $dasar
             ->when($status === 'beli', fn ($q) => $q->whereExists($beli))
@@ -139,7 +166,12 @@ class KehadiranController extends Controller
                 't.kategori_lama', 't.keterangan_lama', 'o.kode as outlet_kode', 'o.nama as outlet',
             ])
             ->selectSub(DB::table('trx_penjualan as p')->whereColumn('p.kunjungan_id', 't.id')->whereNull('p.dibatalkan_at')->selectRaw('SUM(p.total)'), 'total_jual')
-            ->orderByDesc('t.tanggal')->orderByDesc('t.checkin_at')
+            ->tap(fn ($q) => SortFilterKolom::terapkanFilter($q, $filterAktif, $kolomFilter))
+            ->when(
+                $sort,
+                fn ($q) => SortFilterKolom::terapkanSort($q, $sort, $kolomUrut, 't.id'),
+                fn ($q) => $q->orderByDesc('t.tanggal')->orderByDesc('t.checkin_at')
+            )
             ->paginate(50)->withQueryString()
             ->through(fn ($b) => [
                 'tanggal' => $this->tanggal($b->tanggal),
@@ -172,7 +204,7 @@ class KehadiranController extends Controller
             'cariOutlet' => $cariOutlet,
             'ringkas' => $ringkas,
             'daftarStatus' => self::STATUS_KUNJUNGAN,
-        ]);
+        ] + $this->sortFilterProps($sort, $filterAktif, $kolomUrut, $kolomFilter));
     }
 
     /** Foto unggahan HP (selfie absen, foto kunjungan, foto outlet baru / join visit), hanya untuk yang boleh melihat data karyawan tersebut. */
@@ -293,6 +325,17 @@ class KehadiranController extends Controller
         $menit = intdiv($detik, 60);
 
         return $menit >= 60 ? intdiv($menit, 60).' j '.($menit % 60).' m' : $menit.' m';
+    }
+
+    /** Props sort & filter per kolom untuk DataTable (lihat SortFilterKolom). */
+    private function sortFilterProps(?array $sort, array $filterAktif, array $kolomUrut, array $kolomFilter): array
+    {
+        return [
+            'sortableColumns' => array_keys($kolomUrut),
+            'sort' => $sort,
+            'filterableColumns' => array_keys($kolomFilter),
+            'filterValues' => $filterAktif,
+        ];
     }
 
     private function dataView(string $menu, array $filter, $baris): array

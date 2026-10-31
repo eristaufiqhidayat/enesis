@@ -26,6 +26,9 @@ class MasterProduk
                 'maks_poin_per_invoice' => 'Maks Poin/Invoice', 'diubah' => 'Diubah',
             ],
             'cari' => ['p.kode', 'p.nama', 'm.nama', 'k.nama'],
+            'sortable' => ['kode' => 'p.kode', 'nama' => 'p.nama', 'merk' => 'm.nama', 'kategori' => 'k.nama', 'satuan' => 's.nama',
+                'harga_beli' => 'p.harga_beli', 'harga_jual' => 'p.harga_jual', 'drop_size' => 'p.drop_size'],
+            'filterable' => ['kode' => 'p.kode', 'nama' => 'p.nama', 'merk' => 'm.nama', 'kategori' => 'k.nama', 'satuan' => 's.nama'],
             'field' => [
                 ['kode', 'Kode produk', 'text', true, 50, 'Unik, dipakai sebagai SKU di laporan.'],
                 ['nama', 'Nama produk', 'text', true, 150, null],
@@ -53,6 +56,8 @@ class MasterProduk
             'keterangan' => 'Pilihan produk kompetitor saat sales mencatat stok outlet di aplikasi HP.',
             'kolom' => ['foto' => 'Foto', 'nama' => 'Nama Produk', 'satuan' => 'Satuan', 'diubah' => 'Diubah'],
             'cari' => ['p.nama', 's.nama'],
+            'sortable' => ['nama' => 'p.nama', 'satuan' => 's.nama'],
+            'filterable' => ['nama' => 'p.nama', 'satuan' => 's.nama'],
             'field' => [
                 ['nama', 'Nama produk', 'text', true, 150, null],
                 ['satuan_id', 'Satuan', 'pilihan:satuan', false, null, null],
@@ -67,6 +72,8 @@ class MasterProduk
             'keterangan' => 'Kode kategori wajib unik. Kategori yang masih dipakai produk tidak bisa dihapus.',
             'kolom' => ['kode' => 'Kode', 'nama' => 'Nama', 'total_produk' => 'Total Produk', 'diubah' => 'Diubah'],
             'cari' => ['p.kode', 'p.nama'],
+            'sortable' => ['kode' => 'p.kode', 'nama' => 'p.nama', 'total_produk' => 'total_produk'],
+            'filterable' => ['kode' => 'p.kode', 'nama' => 'p.nama'],
             'field' => [
                 ['kode', 'Kode', 'text', true, 30, null],
                 ['nama', 'Nama', 'text', true, 100, null],
@@ -80,6 +87,8 @@ class MasterProduk
             'keterangan' => 'Brand tidak aktif tidak muncul di pilihan produk baru; produk lama tetap memakainya.',
             'kolom' => ['kode' => 'Kode', 'nama' => 'Nama', 'total_produk' => 'Total Produk', 'aktif' => 'Status', 'diubah' => 'Diubah'],
             'cari' => ['p.kode', 'p.nama'],
+            'sortable' => ['kode' => 'p.kode', 'nama' => 'p.nama', 'total_produk' => 'total_produk', 'aktif' => 'p.aktif'],
+            'filterable' => ['kode' => 'p.kode', 'nama' => 'p.nama'],
             'field' => [
                 ['kode', 'Kode', 'text', true, 30, null],
                 ['nama', 'Nama', 'text', true, 100, null],
@@ -94,6 +103,8 @@ class MasterProduk
             'keterangan' => 'Nama satuan wajib unik. Satuan yang masih dipakai produk tidak bisa dihapus.',
             'kolom' => ['nama' => 'Nama', 'total_produk' => 'Total Produk', 'diubah' => 'Diubah'],
             'cari' => ['p.nama'],
+            'sortable' => ['nama' => 'p.nama', 'total_produk' => 'total_produk'],
+            'filterable' => ['nama' => 'p.nama'],
             'field' => [
                 ['nama', 'Nama', 'text', true, 50, null],
             ],

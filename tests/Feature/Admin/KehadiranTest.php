@@ -80,6 +80,35 @@ class KehadiranTest extends AdminTestCase
         $this->assertSame('8 j 55 m', $props['baris']['data'][0]['durasi']);
     }
 
+    public function test_sort_filter_per_kolom_checkin_depo(): void
+    {
+        // Baris kedua di tanggal yang sama (2026-10-24) supaya ada 2 baris untuk diurutkan/difilter.
+        DB::table('trx_checkin_depo')->insert([
+            'karyawan_id' => 3, 'depo_id' => 46, 'tanggal' => '2026-10-24', 'checkin_at' => '2026-10-24 00:40:00', 'checkout_at' => null,
+            'lat' => null, 'lng' => null, 'jarak_m' => null, 'sumber' => 'motoris', 'sumber_id' => null,
+        ]);
+
+        // Bawaan (tanpa sort): urutan checkin_at naik -> Rudi (00:10 UTC) lalu Tegar (00:40 UTC).
+        $props = $this->inertiaProps($this->get('/checkin_depo')->assertOk(), 'Kehadiran/CheckinDepo');
+        $this->assertSame(['Rudi Hartono', 'Tegar Mahendra'], $this->sales($props));
+        $this->assertNull($props['sort']);
+        $this->assertSame(['tanggal', 'sales', 'depo', 'koordinator', 'masuk', 'pulang'], $props['sortableColumns']);
+
+        // Sort nama Z->A.
+        $props = $this->inertiaProps($this->get('/checkin_depo?sort=sales&arah=desc')->assertOk(), 'Kehadiran/CheckinDepo');
+        $this->assertSame(['Tegar Mahendra', 'Rudi Hartono'], $this->sales($props));
+        $this->assertSame(['kolom' => 'sales', 'arah' => 'desc'], $props['sort']);
+
+        // Kolom di luar whitelist diabaikan (tidak error, tidak dipakai sebagai orderBy).
+        $props = $this->inertiaProps($this->get('/checkin_depo?sort=jarak_m&arah=desc')->assertOk(), 'Kehadiran/CheckinDepo');
+        $this->assertNull($props['sort']);
+
+        // Filter per kolom (LIKE), tetap AND dengan filter tanggal yang sudah ada.
+        $props = $this->inertiaProps($this->get('/checkin_depo?filter[sales]=tegar')->assertOk(), 'Kehadiran/CheckinDepo');
+        $this->assertSame(['Tegar Mahendra'], $this->sales($props));
+        $this->assertSame(['sales' => 'tegar'], $props['filterValues']);
+    }
+
     /** Nama sales per baris halaman, dalam urutan tampil. */
     private function sales(array $props): array
     {
