@@ -201,6 +201,7 @@ Route::middleware(['auth', 'wajib-ganti-password'])->group(function () {
                 ['get', '/', 'index', 'lihat', 'index'],
                 ['get', '/ekspor', 'ekspor', 'ekspor', 'ekspor'],
                 ['get', '/opsi', 'opsi', 'lihat', 'opsi'],
+                ['post', '/baca-ktp', 'bacaKtp', 'tambah', 'baca-ktp'],
                 ['get', '/tambah', 'create', 'tambah', 'create'],
                 ['post', '/', 'store', 'tambah', 'store'],
                 ['get', '/{id}/edit', 'edit', 'lihat', 'edit'],

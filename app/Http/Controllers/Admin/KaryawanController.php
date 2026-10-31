@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Support\Akses\Akses;
 use App\Support\Akses\HierarkiSales;
+use App\Support\Karyawan\BacaKtp;
 use App\Support\Mobile\Pengaturan;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
@@ -104,6 +105,24 @@ class KaryawanController extends Controller
         $props = $this->propsForm($request, $this->cari($request, $id));
 
         return $request->expectsJson() ? response()->json($props) : Inertia::render('Karyawan/Form', $props);
+    }
+
+    /**
+     * Baca NIK, nama, tempat/tanggal lahir, dan alamat dari foto KTP yang diunggah admin (OCR via BacaKtp),
+     * untuk mengisi form tambah karyawan secara otomatis. Foto tidak disimpan, hanya dipakai sebentar untuk
+     * dibaca. Admin tetap mengecek/mengedit hasilnya sebelum menyimpan karyawan.
+     */
+    public function bacaKtp(Request $request): JsonResponse
+    {
+        $request->validate([
+            'foto_ktp' => ['required', 'image', 'mimes:jpg,jpeg,png', 'max:5120'],
+        ], [], ['foto_ktp' => 'foto KTP']);
+
+        try {
+            return response()->json(BacaKtp::baca($request->file('foto_ktp')));
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'Foto KTP tidak bisa dibaca. Coba foto yang lebih terang dan tidak miring.'], 422);
+        }
     }
 
     /** Pilihan yang bergantung pada depo: koordinator & area (sales), wilayah depo (koordinator). */
@@ -357,6 +376,10 @@ class KaryawanController extends Controller
             ] : null,
             'nilai' => [
                 'nama' => $item->nama ?? '',
+                'nik' => $item->nik ?? '',
+                'tempat_lahir' => $item->tempat_lahir ?? '',
+                'tanggal_lahir' => $this->tanggalForm($item->tanggal_lahir ?? null),
+                'alamat' => $item->alamat ?? '',
                 'depo_id' => $depo ? (string) $depo : '',
                 'koordinator_id' => $item?->koordinator_id ? (string) $item->koordinator_id : '',
                 'wilayah_depo_id' => $item?->wilayah_depo_id ? (string) $item->wilayah_depo_id : '',
@@ -425,6 +448,10 @@ class KaryawanController extends Controller
         $lainnya = $kategori === 'lainnya';
         $aturan = [
             'nama' => ['required', 'string', 'max:150'],
+            'nik' => ['nullable', 'digits:16', Rule::unique('mk_karyawan', 'nik')->ignore($lama?->id)],
+            'tempat_lahir' => ['nullable', 'string', 'max:100'],
+            'tanggal_lahir' => ['nullable', 'date_format:Y-m-d'],
+            'alamat' => ['nullable', 'string', 'max:500'],
             'email' => ['nullable', 'email', 'max:150'],
             'no_hp' => [$lainnya ? 'nullable' : 'required', 'string', 'max:30', 'regex:/^[0-9+\- ]{5,30}$/'],
             'tanggal_mulai' => [$lainnya ? 'nullable' : 'required', 'date_format:Y-m-d'],
@@ -460,8 +487,11 @@ class KaryawanController extends Controller
             'area_ids.*.in' => 'Area harus milik depo yang dipilih.',
             'area_aktif_ids.*.in' => 'Area aktif harus salah satu area sales ini.',
             'no_hp.regex' => 'No HP hanya boleh angka, spasi, + dan -.',
+            'nik.digits' => 'NIK harus 16 digit angka.',
+            'nik.unique' => 'NIK ini sudah dipakai karyawan lain.',
         ], [
-            'nama' => 'nama lengkap', 'no_hp' => 'no HP', 'tanggal_mulai' => 'tanggal mulai bekerja', 'aktif' => 'status',
+            'nama' => 'nama lengkap', 'nik' => 'NIK', 'tempat_lahir' => 'tempat lahir', 'tanggal_lahir' => 'tanggal lahir', 'alamat' => 'alamat',
+            'no_hp' => 'no HP', 'tanggal_mulai' => 'tanggal mulai bekerja', 'aktif' => 'status',
             'depo_id' => 'depo', 'koordinator_id' => 'koordinator', 'wilayah_depo_id' => 'wilayah depo', 'jabatan' => 'kategori',
         ] + array_map('mb_strtolower', self::GAJI));
     }
@@ -471,6 +501,10 @@ class KaryawanController extends Controller
     {
         $kolom = [
             'nama' => trim($d['nama']),
+            'nik' => isset($d['nik']) && $d['nik'] !== '' ? trim($d['nik']) : null,
+            'tempat_lahir' => isset($d['tempat_lahir']) && $d['tempat_lahir'] !== '' ? trim($d['tempat_lahir']) : null,
+            'tanggal_lahir' => $d['tanggal_lahir'] ?? null,
+            'alamat' => isset($d['alamat']) && $d['alamat'] !== '' ? trim($d['alamat']) : null,
             'email' => $d['email'] ?? null,
             'no_hp' => isset($d['no_hp']) ? trim($d['no_hp']) : null,
             'tanggal_mulai' => $d['tanggal_mulai'] ?? null,
@@ -568,13 +602,14 @@ class KaryawanController extends Controller
     private function ringkasPerubahan(object $lama, array $d, $areaLama): array
     {
         $baru = $this->kolomSimpan($d);
-        $label = ['nama' => 'Nama', 'email' => 'Email', 'no_hp' => 'No HP', 'tanggal_mulai' => 'Tanggal mulai', 'aktif' => 'Status',
+        $label = ['nama' => 'Nama', 'nik' => 'NIK', 'tempat_lahir' => 'Tempat lahir', 'tanggal_lahir' => 'Tanggal lahir', 'alamat' => 'Alamat',
+            'email' => 'Email', 'no_hp' => 'No HP', 'tanggal_mulai' => 'Tanggal mulai', 'aktif' => 'Status',
             'depo_id' => 'Depo', 'wilayah_depo_id' => 'Wilayah depo', 'jabatan' => 'Kategori'] + self::GAJI;
         $nama = fn ($k, $v) => match ($k) {
             'aktif' => $v === null ? '-' : ($v ? 'Aktif' : 'Tidak aktif'),
             'depo_id' => $v ? DB::table('mk_depo')->where('id', $v)->value('nama') : '-',
             'wilayah_depo_id' => $v ? DB::table('mk_wilayah_depo')->where('id', $v)->value('nama') : '-',
-            'tanggal_mulai' => $this->tanggalForm($v) ?: '-',
+            'tanggal_mulai', 'tanggal_lahir' => $this->tanggalForm($v) ?: '-',
             default => $v === null || $v === '' ? '-' : (is_numeric($v) && isset(self::GAJI[$k]) ? number_format((float) $v, 0, ',', '.') : (string) $v),
         };
         $hasil = [];
@@ -582,7 +617,7 @@ class KaryawanController extends Controller
         foreach ($baru as $k => $v) {
             $sebelum = $lama->{$k} ?? null;
             $sama = isset(self::GAJI[$k]) ? (float) $sebelum === (float) $v && ($sebelum === null) === ($v === null)
-                : ($k === 'aktif' ? $sebelum !== null && (bool) $sebelum === $v : ($k === 'tanggal_mulai' ? $this->tanggalForm($sebelum) === ($v ?? '')
+                : ($k === 'aktif' ? $sebelum !== null && (bool) $sebelum === $v : (in_array($k, ['tanggal_mulai', 'tanggal_lahir'], true) ? $this->tanggalForm($sebelum) === ($v ?? '')
                     : (string) ($sebelum ?? '') === (string) ($v ?? '')));
 
             if (! $sama) {
