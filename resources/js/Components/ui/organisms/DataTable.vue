@@ -41,8 +41,13 @@ const props = defineProps({
     tinggiPenuh: { type: Boolean, default: false },
     // Dengan tinggiPenuh: tinggi area tabel dipatok (bukan hanya maksimum), jadi tetap setinggi layar walau data kosong.
     tinggiTetap: { type: Boolean, default: false },
+    // Tabel mengisi tinggi wadah induknya (induk harus berukuran tetap, mis. flex-1 min-h-0 di dalam modal): hanya area
+    // baris yang bergulir, header kolom tetap. Beda dengan tinggiPenuh yang menghitung dari sisa tinggi layar.
+    isiWadah: { type: Boolean, default: false },
     // Data sedang diambil ulang (mis. pencarian): baris diganti placeholder skeleton, bukan teks.
     memuat: { type: Boolean, default: false },
+    // Seluruh baris bisa diklik (atau Enter saat difokus) dan mengirim 'klik-baris' dengan datanya, mis. untuk membuka drawer detail.
+    barisBisaDiklik: { type: Boolean, default: false },
 });
 
 // Kolom yang punya pilihan operator: kolom angka dan kolom tanggal.
@@ -57,7 +62,16 @@ const OPERATOR_FILTER = [
     { value: '>=', label: '≥' },
 ];
 
-const emit = defineEmits(['sort', 'filter']);
+const emit = defineEmits(['sort', 'filter', 'klik-baris']);
+
+// Klik/Enter pada baris (prop barisBisaDiklik); klik pada kontrol di dalam baris (tombol, tautan, input) tidak ikut dihitung.
+function klikBaris(row, e) {
+    if (!props.barisBisaDiklik || e.target.closest('button, a, input, select, textarea, label')) {
+        return;
+    }
+
+    emit('klik-baris', row);
+}
 
 // Kolom "Aksi" muncul bila halaman mengisi slot #aksi="{ row }".
 // Sel kolom tertentu bisa diganti lewat slot #cell-<nama kolom>="{ row }" (mis. tautan, badge ganda).
@@ -274,13 +288,13 @@ onBeforeUnmount(() => {
 
 
 <template>
-    <Card body-class="overflow-x-auto">
+    <Card :class="{ 'card-isi-wadah': isiWadah }" :body-class="isiWadah ? 'card-body card-body-isi-wadah' : 'overflow-x-auto'">
         <template v-if="slots.header || title" #header>
             <slot name="header">{{ title }}</slot>
         </template>
 
-        <div ref="scrollEl" class="overflow-auto">
-        <table ref="tabel" class="data-table" :class="{ 'tabel-header-sticky': tinggiPenuh }">
+        <div ref="scrollEl" class="overflow-auto" :class="{ 'h-full': isiWadah }">
+        <table ref="tabel" class="data-table" :class="{ 'tabel-header-sticky': tinggiPenuh || isiWadah }">
             <thead>
                 <tr>
                     <th
@@ -351,7 +365,14 @@ onBeforeUnmount(() => {
                 </tr>
             </tbody>
             <tbody v-else>
-                <tr v-for="(row, index) in rows" :key="index">
+                <tr
+                    v-for="(row, index) in rows"
+                    :key="index"
+                    :class="{ 'baris-klik': barisBisaDiklik }"
+                    :tabindex="barisBisaDiklik ? 0 : null"
+                    @click="klikBaris(row, $event)"
+                    @keydown.enter.self="barisBisaDiklik && emit('klik-baris', row)"
+                >
                     <td v-for="column in Object.keys(columns)" :key="column" :class="kelasSticky(column)">
                         <slot v-if="slots[`cell-${column}`]" :name="`cell-${column}`" :row="row" />
                         <Badge v-else-if="badgeColumns.includes(column)" :variant="badgeVariant(column, row[column])">{{ row[column] || '-' }}</Badge>

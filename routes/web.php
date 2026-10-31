@@ -97,14 +97,23 @@ Route::middleware(['auth', 'wajib-ganti-password'])->group(function () {
         'back' => 'loading_barang',
         'backTitle' => config('marketama.pages.loading_barang.title'),
     ])->middleware('hak:loading_barang,tambah');
-    Route::inertia('/barang_canvassing/add', 'Menu/ComingSoon', [
-        'title' => 'Tambah Barang Canvassing',
-        'back' => 'barang_canvassing',
-        'backTitle' => config('marketama.pages.barang_canvassing.title'),
-    ])->middleware('hak:barang_canvassing,tambah');
+    // Form tambah muatan canvassing dari web berupa modal di halaman tabel (Menu/Show.vue); /add tetap ada untuk
+    // ikon Topbar dan tautan lama. Beserta opsi depo/sales/produk dan simpannya.
+    Route::get('/barang_canvassing/add', fn () => redirect('/barang_canvassing?tambah=1'))
+        ->middleware('hak:barang_canvassing,tambah')->name('barang-canvassing.tambah');
+    Route::get('/barang_canvassing/opsi', [BarangCanvassingController::class, 'opsi'])
+        ->middleware('hak:barang_canvassing,tambah')->name('barang-canvassing.opsi');
+    Route::post('/barang_canvassing', [BarangCanvassingController::class, 'store'])
+        ->middleware('hak:barang_canvassing,tambah')->name('barang-canvassing.store');
     // Detail produk satu muatan canvassing untuk drawer di tabel barang_canvassing.
     Route::get('/barang_canvassing/{canvassing}/item', [BarangCanvassingController::class, 'item'])
         ->whereNumber('canvassing')->middleware('hak:barang_canvassing')->name('barang-canvassing.item');
+    // Ganti daftar item muatan yang masih Disiapkan (ditolak 409 bila sudah diterima motoris).
+    Route::put('/barang_canvassing/{canvassing}/item', [BarangCanvassingController::class, 'ubahItem'])
+        ->whereNumber('canvassing')->middleware('hak:barang_canvassing,ubah')->name('barang-canvassing.item.ubah');
+    // Batalkan (soft delete) muatan yang masih Disiapkan (ditolak 409 bila sudah diterima motoris).
+    Route::delete('/barang_canvassing/{canvassing}', [BarangCanvassingController::class, 'batalkan'])
+        ->whereNumber('canvassing')->middleware('hak:barang_canvassing,hapus')->name('barang-canvassing.batalkan');
 
     // Kelola akun login (4 menu Users) dan role & hak akses; parameter "menu" = slug menu.
     foreach (array_keys(AkunController::MENU) as $slug) {

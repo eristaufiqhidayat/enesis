@@ -76,6 +76,8 @@ class MenuController extends Controller
             'tanggal' => $tanggal,
             'hasDateFilter' => $hasDateFilter,
             'filter' => $filter,
+            // Tombol Tambah (modal form) hanya untuk yang punya hak tambah di menu ini.
+            'bisaTambah' => Akses::bisa($request->user(), $slug, 'tambah'),
         ]);
     }
 

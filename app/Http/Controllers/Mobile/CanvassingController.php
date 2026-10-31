@@ -150,7 +150,7 @@ class CanvassingController extends MobileController
     /** Canvassing milik sales ini (orang lain => 404); $hariIni = wajib tanggal hari ini. */
     private function milik(HariKerja $hari, string $nomor, bool $hariIni = true): object
     {
-        $c = DB::table('trx_canvassing')->where('nomor', $nomor)->where('karyawan_id', $hari->karyawanId)->first()
+        $c = DB::table('trx_canvassing')->where('nomor', $nomor)->where('karyawan_id', $hari->karyawanId)->whereNull('dibatalkan_at')->first()
             ?? throw ApiError::tidakAda('Nomor canvassing tidak ditemukan.');
 
         if ($hariIni && substr((string) $c->tanggal, 0, 10) !== $hari->tanggal) {

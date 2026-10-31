@@ -39,7 +39,7 @@ class DesignAreaTest extends TestCase
             );
 
         $this->get('/loading_barang/add')->assertOk();
-        $this->get('/barang_canvassing/add')->assertOk();
+        $this->get('/barang_canvassing/add')->assertRedirect('/barang_canvassing?tambah=1');
     }
 
     public function test_page_hides_save_and_delete_rights_when_role_lacks_them(): void

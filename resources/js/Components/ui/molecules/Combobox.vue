@@ -104,6 +104,9 @@ watch(filtered, () => {
     if (highlighted.value >= filtered.value.length) highlighted.value = filtered.value.length - 1;
 });
 
+// Dipakai pemanggil untuk memindahkan fokus ke input pencarian (mis. setelah menambah baris).
+defineExpose({ fokus: () => inputEl.value?.focus() });
+
 onMounted(() => document.addEventListener('click', tutupDiLuar));
 onUnmounted(() => document.removeEventListener('click', tutupDiLuar));
 </script>

@@ -64,7 +64,8 @@ class MenuStokCanvassingMotorisTest extends AdminTestCase
             'status' => 'dikembalikan', 'diterima_at' => '2026-10-06 00:30:00', 'dikembalikan_at' => '2026-10-06 10:00:00']);
         $c2 = DB::table('trx_canvassing')->insertGetId(['nomor' => 'CNV-2', 'karyawan_id' => 3, 'depo_id' => 46, 'tanggal' => '2026-10-07',
             'status' => 'diterima', 'diterima_at' => '2026-10-07 00:30:00']);
-        DB::table('trx_canvassing')->insert(['nomor' => 'CNV-3', 'karyawan_id' => 3, 'depo_id' => 46, 'tanggal' => '2026-10-08', 'status' => 'disiapkan']);
+        $c3 = DB::table('trx_canvassing')->insertGetId(['nomor' => 'CNV-3', 'karyawan_id' => 3, 'depo_id' => 46, 'tanggal' => '2026-10-08',
+            'status' => 'disiapkan', 'disiapkan_at' => '2026-10-08 01:00:00']);
         // CNV-4: diterima staf gudang (kategori lainnya, tanpa koordinator) — bukan Koordinator ke Motoris, harus disaring.
         $c4 = DB::table('trx_canvassing')->insertGetId(['nomor' => 'CNV-4', 'karyawan_id' => 500, 'depo_id' => 46, 'tanggal' => '2026-10-07',
             'status' => 'diterima', 'diterima_at' => '2026-10-07 00:30:00']);
@@ -72,6 +73,7 @@ class MenuStokCanvassingMotorisTest extends AdminTestCase
             ['canvassing_id' => $c, 'produk_id' => 3, 'qty_bawa' => 10, 'qty_diterima' => 10, 'qty_kembali' => 0],
             ['canvassing_id' => $c, 'produk_id' => 4, 'qty_bawa' => 5, 'qty_diterima' => 5, 'qty_kembali' => 3],
             ['canvassing_id' => $c2, 'produk_id' => 3, 'qty_bawa' => 8, 'qty_diterima' => null, 'qty_kembali' => null],
+            ['canvassing_id' => $c3, 'produk_id' => 3, 'qty_bawa' => 6, 'qty_diterima' => null, 'qty_kembali' => null],
             ['canvassing_id' => $c4, 'produk_id' => 3, 'qty_bawa' => 20, 'qty_diterima' => 20, 'qty_kembali' => null],
         ]);
         $jual = DB::table('trx_penjualan')->insertGetId(['kode' => 'HP-1', 'kunjungan_id' => $this->kunjungan, 'karyawan_id' => 1, 'canvassing_id' => $c,
@@ -81,25 +83,49 @@ class MenuStokCanvassingMotorisTest extends AdminTestCase
             ['penjualan_id' => $jual, 'produk_id' => 4, 'qty' => 2, 'harga' => 100, 'total' => 200],
         ]);
 
-        // /barang_canvassing: satu baris per muatan, dengan ringkasan jumlah SKU & total qty.
+        // /barang_canvassing: satu baris per muatan (semua status) untuk satu tanggal muatan; bawaan hari ini (7 Okt 2026).
         $this->get('/barang_canvassing')->assertOk()->assertInertia(fn (Assert $p) => $p
+            ->where('tanggal', '2026-10-07')
             ->loadDeferredProps(fn (Assert $p) => $p
                 ->where('tables.0.name', 'barang_canvassing')
-                ->where('tables.0.rows.total', 2) // CNV-3 belum diterima, CNV-4 diterima bukan sales/koordinator
+                ->where('tables.0.rows.total', 1) // CNV-4 diterima bukan sales/koordinator, tersaring
                 ->where('tables.0.rows.data.0.canvassing_no', 'CNV-2')
                 ->where('tables.0.rows.data.0.jumlah_sku', 1)
                 ->where('tables.0.rows.data.0.total_qty_bawa', '8')
                 ->where('tables.0.rows.data.0.total_qty_diterima', '8')
+                ->where('tables.0.rows.data.0.ringkasan_muatan', '1 / 8 / 8')
                 ->where('tables.0.rows.data.0.status', 'Diterima')
                 ->where('tables.0.rows.data.0.koordinator_name', 'Koor Satu')
-                ->where('tables.0.rows.data.1.canvassing_no', 'CNV-1')
-                ->where('tables.0.rows.data.1.jumlah_sku', 2)
-                ->where('tables.0.rows.data.1.total_qty_bawa', '15')
-                ->where('tables.0.rows.data.1.total_qty_diterima', '15')
-                ->where('tables.0.rows.data.1.status', 'Dikembalikan')
-                ->where('tables.0.rows.data.1.receive_datetime', '2026-10-06 07:30:00')
-                ->where('tables.0.rows.data.1.return_datetime', '2026-10-06 17:00:00')
             ));
+
+        $this->get('/barang_canvassing?tanggal=2026-10-08')->assertOk()->assertInertia(fn (Assert $p) => $p
+            ->loadDeferredProps(fn (Assert $p) => $p
+                ->where('tables.0.rows.total', 1)
+                ->where('tables.0.rows.data.0.canvassing_no', 'CNV-3')
+                ->where('tables.0.rows.data.0.status', 'Disiapkan')
+                ->where('tables.0.rows.data.0.jumlah_sku', 1)
+                ->where('tables.0.rows.data.0.total_qty_bawa', '6')
+                ->where('tables.0.rows.data.0.receive_datetime', null)
+            ));
+
+        $this->get('/barang_canvassing?tanggal=2026-10-06')->assertOk()->assertInertia(fn (Assert $p) => $p
+            ->loadDeferredProps(fn (Assert $p) => $p
+                ->where('tables.0.rows.total', 1)
+                ->where('tables.0.rows.data.0.canvassing_no', 'CNV-1')
+                ->where('tables.0.rows.data.0.jumlah_sku', 2)
+                ->where('tables.0.rows.data.0.total_qty_bawa', '15')
+                ->where('tables.0.rows.data.0.total_qty_diterima', '15')
+                ->where('tables.0.rows.data.0.ringkasan_muatan', '2 / 15 / 15')
+                ->where('tables.0.rows.data.0.status', 'Dikembalikan')
+                ->where('tables.0.rows.data.0.receive_datetime', '2026-10-06 07:30:00')
+                ->where('tables.0.rows.data.0.return_datetime', '2026-10-06 17:00:00')
+            ));
+
+        $this->get('/barang_canvassing?tanggal=2026-10-09')->assertOk()->assertInertia(fn (Assert $p) => $p
+            ->loadDeferredProps(fn (Assert $p) => $p->where('tables.0.rows.total', 0)));
+
+        // Drawer detail produk bisa membuka muatan yang masih Disiapkan.
+        $this->getJson("/barang_canvassing/{$c3}/item")->assertOk()->assertJsonCount(1, 'data');
 
         // /lap_barang_canvassing: tabel rata per produk apa adanya, tidak berubah.
         $this->get('/lap_barang_canvassing')->assertOk()->assertInertia(fn (Assert $p) => $p

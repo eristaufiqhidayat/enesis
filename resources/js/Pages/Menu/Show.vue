@@ -4,6 +4,8 @@ import { Deferred, Head, Link, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Badge from '@/Components/ui/atoms/Badge.vue';
 import Button from '@/Components/ui/atoms/Button.vue';
+import DatePicker from '@/Components/ui/atoms/DatePicker.vue';
+import Icon from '@/Components/ui/atoms/Icon.vue';
 import Input from '@/Components/ui/atoms/Input.vue';
 import Select from '@/Components/ui/atoms/Select.vue';
 import Alert from '@/Components/ui/molecules/Alert.vue';
@@ -22,6 +24,7 @@ import DetailMuatanCanvassing from './partials/DetailMuatanCanvassing.vue';
 import RiwayatDistributor from './partials/RiwayatDistributor.vue';
 import Tabs from '@/Components/ui/molecules/Tabs.vue';
 import DataTable from '@/Components/ui/organisms/DataTable.vue';
+import { useTambahMuatan } from '@/Composables/useTambahMuatan.js';
 import { useAmbilData } from '@/Support/ambilData.js';
 import { tanggalWaktuPendek } from '@/Support/format.js';
 
@@ -36,6 +39,8 @@ const props = defineProps({
     hasDateFilter: { type: Boolean, default: false },
     // Filter depo / koordinator untuk tabel dengan sumber bertanggal (lihat SumberBertanggal).
     filter: { type: Object, default: () => ({ depo: null, koordinator: null }) },
+    // Punya hak tambah di menu ini (tombol Tambah yang membuka modal form, saat ini hanya barang_canvassing).
+    bisaTambah: { type: Boolean, default: false },
 });
 
 const search = ref(props.search);
@@ -51,8 +56,19 @@ const depoPeta = ref(null);
 const lapTerpilih = ref(null);
 // Baris loading_barang yang detailnya dibuka di drawer dari tautan Kode Transaksi; null = tertutup.
 const loadingTerpilih = ref(null);
-// Baris barang_canvassing (satu muatan) yang daftar produknya dibuka di drawer dari tautan Canvassing No; null = tertutup.
+// Baris barang_canvassing (satu muatan) yang daftar produknya dibuka di drawer dari klik baris tabel; null = tertutup.
 const muatanTerpilih = ref(null);
+// Muatan dibatalkan dari drawer: tutup drawer dan muat ulang tabel (muatan itu sudah tidak ada di daftar).
+function muatanDibatalkan() {
+    muatanTerpilih.value = null;
+    muatTabelUlang();
+}
+// Item muatan diubah di drawer: muat ulang tabel daftar supaya ringkasan SKU/qty barisnya ikut terbarui.
+function muatTabelUlang() {
+    router.reload({ only: ['tables'], preserveScroll: true });
+}
+// Tombol Tambah di header membuka modal Atur Muatan Motoris (organisms/ModalTambahMuatan.vue, dipasang di AppLayout).
+const { buka: bukaTambahMuatan } = useTambahMuatan();
 // Distributor { id, nama } yang riwayat transaksinya dibuka di drawer kedua, di atas drawer detail; null = tertutup.
 const distributorTerpilih = ref(null);
 const kolomLapLoadingBarang = computed(() => visibleTables.value.find((table) => table.name === 'lap_loading_barang')?.columns ?? {});
@@ -116,7 +132,7 @@ function formatAngka(nilai) {
 const warnaBadge = {
     checkin_pagi: { checkin_pertama_hari_ini: { 'Belum checkin': 'danger', '*': 'warning' } },
     loading_barang: { status_retur: { 'Belum Retur': 'danger', 'Sudah Retur': 'success' } },
-    barang_canvassing: { status: { Diterima: 'secondary', Dikembalikan: 'warning', Selesai: 'success' } },
+    barang_canvassing: { status: { Disiapkan: 'info', Diterima: 'secondary', Dikembalikan: 'warning', Selesai: 'success' } },
 };
 
 // Tab "Outlet Baru dari HP" (aksi verifikasi_outlet_baru): warna status dan tombol Setujui / Tolak.
@@ -242,7 +258,11 @@ function filterTabel(table, { nilai, operator }) {
 <template>
     <Head :title="`${page.title} · ${appName}`" />
     <AppLayout>
-        <PageHeader :title="page.title" :subtitle="subtitle" />
+        <PageHeader :title="page.title" :subtitle="subtitle">
+            <template v-if="slug === 'barang_canvassing' && bisaTambah" #actions>
+                <Button @click="bukaTambahMuatan"><Icon name="plus" class="me-1" /> Tambah</Button>
+            </template>
+        </PageHeader>
 
         <Alert v-if="page.same_as" variant="info" class="mb-3">
             Data menu ini sama dengan
@@ -261,7 +281,7 @@ function filterTabel(table, { nilai, operator }) {
                 <Card body-class="overflow-x-auto">
                     <template #header>
                         <div class="flex flex-wrap items-center justify-end gap-2">
-                            <Input v-if="formDateFilter" v-model="tanggal" type="date" required aria-label="Tanggal data" class="w-auto" />
+                            <DatePicker v-if="formDateFilter" v-model="tanggal" aria-label="Tanggal data" class="w-36" />
                             <Select v-if="adaPilihan('depo')" v-model="depo" :options="pilihanFilter.depo" placeholder="Semua depo" aria-label="Depo" class="w-auto" />
                             <Select v-if="adaPilihan('koordinator')" v-model="koordinator" :options="pilihanFilter.koordinator" placeholder="Semua koordinator" aria-label="Koordinator" class="w-auto max-w-[12rem]" />
                             <CariForm v-model="search" :loading="memuat" :disabled="!berubah" @submit="submitSearch" />
@@ -285,6 +305,9 @@ function filterTabel(table, { nilai, operator }) {
                     <DataTable
                         class="mb-3"
                         :tinggi-penuh="page.tinggi_penuh === true"
+                        :tinggi-tetap="page.tinggi_tetap === true"
+                        :baris-bisa-diklik="table.name === 'barang_canvassing'"
+                        @klik-baris="muatanTerpilih = $event"
                         :sticky-columns="page.sticky_columns ?? []"
                         :title="visibleTables.length > 1 ? table.title : null"
                         :columns="table.columns"
@@ -309,7 +332,7 @@ function filterTabel(table, { nilai, operator }) {
                             <div class="flex flex-wrap items-center justify-between gap-2">
                                 <span v-if="visibleTables.length > 1" class="font-semibold">{{ table.title }}</span>
                                 <div class="flex flex-wrap items-center gap-2 ml-auto">
-                                    <Input v-if="formDateFilter" v-model="tanggal" type="date" required aria-label="Tanggal data" class="w-auto" />
+                                    <DatePicker v-if="formDateFilter" v-model="tanggal" aria-label="Tanggal data" class="w-36" />
                                     <Select v-if="adaPilihan('depo')" v-model="depo" :options="pilihanFilter.depo" placeholder="Semua depo" aria-label="Depo" class="w-auto" />
                                     <Select v-if="adaPilihan('koordinator')" v-model="koordinator" :options="pilihanFilter.koordinator" placeholder="Semua koordinator" aria-label="Koordinator" class="w-auto max-w-[12rem]" />
                                     <CariForm v-model="search" :loading="memuat" :disabled="!berubah" @submit="submitSearch" />
@@ -327,9 +350,6 @@ function filterTabel(table, { nilai, operator }) {
                         </template>
                         <template v-if="table.name === 'loading_barang'" #cell-kode_transaksi="{ row }">
                             <button type="button" class="tautan-depo" @click="loadingTerpilih = row">{{ row.kode_transaksi }}</button>
-                        </template>
-                        <template v-if="table.name === 'barang_canvassing'" #cell-canvassing_no="{ row }">
-                            <button type="button" class="tautan-depo" @click="muatanTerpilih = row">{{ row.canvassing_no }}</button>
                         </template>
                         <template v-if="table.name === 'lap_loading_barang'" #cell-trans_code="{ row }">
                             <button type="button" class="tautan-depo" @click="lapTerpilih = row">{{ row.trans_code }}</button>
@@ -405,9 +425,9 @@ function filterTabel(table, { nilai, operator }) {
         <Modal :show="loadingTerpilih !== null" :title="loadingTerpilih?.kode_transaksi ?? ''" placement="kanan" @close="loadingTerpilih = null">
             <DetailLoadingBarang v-if="loadingTerpilih" :row="loadingTerpilih" :columns="kolomLoadingBarang" />
         </Modal>
-        <!-- Drawer produk muatan canvassing, dibuka dari tautan Canvassing No di tabel barang_canvassing. -->
+        <!-- Drawer produk muatan canvassing, dibuka dari klik baris di tabel barang_canvassing. -->
         <Modal :show="muatanTerpilih !== null" :title="muatanTerpilih?.canvassing_no ?? ''" placement="kanan" size="2xl" @close="muatanTerpilih = null">
-            <DetailMuatanCanvassing v-if="muatanTerpilih" :key="muatanTerpilih.source_id" :row="muatanTerpilih" />
+            <DetailMuatanCanvassing v-if="muatanTerpilih" :key="muatanTerpilih.source_id" :row="muatanTerpilih" @diubah="muatTabelUlang" @dibatalkan="muatanDibatalkan" />
         </Modal>
         <!-- Drawer riwayat transaksi distributor, dibuka dari Distributor Name di drawer detail (tampil di atasnya). -->
         <Modal :show="distributorTerpilih !== null" :title="`Riwayat ${distributorTerpilih?.nama ?? ''}`" placement="kanan" @close="distributorTerpilih = null">
