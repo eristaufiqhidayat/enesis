@@ -61,17 +61,11 @@ class MenuTest extends TestCase
             );
     }
 
-    public function test_halaman_tanpa_tabel_konfigurasi_tidak_menunda_tables(): void
-    {
-        // Halaman tanpa tabel data (mis. peta/grafik) tidak punya apa pun yang perlu ditarik, jadi tidak ada defer.
-        $this->get('/home')
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('Menu/Show')
-                ->where('page.tables', [])
-                ->missing('tables')
-            );
-    }
+    // test_halaman_tanpa_tabel_konfigurasi_tidak_menunda_tables dulu di sini, memakai slug "home" sebagai contoh
+    // halaman tanpa tabel yang lewat catch-all MenuController. "home" sekarang punya rute dan controller sendiri
+    // (lihat HomeController dan Tests\Feature\Admin\HomeTest), dan tidak ada lagi menu config lain dengan
+    // 'tables' => [] yang masih lewat MenuController (sisanya semua punya controller sendiri juga), jadi skenario
+    // ini dihapus alih-alih dipindah ke slug yang salah.
 
     public function test_monitoring_harian_sales_queries_only_the_active_tab_table(): void
     {

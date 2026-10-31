@@ -16,6 +16,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\AutoGridController;
 use App\Http\Controllers\DesignAreaController;
 use App\Http\Controllers\GenerateKelurahanController;
+use App\Http\Controllers\HomeController;
 use App\Http\Controllers\LapLoadingBarangController;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\OutletBaruController;
@@ -142,6 +143,11 @@ Route::middleware(['auth', 'wajib-ganti-password'])->group(function () {
             ->defaults('menu', $slug)->name("kehadiran.{$slug}");
     }
     Route::get('/foto/{id}', [KehadiranController::class, 'foto'])->whereUuid('id')->name('kehadiran.foto');
+
+    // Beranda: dashboard interaktif ringkasan nasional data motoris (KPI, funnel outlet, tren harian, depo
+    // teratas). Rute sendiri (bukan catch-all MenuController@show) karena "home" tidak lagi sekadar tabel
+    // kosong, lihat HomeController. Dideklarasikan sebelum catch-all /{slug} supaya rute ini yang dipakai.
+    Route::get('/home', [HomeController::class, 'index'])->middleware('hak:home')->name('home');
 
     // Motoris Report (Coverage, Performance, Absensi) dihitung dari tabel motoris + kuota isian admin.
     Route::get('/motoris_report', [MotorisReportController::class, 'index'])->middleware('hak:motoris_report')->name('motoris-report');
