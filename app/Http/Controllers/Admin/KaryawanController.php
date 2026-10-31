@@ -139,6 +139,10 @@ class KaryawanController extends Controller
         try {
             return response()->json(BacaKtp::baca($request->file('foto_ktp')));
         } catch (\Throwable $e) {
+            // Pesan ke admin sengaja digeneralkan (tidak membocorkan detail teknis), tapi penyebab sesungguhnya
+            // (mis. binary tesseract belum terpasang) tercatat di storage/logs/laravel.log untuk didiagnosis.
+            report($e);
+
             return response()->json(['error' => 'Foto KTP tidak bisa dibaca. Coba foto yang lebih terang dan tidak miring.'], 422);
         }
     }
