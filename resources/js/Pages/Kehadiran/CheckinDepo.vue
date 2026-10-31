@@ -5,6 +5,7 @@ import PageHeader from '@/Components/ui/molecules/PageHeader.vue';
 import DataTable from '@/Components/ui/organisms/DataTable.vue';
 import FilterKehadiran from './partials/FilterKehadiran.vue';
 import { angka } from '@/Support/format.js';
+import { filterTabelTeks, urutkanTabel } from '@/Support/sortFilterTabel.js';
 
 defineProps({
     slug: { type: String, required: true },
@@ -15,6 +16,10 @@ defineProps({
     daftarDepo: { type: [Object, Array], default: () => ({}) },
     daftarKoordinator: { type: [Object, Array], default: () => ({}) },
     daftarSumber: { type: Object, required: true },
+    sortableColumns: { type: Array, default: () => [] },
+    sort: { type: Object, default: null },
+    filterableColumns: { type: Array, default: () => [] },
+    filterValues: { type: Object, default: () => ({}) },
 });
 
 const appName = usePage().props.appName;
@@ -49,6 +54,12 @@ const columns = {
             :links="baris.links"
             empty-text="Tidak ada checkin depo pada tanggal ini."
             tinggi-penuh
+            :sortable="sortableColumns"
+            :sort="sort"
+            @sort="urutkanTabel"
+            :filterable="filterableColumns"
+            :filter-values="filterValues"
+            @filter="filterTabelTeks"
         >
             <template #header>
                 <FilterKehadiran

@@ -15,6 +15,7 @@ import FormProduk from './partials/FormProduk.vue';
 import FormSkeleton from '@/Components/ui/molecules/FormSkeleton.vue';
 import { useAmbilData } from '@/Support/ambilData.js';
 import { angka } from '@/Support/format.js';
+import { filterTabelTeks, urutkanTabel } from '@/Support/sortFilterTabel.js';
 
 // Daftar master produk (Produk, Produk Kompetitor, Kategori, Brand, Satuan) — satu halaman untuk 5 menu.
 const props = defineProps({
@@ -27,6 +28,10 @@ const props = defineProps({
     q: { type: String, default: '' },
     total: { type: Number, default: 0 },
     bisa: { type: Object, required: true },
+    sortableColumns: { type: Array, default: () => [] },
+    sort: { type: Object, default: null },
+    filterableColumns: { type: Array, default: () => [] },
+    filterValues: { type: Object, default: () => ({}) },
 });
 
 const appName = usePage().props.appName;
@@ -97,6 +102,12 @@ function tutupForm() {
             :total="baris.total"
             :links="baris.links"
             :empty-text="q ? `Tidak ada ${nama} yang cocok dengan “${q}”.` : `Belum ada ${nama}.`"
+            :sortable="sortableColumns"
+            :sort="sort"
+            @sort="urutkanTabel"
+            :filterable="filterableColumns"
+            :filter-values="filterValues"
+            @filter="filterTabelTeks"
         >
             <template #header>
                 <form class="flex flex-wrap items-end gap-2" role="search" @submit.prevent="kirimCari">

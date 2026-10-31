@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Support\Akses\Akses;
 use App\Support\Master\MasterProduk;
 use App\Support\Mobile\Pengaturan;
+use App\Support\Tabel\SortFilterKolom;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -31,16 +32,28 @@ class MasterProdukController extends Controller
         $def = MasterProduk::def($slug);
         $q = trim((string) $request->query('q'));
 
-        $query = MasterProduk::query($slug)->when($q !== '', function ($w) use ($def, $q) {
-            $w->where(function ($x) use ($def, $q) {
-                foreach ($def['cari'] as $kolom) {
-                    $x->orWhereRaw("LOWER({$kolom}) LIKE ?", ['%'.mb_strtolower($q).'%']);
-                }
-            });
-        });
+        $kolomUrut = $def['sortable'] ?? [];
+        $kolomFilter = $def['filterable'] ?? [];
+        $sort = SortFilterKolom::sort($request, $kolomUrut);
+        $filterAktif = SortFilterKolom::filter($request, $kolomFilter);
 
-        $baris = MasterProduk::urutkan($slug, $query)
-            ->paginate(25)->withQueryString()->onEachSide(1)
+        $query = MasterProduk::query($slug)
+            ->when($q !== '', function ($w) use ($def, $q) {
+                $w->where(function ($x) use ($def, $q) {
+                    foreach ($def['cari'] as $kolom) {
+                        $x->orWhereRaw("LOWER({$kolom}) LIKE ?", ['%'.mb_strtolower($q).'%']);
+                    }
+                });
+            })
+            ->tap(fn ($w) => SortFilterKolom::terapkanFilter($w, $filterAktif, $kolomFilter));
+
+        if ($sort) {
+            SortFilterKolom::terapkanSort($query, $sort, $kolomUrut, 'p.id');
+        } else {
+            MasterProduk::urutkan($slug, $query);
+        }
+
+        $baris = $query->paginate(25)->withQueryString()->onEachSide(1)
             ->through(fn ($r) => $this->barisDaftar($slug, $r));
 
         return Inertia::render('MasterProduk/Index', [
@@ -53,6 +66,10 @@ class MasterProdukController extends Controller
             'q' => $q,
             'total' => DB::table($def['tabel'])->count(),
             'bisa' => $this->bisa($request, $slug),
+            'sortableColumns' => array_keys($kolomUrut),
+            'sort' => $sort,
+            'filterableColumns' => array_keys($kolomFilter),
+            'filterValues' => $filterAktif,
         ]);
     }
 

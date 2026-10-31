@@ -60,6 +60,19 @@ class MasterProdukTest extends AdminTestCase
             ->where('baris.data.0.nama', 'Cap Badak')->where('baris.data.0.satuan', 'Pcs'));
     }
 
+    public function test_sort_filter_per_kolom_satuan_produk(): void
+    {
+        $this->get('/satuan_produk?sort=total_produk&arah=desc')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('sort', ['kolom' => 'total_produk', 'arah' => 'desc'])
+            ->where('baris.data.0.nama', 'Pcs')->where('baris.data.0.total_produk', 10));
+
+        // Kolom di luar whitelist (mis. "diubah", bukan kolom asli) diabaikan, jatuh ke urutan bawaan (nama).
+        $this->get('/satuan_produk?sort=diubah&arah=desc')->assertOk()->assertInertia(fn (Assert $page) => $page->where('sort', null));
+
+        $this->get('/satuan_produk?filter[nama]=pcs')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('filterValues', ['nama' => 'pcs'])->where('baris.total', 1)->where('baris.data.0.nama', 'Pcs'));
+    }
+
     public function test_tambah_ubah_hapus_satuan_dan_riwayat(): void
     {
         $this->get('/satuan_produk/tambah')->assertOk()->assertInertia(fn (Assert $page) => $page

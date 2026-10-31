@@ -11,6 +11,7 @@ import FilterKehadiran from './partials/FilterKehadiran.vue';
 import SumberBadge from './partials/SumberBadge.vue';
 import { angka } from '@/Support/format.js';
 import { bersihkanQuery } from '@/Support/query.js';
+import { filterTabelTeks, urutkanTabel } from '@/Support/sortFilterTabel.js';
 
 const props = defineProps({
     slug: { type: String, required: true },
@@ -23,6 +24,10 @@ const props = defineProps({
     daftarDepo: { type: [Object, Array], default: () => ({}) },
     daftarKoordinator: { type: [Object, Array], default: () => ({}) },
     daftarSumber: { type: Object, required: true },
+    sortableColumns: { type: Array, default: () => [] },
+    sort: { type: Object, default: null },
+    filterableColumns: { type: Array, default: () => [] },
+    filterValues: { type: Object, default: () => ({}) },
 });
 
 const appName = usePage().props.appName;
@@ -76,6 +81,12 @@ function tautanStatus(kode) {
             :total="baris.total"
             :links="baris.links"
             empty-text="Tidak ada absensi pada rentang ini."
+            :sortable="sortableColumns"
+            :sort="sort"
+            @sort="urutkanTabel"
+            :filterable="filterableColumns"
+            :filter-values="filterValues"
+            @filter="filterTabelTeks"
         >
             <template #header>
                 <FilterKehadiran

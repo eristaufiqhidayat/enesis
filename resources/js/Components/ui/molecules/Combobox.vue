@@ -134,7 +134,7 @@ onUnmounted(() => document.removeEventListener('click', tutupDiLuar));
             aria-label="Hapus pilihan"
             @click="hapus"
         >
-            <Icon name="x" />
+            <Icon name="x" class="w-3.5 h-3.5" />
         </button>
         <ul v-if="open" class="combobox-menu">
             <li v-if="!filtered.length" class="combobox-empty">{{ emptyText }}</li>
