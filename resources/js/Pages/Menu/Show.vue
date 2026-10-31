@@ -17,6 +17,7 @@ import DetailDepo from './partials/DetailDepo.vue';
 import DetailDepoEdit from './partials/DetailDepoEdit.vue';
 import DetailDepoPeta from './partials/DetailDepoPeta.vue';
 import DetailLapLoadingBarang from './partials/DetailLapLoadingBarang.vue';
+import DetailLoadingBarang from './partials/DetailLoadingBarang.vue';
 import RiwayatDistributor from './partials/RiwayatDistributor.vue';
 import Tabs from '@/Components/ui/molecules/Tabs.vue';
 import DataTable from '@/Components/ui/organisms/DataTable.vue';
@@ -47,9 +48,12 @@ const depoDiedit = ref(false);
 const depoPeta = ref(null);
 // Baris lap_loading_barang yang detailnya dibuka di drawer dari tautan Trans Code; null = tertutup.
 const lapTerpilih = ref(null);
+// Baris loading_barang yang detailnya dibuka di drawer dari tautan Kode Transaksi; null = tertutup.
+const loadingTerpilih = ref(null);
 // Distributor { id, nama } yang riwayat transaksinya dibuka di drawer kedua, di atas drawer detail; null = tertutup.
 const distributorTerpilih = ref(null);
 const kolomLapLoadingBarang = computed(() => visibleTables.value.find((table) => table.name === 'lap_loading_barang')?.columns ?? {});
+const kolomLoadingBarang = computed(() => visibleTables.value.find((table) => table.name === 'loading_barang')?.columns ?? {});
 
 function tutupDetailDepo() {
     depoTerpilih.value = null;
@@ -108,6 +112,7 @@ function formatAngka(nilai) {
 // Warna badge per tabel: "Belum checkin" merah, jam checkin di luar rentang kuning.
 const warnaBadge = {
     checkin_pagi: { checkin_pertama_hari_ini: { 'Belum checkin': 'danger', '*': 'warning' } },
+    loading_barang: { status_retur: { 'Belum Retur': 'danger', 'Sudah Retur': 'success' } },
 };
 
 // Tab "Outlet Baru dari HP" (aksi verifikasi_outlet_baru): warna status dan tombol Setujui / Tolak.
@@ -283,7 +288,7 @@ function filterTabel(table, { nilai, operator }) {
                         :total="table.rows.total"
                         :links="table.rows.links"
                         :pagination-only="PROPS_TABEL"
-                        :badge-columns="table.name === 'checkin_pagi' ? ['checkin_pertama_hari_ini'] : (table.aksi === 'verifikasi_outlet_baru' ? ['status'] : [])"
+                        :badge-columns="table.name === 'checkin_pagi' ? ['checkin_pertama_hari_ini'] : (table.name === 'loading_barang' ? ['status_retur'] : (table.aksi === 'verifikasi_outlet_baru' ? ['status'] : []))"
                         :badge-variants="table.aksi === 'verifikasi_outlet_baru' ? warnaStatusOutletBaru : (warnaBadge[table.name] ?? {})"
                         :sortable="table.sortable_columns"
                         :sort="table.sort"
@@ -315,6 +320,9 @@ function filterTabel(table, { nilai, operator }) {
                         </template>
                         <template v-if="table.name === 'master_area'" #cell-nama="{ row }">
                             <button type="button" class="tautan-depo" @click="areaTerpilih = row">{{ row.nama }}</button>
+                        </template>
+                        <template v-if="table.name === 'loading_barang'" #cell-kode_transaksi="{ row }">
+                            <button type="button" class="tautan-depo" @click="loadingTerpilih = row">{{ row.kode_transaksi }}</button>
                         </template>
                         <template v-if="table.name === 'lap_loading_barang'" #cell-trans_code="{ row }">
                             <button type="button" class="tautan-depo" @click="lapTerpilih = row">{{ row.trans_code }}</button>
@@ -371,6 +379,10 @@ function filterTabel(table, { nilai, operator }) {
         <!-- Drawer detail transaksi, dibuka dari tautan Trans Code di tabel lap_loading_barang. -->
         <Modal :show="lapTerpilih !== null" :title="lapTerpilih?.trans_code ?? ''" placement="kanan" @close="lapTerpilih = null">
             <DetailLapLoadingBarang v-if="lapTerpilih" :row="lapTerpilih" :columns="kolomLapLoadingBarang" @buka-distributor="distributorTerpilih = $event" />
+        </Modal>
+        <!-- Drawer detail loading barang, dibuka dari tautan Kode Transaksi di tabel loading_barang. -->
+        <Modal :show="loadingTerpilih !== null" :title="loadingTerpilih?.kode_transaksi ?? ''" placement="kanan" @close="loadingTerpilih = null">
+            <DetailLoadingBarang v-if="loadingTerpilih" :row="loadingTerpilih" :columns="kolomLoadingBarang" />
         </Modal>
         <!-- Drawer riwayat transaksi distributor, dibuka dari Distributor Name di drawer detail (tampil di atasnya). -->
         <Modal :show="distributorTerpilih !== null" :title="`Riwayat ${distributorTerpilih?.nama ?? ''}`" placement="kanan" @close="distributorTerpilih = null">
