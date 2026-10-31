@@ -106,7 +106,7 @@ return [
             'items' => [
                 [
                     'slug' => 'checkin_depo',
-                    'title' => 'Checkin Checkout Depo',
+                    'title' => 'Absensi Datang & Pulang Depo',
                     'icon' => 'camera',
                 ],
                 [
@@ -898,7 +898,7 @@ return [
             'same_as' => null,
         ],
         'checkin_depo' => [
-            'title' => 'Checkin Checkout Depo',
+            'title' => 'Absensi Datang & Pulang Depo',
             'tables' => [
                 'lap_checkin_checkout',
             ],
