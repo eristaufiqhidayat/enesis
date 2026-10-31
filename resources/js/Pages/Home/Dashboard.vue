@@ -26,11 +26,15 @@ const props = defineProps({
     filter: { type: Object, required: true },
     target: { type: Object, required: true },
     // Kosong saat masih ditunda (lihat <Deferred> di bawah); semuanya tiba bersamaan (satu grup "ringkasan").
-    kpi: { type: Object, default: null },
+    // kpi & topDepo digabung jadi satu prop di backend (ringkasanDepo) supaya SummaryDepo::kartu() cuma
+    // dihitung sekali (lihat HomeController::ringkasanDepo).
+    ringkasanDepo: { type: Object, default: null },
     funnel: { type: Array, default: null },
     tren: { type: Array, default: null },
-    topDepo: { type: Array, default: null },
 });
+
+const kpi = computed(() => props.ringkasanDepo?.kpi ?? null);
+const topDepo = computed(() => props.ringkasanDepo?.topDepo ?? null);
 
 const appName = usePage().props.appName;
 const subtitle = computed(() => (props.periode.sama ? props.periode.dari : `${props.periode.dari} – ${props.periode.sampai}`));
@@ -46,11 +50,11 @@ const { memuat, berubah, ambil } = useAmbilData({
 
 function tampilkan() {
     ambil('/home', bersihkanQuery({ date_from: filterDari.value, date_to: filterSampai.value }), {
-        only: ['kpi', 'funnel', 'tren', 'topDepo', 'periode', 'filter'],
+        only: ['ringkasanDepo', 'funnel', 'tren', 'periode', 'filter'],
     });
 }
 
-const topDepoChart = computed(() => (props.topDepo ?? []).map((d) => ({
+const topDepoChart = computed(() => (topDepo.value ?? []).map((d) => ({
     label: d.nama,
     value: d.ec_achievement,
     barClass: d.ec_achievement >= 100 ? 'fill-green-400 stroke-green-500' : (d.ec_achievement >= 75 ? 'fill-yellow-400 stroke-yellow-500' : 'fill-rose-400 stroke-rose-500'),
@@ -80,7 +84,7 @@ const topDepoChart = computed(() => (props.topDepo ?? []).map((d) => ({
             </template>
         </PageHeader>
 
-        <Deferred :data="['kpi', 'funnel', 'tren', 'topDepo']">
+        <Deferred :data="['ringkasanDepo', 'funnel', 'tren']">
             <template #fallback>
                 <DashboardSkeleton />
             </template>

@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Akses\Akses;
 use App\Support\Mobile\Pengaturan;
 use App\Support\Motoris\Dashboard;
 use App\Support\Motoris\SummaryDepo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -16,6 +19,8 @@ use Inertia\Response;
 class HomeController extends Controller
 {
     public const MENU = 'home';
+
+    private const CACHE_TTL = 300; // detik, sama dengan Dashboard::CACHE_TTL.
 
     public function index(Request $request): Response
     {
@@ -30,22 +35,41 @@ class HomeController extends Controller
             'filter' => ['date_from' => $dari, 'date_to' => $sampai],
             'target' => $summary->target,
             // Berat (query semua depo/outlet/tren); ditunda supaya halaman tampil dulu (lihat Home/Dashboard.vue).
-            'kpi' => Inertia::defer(fn () => self::kpi($summary), 'ringkasan'),
+            // kpi & topDepo digabung jadi satu prop (ringkasanDepo) supaya SummaryDepo::kartu() — yang query
+            // semua depo/sales — cuma dihitung sekali, bukan sekali per prop.
+            'ringkasanDepo' => Inertia::defer(fn () => self::ringkasanDepo($summary, $request), 'ringkasan'),
             'funnel' => Inertia::defer(fn () => $dashboard->funnelOutlet(), 'ringkasan'),
             'tren' => Inertia::defer(fn () => $dashboard->trenHarian(), 'ringkasan'),
-            'topDepo' => Inertia::defer(fn () => $summary->kartu()->take(8)->values(), 'ringkasan'),
         ]);
+    }
+
+    /**
+     * kpi (KPI nasional) + topDepo (8 depo EC Achievement tertinggi), dari satu kartu() yang sama — lihat catatan
+     * di atas. Hasilnya singkat di-cache per rentang tanggal + cakupan akun, sama seperti Dashboard::funnelOutlet.
+     *
+     * @return array{kpi: array<string, int|float>, topDepo: Collection}
+     */
+    private static function ringkasanDepo(SummaryDepo $summary, Request $request): array
+    {
+        $cakupan = Akses::cakupan($request->user()) === 'semua' ? 'semua' : 'user_'.($request->user()?->id ?? 0);
+        $kunci = "beranda:depo:{$summary->dari}:{$summary->sampai}:{$cakupan}";
+
+        return Cache::remember($kunci, self::CACHE_TTL, function () use ($summary) {
+            $kartu = $summary->kartu();
+
+            return ['kpi' => self::kpi($kartu, $summary->target), 'topDepo' => $kartu->take(8)->values()];
+        });
     }
 
     /**
      * KPI nasional: total dari kartu per depo (lihat SummaryDepo::kartu), lalu AVG dan achievement dihitung
      * ulang dari total gabungan — rumus yang sama dengan SummaryDepo::ringkas, hanya pada skala nasional.
      *
+     * @param  array{call: float, ec: float, ipt: float}  $target
      * @return array<string, int|float>
      */
-    private static function kpi(SummaryDepo $summary): array
+    private static function kpi(Collection $kartu, array $target): array
     {
-        $kartu = $summary->kartu();
         $bagi = fn (float|int $a, float|int $b, int $d = 1): float => $b > 0 ? round($a / $b, $d) : 0.0;
 
         $hariKerja = (int) $kartu->sum('hari_kerja');
@@ -73,9 +97,9 @@ class HomeController extends Controller
             'avg_ec' => $avgEc,
             'avg_sales' => (int) round($bagi($sales, $hariKerja, 2)),
             'avg_ipt' => $avgIpt,
-            'call_achievement' => $bagi($avgCall * 100, $summary->target['call']),
-            'ec_achievement' => $bagi($avgEc * 100, $summary->target['ec']),
-            'ipt_achievement' => $bagi($avgIpt * 100, $summary->target['ipt']),
+            'call_achievement' => $bagi($avgCall * 100, $target['call']),
+            'ec_achievement' => $bagi($avgEc * 100, $target['ec']),
+            'ipt_achievement' => $bagi($avgIpt * 100, $target['ipt']),
         ];
     }
 

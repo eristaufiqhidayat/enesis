@@ -50,8 +50,8 @@ class HomeTest extends AdminTestCase
                 ->component('Home/Dashboard')
                 ->where('filter.date_from', now()->subDays(6)->toDateString())
                 ->where('filter.date_to', now()->toDateString())
-                // Berat (kpi/funnel/tren/topDepo); belum ada di payload awal, lihat <Deferred> di Home/Dashboard.vue.
-                ->missing('kpi')->missing('funnel')->missing('tren')->missing('topDepo')
+                // Berat (ringkasanDepo/funnel/tren); belum ada di payload awal, lihat <Deferred> di Home/Dashboard.vue.
+                ->missing('ringkasanDepo')->missing('funnel')->missing('tren')
             );
     }
 
@@ -64,25 +64,25 @@ class HomeTest extends AdminTestCase
                 ->loadDeferredProps(fn (Assert $page) => $page
                     // Sidoarjo (Rudi: hari 3, call 2, ec 1, sales 120000, sku 4; Tegar: hari 1 — 2 kunjungan tanggal
                     // sama digabung UNION, call 2, ec 1, sales 50000, sku 2) + Balaraja (semua 0, Sinta tanpa transaksi).
-                    ->where('kpi.depo_aktif', 2)
-                    ->where('kpi.motoris_aktif', 3) // Rudi + Tegar (Sidoarjo) + Sinta (Balaraja, aktif tanpa transaksi)
-                    ->where('kpi.hari_kerja', 4)
-                    ->where('kpi.call', 4)
-                    ->where('kpi.ec', 2)
-                    ->where('kpi.sales', 170000)
-                    ->where('kpi.sku', 6)
-                    ->where('kpi.avg_call', 1)
-                    ->where('kpi.avg_ec', 0.5)
-                    ->where('kpi.avg_ipt', 3)
-                    ->where('kpi.ec_achievement', 1.4) // 0.5 × 100 ÷ 35
-                    ->where('kpi.ipt_achievement', 100) // 3.0 × 100 ÷ 3
+                    ->where('ringkasanDepo.kpi.depo_aktif', 2)
+                    ->where('ringkasanDepo.kpi.motoris_aktif', 3) // Rudi + Tegar (Sidoarjo) + Sinta (Balaraja, aktif tanpa transaksi)
+                    ->where('ringkasanDepo.kpi.hari_kerja', 4)
+                    ->where('ringkasanDepo.kpi.call', 4)
+                    ->where('ringkasanDepo.kpi.ec', 2)
+                    ->where('ringkasanDepo.kpi.sales', 170000)
+                    ->where('ringkasanDepo.kpi.sku', 6)
+                    ->where('ringkasanDepo.kpi.avg_call', 1)
+                    ->where('ringkasanDepo.kpi.avg_ec', 0.5)
+                    ->where('ringkasanDepo.kpi.avg_ipt', 3)
+                    ->where('ringkasanDepo.kpi.ec_achievement', 1.4) // 0.5 × 100 ÷ 35
+                    ->where('ringkasanDepo.kpi.ipt_achievement', 100) // 3.0 × 100 ÷ 3
+                    ->has('ringkasanDepo.topDepo', 2)
                     // Tidak ada data mk_outlet/trx_outlet_baru/trx_stok_outlet pada fixture ini.
                     ->where('funnel', fn ($funnel) => collect($funnel)->pluck('jumlah')->every(fn ($n) => $n === 0))
                     ->has('tren', 3)
                     ->where('tren.0', ['tanggal' => '2026-10-01', 'sales' => 50000, 'ec' => 1]) // S3 (S4 dibatalkan)
                     ->where('tren.1', ['tanggal' => '2026-10-02', 'sales' => 100000, 'ec' => 1]) // S1
                     ->where('tren.2', ['tanggal' => '2026-10-03', 'sales' => 20000, 'ec' => 0]) // S2, bukan EC
-                    ->has('topDepo', 2)
                 )
             );
     }
