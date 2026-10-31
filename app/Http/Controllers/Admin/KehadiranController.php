@@ -75,7 +75,7 @@ class KehadiranController extends Controller
     public function checkinDepo(Request $request): Response
     {
         $menu = (string) $request->route('menu');
-        $filter = $this->filter($request);
+        $filter = $this->filter($request, satuTanggal: true);
         $dasar = $this->dasar($request, 'trx_checkin_depo', $filter);
         $ringkas = [
             'total' => (clone $dasar)->count(),
@@ -199,8 +199,13 @@ class KehadiranController extends Controller
 
     // ------------------------------------------------------------------
 
-    /** @return array{dari: string, sampai: string, depo: ?int, koordinator: ?int, q: string, sumber: string} */
-    private function filter(Request $request): array
+    /**
+     * $satuTanggal: halaman hanya menampilkan satu tanggal (query `tanggal`, bawaan hari ini) alih-alih rentang
+     * `dari`..`sampai` (mis. Checkin Depo, lihat {@see self::checkinDepo()}).
+     *
+     * @return array{dari: string, sampai: string, depo: ?int, koordinator: ?int, q: string, sumber: string}
+     */
+    private function filter(Request $request, bool $satuTanggal = false): array
     {
         $zona = Pengaturan::zona();
         $hari = CarbonImmutable::now($zona)->startOfDay();
@@ -210,15 +215,19 @@ class KehadiranController extends Controller
             return preg_match('/^\d{4}-\d{2}-\d{2}$/', $nilai) ? CarbonImmutable::parse($nilai, $zona) : $bawaan;
         };
 
-        $sampai = $tgl('sampai', $hari);
-        $dari = $tgl('dari', $sampai->subDays(6));
+        if ($satuTanggal) {
+            $dari = $sampai = $tgl('tanggal', $hari);
+        } else {
+            $sampai = $tgl('sampai', $hari);
+            $dari = $tgl('dari', $sampai->subDays(6));
 
-        if ($dari->gt($sampai)) {
-            [$dari, $sampai] = [$sampai, $dari];
-        }
+            if ($dari->gt($sampai)) {
+                [$dari, $sampai] = [$sampai, $dari];
+            }
 
-        if ($dari->diffInDays($sampai) > self::RENTANG_MAKS) {
-            $dari = $sampai->subDays(self::RENTANG_MAKS);
+            if ($dari->diffInDays($sampai) > self::RENTANG_MAKS) {
+                $dari = $sampai->subDays(self::RENTANG_MAKS);
+            }
         }
 
         return [

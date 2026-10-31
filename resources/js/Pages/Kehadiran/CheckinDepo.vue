@@ -49,12 +49,13 @@ const columns = {
             :rows="baris.data"
             :total="baris.total"
             :links="baris.links"
-            empty-text="Tidak ada checkin depo pada rentang ini."
+            empty-text="Tidak ada checkin depo pada tanggal ini."
         >
             <template #header>
                 <FilterKehadiran
                     :action="`/${slug}`"
                     :filter="filter"
+                    satu-tanggal
                     :daftar-depo="daftarDepo"
                     :daftar-koordinator="daftarKoordinator"
                     :daftar-sumber="daftarSumber"
