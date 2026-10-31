@@ -430,6 +430,8 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     /* Drawer: panel setinggi layar yang menempel di kanan (Modal.vue placement="kanan"). Header dan footer tetap, body yang bergulir. */
     .modal-container-kanan { @apply items-stretch justify-end p-0; }
     .modal-drawer { @apply flex h-full w-full max-w-3xl flex-col bg-white shadow-lg; }
+    .modal-drawer.modal-drawer-xl { @apply max-w-6xl; }
+    .modal-drawer.modal-drawer-2xl { @apply max-w-[90vw]; }
     .modal-drawer .modal-header, .modal-drawer .modal-footer { @apply shrink-0; }
     .modal-drawer .modal-body { @apply min-h-0 flex-1 overflow-auto; }
     @keyframes modal-drawer-masuk { from { transform: translateX(100%); } to { transform: translateX(0); } }

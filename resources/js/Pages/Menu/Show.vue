@@ -18,6 +18,7 @@ import DetailDepoEdit from './partials/DetailDepoEdit.vue';
 import DetailDepoPeta from './partials/DetailDepoPeta.vue';
 import DetailLapLoadingBarang from './partials/DetailLapLoadingBarang.vue';
 import DetailLoadingBarang from './partials/DetailLoadingBarang.vue';
+import DetailMuatanCanvassing from './partials/DetailMuatanCanvassing.vue';
 import RiwayatDistributor from './partials/RiwayatDistributor.vue';
 import Tabs from '@/Components/ui/molecules/Tabs.vue';
 import DataTable from '@/Components/ui/organisms/DataTable.vue';
@@ -50,6 +51,8 @@ const depoPeta = ref(null);
 const lapTerpilih = ref(null);
 // Baris loading_barang yang detailnya dibuka di drawer dari tautan Kode Transaksi; null = tertutup.
 const loadingTerpilih = ref(null);
+// Baris barang_canvassing (satu muatan) yang daftar produknya dibuka di drawer dari tautan Canvassing No; null = tertutup.
+const muatanTerpilih = ref(null);
 // Distributor { id, nama } yang riwayat transaksinya dibuka di drawer kedua, di atas drawer detail; null = tertutup.
 const distributorTerpilih = ref(null);
 const kolomLapLoadingBarang = computed(() => visibleTables.value.find((table) => table.name === 'lap_loading_barang')?.columns ?? {});
@@ -113,6 +116,7 @@ function formatAngka(nilai) {
 const warnaBadge = {
     checkin_pagi: { checkin_pertama_hari_ini: { 'Belum checkin': 'danger', '*': 'warning' } },
     loading_barang: { status_retur: { 'Belum Retur': 'danger', 'Sudah Retur': 'success' } },
+    barang_canvassing: { status: { Diterima: 'secondary', Dikembalikan: 'warning', Selesai: 'success' } },
 };
 
 // Tab "Outlet Baru dari HP" (aksi verifikasi_outlet_baru): warna status dan tombol Setujui / Tolak.
@@ -288,7 +292,7 @@ function filterTabel(table, { nilai, operator }) {
                         :total="table.rows.total"
                         :links="table.rows.links"
                         :pagination-only="PROPS_TABEL"
-                        :badge-columns="table.name === 'checkin_pagi' ? ['checkin_pertama_hari_ini'] : (table.name === 'loading_barang' ? ['status_retur'] : (table.aksi === 'verifikasi_outlet_baru' ? ['status'] : []))"
+                        :badge-columns="table.name === 'checkin_pagi' ? ['checkin_pertama_hari_ini'] : (table.name === 'loading_barang' ? ['status_retur'] : (table.name === 'barang_canvassing' ? ['status'] : (table.aksi === 'verifikasi_outlet_baru' ? ['status'] : [])))"
                         :badge-variants="table.aksi === 'verifikasi_outlet_baru' ? warnaStatusOutletBaru : (warnaBadge[table.name] ?? {})"
                         :sortable="table.sortable_columns"
                         :sort="table.sort"
@@ -324,8 +328,25 @@ function filterTabel(table, { nilai, operator }) {
                         <template v-if="table.name === 'loading_barang'" #cell-kode_transaksi="{ row }">
                             <button type="button" class="tautan-depo" @click="loadingTerpilih = row">{{ row.kode_transaksi }}</button>
                         </template>
+                        <template v-if="table.name === 'barang_canvassing'" #cell-canvassing_no="{ row }">
+                            <button type="button" class="tautan-depo" @click="muatanTerpilih = row">{{ row.canvassing_no }}</button>
+                        </template>
                         <template v-if="table.name === 'lap_loading_barang'" #cell-trans_code="{ row }">
                             <button type="button" class="tautan-depo" @click="lapTerpilih = row">{{ row.trans_code }}</button>
+                        </template>
+                        <template v-if="table.name === 'barang_canvassing'" #cell-receive_datetime="{ row }">
+                            <template v-if="tanggalWaktuPendek(row.receive_datetime)">
+                                {{ tanggalWaktuPendek(row.receive_datetime).tanggal }}
+                                <Badge variant="light">{{ tanggalWaktuPendek(row.receive_datetime).jam }}</Badge>
+                            </template>
+                            <template v-else>{{ row.receive_datetime }}</template>
+                        </template>
+                        <template v-if="table.name === 'barang_canvassing'" #cell-return_datetime="{ row }">
+                            <template v-if="tanggalWaktuPendek(row.return_datetime)">
+                                {{ tanggalWaktuPendek(row.return_datetime).tanggal }}
+                                <Badge variant="light">{{ tanggalWaktuPendek(row.return_datetime).jam }}</Badge>
+                            </template>
+                            <template v-else>{{ row.return_datetime }}</template>
                         </template>
                         <template v-if="table.name === 'lap_loading_barang'" #cell-datetime_trans="{ row }">
                             <template v-if="tanggalWaktuPendek(row.datetime_trans)">
@@ -383,6 +404,10 @@ function filterTabel(table, { nilai, operator }) {
         <!-- Drawer detail loading barang, dibuka dari tautan Kode Transaksi di tabel loading_barang. -->
         <Modal :show="loadingTerpilih !== null" :title="loadingTerpilih?.kode_transaksi ?? ''" placement="kanan" @close="loadingTerpilih = null">
             <DetailLoadingBarang v-if="loadingTerpilih" :row="loadingTerpilih" :columns="kolomLoadingBarang" />
+        </Modal>
+        <!-- Drawer produk muatan canvassing, dibuka dari tautan Canvassing No di tabel barang_canvassing. -->
+        <Modal :show="muatanTerpilih !== null" :title="muatanTerpilih?.canvassing_no ?? ''" placement="kanan" size="2xl" @close="muatanTerpilih = null">
+            <DetailMuatanCanvassing v-if="muatanTerpilih" :key="muatanTerpilih.source_id" :row="muatanTerpilih" />
         </Modal>
         <!-- Drawer riwayat transaksi distributor, dibuka dari Distributor Name di drawer detail (tampil di atasnya). -->
         <Modal :show="distributorTerpilih !== null" :title="`Riwayat ${distributorTerpilih?.nama ?? ''}`" placement="kanan" @close="distributorTerpilih = null">

@@ -39,6 +39,8 @@ const props = defineProps({
     stickyColumns: { type: Array, default: () => [] },
     // Tabel mengisi sisa tinggi layar: header kolom tetap terlihat saat baris di-scroll (scroll vertikal di dalam tabel).
     tinggiPenuh: { type: Boolean, default: false },
+    // Dengan tinggiPenuh: tinggi area tabel dipatok (bukan hanya maksimum), jadi tetap setinggi layar walau data kosong.
+    tinggiTetap: { type: Boolean, default: false },
     // Data sedang diambil ulang (mis. pencarian): baris diganti placeholder skeleton, bukan teks.
     memuat: { type: Boolean, default: false },
 });
@@ -237,9 +239,15 @@ function sesuaikanTinggi() {
     const kartu = footerEl.value?.closest('.card');
     const atas = Math.round(scrollEl.value.getBoundingClientRect().top);
     const marginKartu = parseFloat(kartu ? getComputedStyle(kartu).marginBottom : 0) || 0;
-    const bawah = (footerEl.value?.closest('.card-footer')?.offsetHeight ?? 0) + marginKartu + PADDING_BAWAH_MAIN;
+    // Di dalam drawer/modal sisa di bawah kartu hanya padding .modal-body (plus padding body kartu dan border),
+    // bukan padding <main>, supaya drawer tidak ikut ter-scroll.
+    const modal = scrollEl.value.closest('.modal-body');
+    const paddingBodyKartu = parseFloat(getComputedStyle(scrollEl.value.closest('.card-body') ?? document.body).paddingBottom) || 0;
+    const sisa = modal ? (parseFloat(getComputedStyle(modal).paddingBottom) || 0) + paddingBodyKartu + 4 : PADDING_BAWAH_MAIN;
+    const bawah = (footerEl.value?.closest('.card-footer')?.offsetHeight ?? 0) + marginKartu + sisa;
+    const tinggi = `calc(100vh - ${atas}px - ${bawah}px)`;
 
-    scrollEl.value.style.maxHeight = `calc(100vh - ${atas}px - ${bawah}px)`;
+    scrollEl.value.style[props.tinggiTetap ? 'height' : 'maxHeight'] = tinggi;
 }
 
 function perbaruiTampilan() {

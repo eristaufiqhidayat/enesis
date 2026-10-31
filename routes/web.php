@@ -14,6 +14,7 @@ use App\Http\Controllers\Auth\DemoLoginController;
 use App\Http\Controllers\Auth\GantiPasswordController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\AutoGridController;
+use App\Http\Controllers\BarangCanvassingController;
 use App\Http\Controllers\DesignAreaController;
 use App\Http\Controllers\GenerateKelurahanController;
 use App\Http\Controllers\HomeController;
@@ -101,6 +102,9 @@ Route::middleware(['auth', 'wajib-ganti-password'])->group(function () {
         'back' => 'barang_canvassing',
         'backTitle' => config('marketama.pages.barang_canvassing.title'),
     ])->middleware('hak:barang_canvassing,tambah');
+    // Detail produk satu muatan canvassing untuk drawer di tabel barang_canvassing.
+    Route::get('/barang_canvassing/{canvassing}/item', [BarangCanvassingController::class, 'item'])
+        ->whereNumber('canvassing')->middleware('hak:barang_canvassing')->name('barang-canvassing.item');
 
     // Kelola akun login (4 menu Users) dan role & hak akses; parameter "menu" = slug menu.
     foreach (array_keys(AkunController::MENU) as $slug) {

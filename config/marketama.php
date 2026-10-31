@@ -5,6 +5,7 @@ use App\Support\Menu\Motoris\SumberBarangTerbaikBulanan;
 use App\Support\Menu\Motoris\SumberBarangTerbaikHarian;
 use App\Support\Menu\Motoris\SumberBarangTerbaikMingguan;
 use App\Support\Menu\Motoris\SumberCanvassing;
+use App\Support\Menu\Motoris\SumberCanvassingMuatan;
 use App\Support\Menu\Motoris\SumberEffectiveCall;
 use App\Support\Menu\Motoris\SumberEffectiveCallItem;
 use App\Support\Menu\Motoris\SumberInsentifSales;
@@ -914,9 +915,9 @@ return [
         'barang_canvassing' => [
             'title' => 'Barang Canvassing',
             'tables' => [
-                'lap_barang_canvassing',
+                'barang_canvassing',
             ],
-            'same_as' => 'lap_barang_canvassing',
+            'same_as' => null,
         ],
         'pengembalian_barang' => [
             'title' => 'Pengembalian Barang',
@@ -2794,6 +2795,24 @@ return [
                 'total_qty' => 'Total Qty',
                 'sale_qty' => 'Sale Qty',
                 'return_qty' => 'Return Qty',
+                'sumber' => 'Sumber',
+            ],
+        ],
+        'barang_canvassing' => [
+            'title' => 'Barang Canvassing',
+            'sumber' => SumberCanvassingMuatan::class,
+            'columns' => [
+                'source_id' => 'ID',
+                'canvassing_no' => 'Canvassing No',
+                'warehouse_name' => 'Warehouse Name',
+                'salesperson_name' => 'Salesperson Name',
+                'koordinator_name' => 'Koordinator Name',
+                'status' => 'Status',
+                'receive_datetime' => 'Receive Datetime',
+                'return_datetime' => 'Return Datetime',
+                'jumlah_sku' => 'Jumlah SKU',
+                'total_qty_bawa' => 'Total Qty Bawa',
+                'total_qty_diterima' => 'Total Qty Diterima',
                 'sumber' => 'Sumber',
             ],
         ],

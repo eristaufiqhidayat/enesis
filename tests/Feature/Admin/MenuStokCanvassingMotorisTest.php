@@ -65,10 +65,14 @@ class MenuStokCanvassingMotorisTest extends AdminTestCase
         $c2 = DB::table('trx_canvassing')->insertGetId(['nomor' => 'CNV-2', 'karyawan_id' => 3, 'depo_id' => 46, 'tanggal' => '2026-10-07',
             'status' => 'diterima', 'diterima_at' => '2026-10-07 00:30:00']);
         DB::table('trx_canvassing')->insert(['nomor' => 'CNV-3', 'karyawan_id' => 3, 'depo_id' => 46, 'tanggal' => '2026-10-08', 'status' => 'disiapkan']);
+        // CNV-4: diterima staf gudang (kategori lainnya, tanpa koordinator) — bukan Koordinator ke Motoris, harus disaring.
+        $c4 = DB::table('trx_canvassing')->insertGetId(['nomor' => 'CNV-4', 'karyawan_id' => 500, 'depo_id' => 46, 'tanggal' => '2026-10-07',
+            'status' => 'diterima', 'diterima_at' => '2026-10-07 00:30:00']);
         DB::table('trx_canvassing_item')->insert([
             ['canvassing_id' => $c, 'produk_id' => 3, 'qty_bawa' => 10, 'qty_diterima' => 10, 'qty_kembali' => 0],
             ['canvassing_id' => $c, 'produk_id' => 4, 'qty_bawa' => 5, 'qty_diterima' => 5, 'qty_kembali' => 3],
             ['canvassing_id' => $c2, 'produk_id' => 3, 'qty_bawa' => 8, 'qty_diterima' => null, 'qty_kembali' => null],
+            ['canvassing_id' => $c4, 'produk_id' => 3, 'qty_bawa' => 20, 'qty_diterima' => 20, 'qty_kembali' => null],
         ]);
         $jual = DB::table('trx_penjualan')->insertGetId(['kode' => 'HP-1', 'kunjungan_id' => $this->kunjungan, 'karyawan_id' => 1, 'canvassing_id' => $c,
             'tanggal' => '2026-10-06', 'jumlah_sku' => 2, 'total_qty' => 12, 'total' => 1000, 'is_effective_call' => true]);
@@ -77,10 +81,31 @@ class MenuStokCanvassingMotorisTest extends AdminTestCase
             ['penjualan_id' => $jual, 'produk_id' => 4, 'qty' => 2, 'harga' => 100, 'total' => 200],
         ]);
 
+        // /barang_canvassing: satu baris per muatan, dengan ringkasan jumlah SKU & total qty.
         $this->get('/barang_canvassing')->assertOk()->assertInertia(fn (Assert $p) => $p
             ->loadDeferredProps(fn (Assert $p) => $p
+                ->where('tables.0.name', 'barang_canvassing')
+                ->where('tables.0.rows.total', 2) // CNV-3 belum diterima, CNV-4 diterima bukan sales/koordinator
+                ->where('tables.0.rows.data.0.canvassing_no', 'CNV-2')
+                ->where('tables.0.rows.data.0.jumlah_sku', 1)
+                ->where('tables.0.rows.data.0.total_qty_bawa', '8')
+                ->where('tables.0.rows.data.0.total_qty_diterima', '8')
+                ->where('tables.0.rows.data.0.status', 'Diterima')
+                ->where('tables.0.rows.data.0.koordinator_name', 'Koor Satu')
+                ->where('tables.0.rows.data.1.canvassing_no', 'CNV-1')
+                ->where('tables.0.rows.data.1.jumlah_sku', 2)
+                ->where('tables.0.rows.data.1.total_qty_bawa', '15')
+                ->where('tables.0.rows.data.1.total_qty_diterima', '15')
+                ->where('tables.0.rows.data.1.status', 'Dikembalikan')
+                ->where('tables.0.rows.data.1.receive_datetime', '2026-10-06 07:30:00')
+                ->where('tables.0.rows.data.1.return_datetime', '2026-10-06 17:00:00')
+            ));
+
+        // /lap_barang_canvassing: tabel rata per produk apa adanya, tidak berubah.
+        $this->get('/lap_barang_canvassing')->assertOk()->assertInertia(fn (Assert $p) => $p
+            ->loadDeferredProps(fn (Assert $p) => $p
                 ->where('tables.0.name', 'lap_barang_canvassing')
-                ->where('tables.0.rows.total', 3) // CNV-3 belum diterima
+                ->where('tables.0.rows.total', 3)
                 ->where('tables.0.rows.data.0.canvassing_no', 'CNV-2')
                 ->where('tables.0.rows.data.0.total_qty', '8')
                 ->where('tables.0.rows.data.0.returned', 'Belum')
@@ -105,5 +130,61 @@ class MenuStokCanvassingMotorisTest extends AdminTestCase
                 ->where('tables.0.rows.data.1.status_terjual', 'Belum Habis')
                 ->where('tables.0.rows.data.1.pct_terjual', '40%')
             ));
+    }
+
+    public function test_detail_produk_muatan_canvassing_untuk_drawer(): void
+    {
+        $c = DB::table('trx_canvassing')->insertGetId(['nomor' => 'CNV-1', 'karyawan_id' => 1, 'depo_id' => 46, 'tanggal' => '2026-10-06',
+            'status' => 'dikembalikan', 'diterima_at' => '2026-10-06 00:30:00', 'dikembalikan_at' => '2026-10-06 10:00:00']);
+        $c4 = DB::table('trx_canvassing')->insertGetId(['nomor' => 'CNV-4', 'karyawan_id' => 500, 'depo_id' => 46, 'tanggal' => '2026-10-07',
+            'status' => 'diterima', 'diterima_at' => '2026-10-07 00:30:00']);
+        DB::table('trx_canvassing_item')->insert([
+            ['canvassing_id' => $c, 'produk_id' => 3, 'qty_bawa' => 10, 'qty_diterima' => 10, 'qty_kembali' => 0],
+            ['canvassing_id' => $c, 'produk_id' => 4, 'qty_bawa' => 5, 'qty_diterima' => 5, 'qty_kembali' => 3],
+            ['canvassing_id' => $c4, 'produk_id' => 3, 'qty_bawa' => 20, 'qty_diterima' => 20, 'qty_kembali' => null],
+        ]);
+        $jual = DB::table('trx_penjualan')->insertGetId(['kode' => 'HP-1', 'kunjungan_id' => $this->kunjungan, 'karyawan_id' => 1, 'canvassing_id' => $c,
+            'tanggal' => '2026-10-06', 'jumlah_sku' => 2, 'total_qty' => 12, 'total' => 1000, 'is_effective_call' => true]);
+        DB::table('trx_penjualan_item')->insert([
+            ['penjualan_id' => $jual, 'produk_id' => 3, 'qty' => 10, 'harga' => 100, 'total' => 1000],
+            ['penjualan_id' => $jual, 'produk_id' => 4, 'qty' => 2, 'harga' => 100, 'total' => 200],
+        ]);
+
+        $this->getJson("/barang_canvassing/{$c}/item")->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('data.0.product_name', 'Adem Sari')
+            ->assertJsonPath('data.0.product_sku', 'SKU-3')
+            ->assertJsonPath('data.0.category_name', 'Minuman')
+            ->assertJsonPath('data.0.unit_name', 'Botol')
+            ->assertJsonPath('data.0.bawa_qty', '10')
+            ->assertJsonPath('data.0.total_qty', '10')
+            ->assertJsonPath('data.0.sale_qty', '10')
+            ->assertJsonPath('data.0.sisa_qty', '0')
+            ->assertJsonPath('data.0.status_terjual', 'Habis Terjual')
+            ->assertJsonPath('data.1.product_name', 'Plossa')
+            ->assertJsonPath('data.1.return_qty', '3')
+            ->assertJsonPath('data.1.sisa_qty', '3')
+            ->assertJsonPath('data.1.status_terjual', 'Belum Habis');
+
+        // Muatan di luar kriteria Koordinator → Motoris (CNV-4) dan ID yang tidak ada tidak bisa dibuka lewat ID.
+        $this->getJson("/barang_canvassing/{$c4}/item")->assertNotFound();
+        $this->getJson('/barang_canvassing/999999/item')->assertNotFound();
+    }
+
+    public function test_detail_produk_muatan_ditolak_di_luar_cakupan_role(): void
+    {
+        $c = DB::table('trx_canvassing')->insertGetId(['nomor' => 'CNV-1', 'karyawan_id' => 1, 'depo_id' => 46, 'tanggal' => '2026-10-06',
+            'status' => 'diterima', 'diterima_at' => '2026-10-06 00:30:00']);
+        DB::table('trx_canvassing_item')->insert(['canvassing_id' => $c, 'produk_id' => 3, 'qty_bawa' => 10, 'qty_diterima' => 10]);
+
+        // Admin depo Balaraja (22) tidak boleh membuka muatan depo Sidoarjo (46) lewat ID.
+        $admin = $this->akun('admin.balaraja', 'lainnya', 2);
+        DB::table('users')->where('id', $admin->id)->update(['role_id' => $this->role('Admin Depo', 'depo', ['barang_canvassing' => ['lihat']])]);
+        $this->actingAs($admin->fresh())->getJson("/barang_canvassing/{$c}/item")->assertNotFound();
+
+        // Admin depo Sidoarjo (46) boleh.
+        $sidoarjo = $this->akun('admin.sidoarjo', 'lainnya', 500);
+        DB::table('users')->where('id', $sidoarjo->id)->update(['role_id' => $this->role('Admin Depo 46', 'depo', ['barang_canvassing' => ['lihat']])]);
+        $this->actingAs($sidoarjo->fresh())->getJson("/barang_canvassing/{$c}/item")->assertOk()->assertJsonCount(1, 'data');
     }
 }
