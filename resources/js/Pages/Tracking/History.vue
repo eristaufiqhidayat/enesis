@@ -9,8 +9,10 @@ import Label from '@/Components/ui/atoms/Label.vue';
 import Select from '@/Components/ui/atoms/Select.vue';
 import Card from '@/Components/ui/molecules/Card.vue';
 import PageHeader from '@/Components/ui/molecules/PageHeader.vue';
+import TabsHalaman from '@/Components/ui/molecules/TabsHalaman.vue';
 import { useLeafletMap } from '@/Composables/useLeafletMap.js';
-import { alamatDari, escapeHtml, ikonDepo, ikonLingkaran, ikonMotoris, ikonPin, tautanGoogleMap } from '@/Support/peta.js';
+import { alamatDari, escapeHtml } from '@/Support/peta.js';
+import { gambarRute } from '@/Support/rute.js';
 
 const props = defineProps({
     slug: { type: String, required: true },
@@ -23,6 +25,8 @@ const props = defineProps({
     countsUrl: { type: String, required: true },
     tanggal: { type: String, required: true },
     counts: { type: Object, required: true },
+    // Orang yang dipilih saat halaman dibuka (dari tautan "Lihat riwayat" di Last Seen); null = pilih otomatis.
+    pilihId: { type: Number, default: null },
 });
 
 const appName = usePage().props.appName;
@@ -33,7 +37,7 @@ const tanggalDipilih = ref(props.tanggal);
 const grup = ref('');
 const cari = ref('');
 const jumlahPerOrang = ref({ ...props.counts });
-const aktifId = ref(null);
+const aktifId = ref(props.pilihId);
 const namaTerpilih = ref('-');
 const tanggalTampil = ref('-');
 const info = ref(`Pilih ${labelKecil}`);
@@ -84,7 +88,9 @@ function pilih(o) {
 // Pilih otomatis: pertahankan pilihan yang masih tampil dan punya data; kalau tidak, pilih yang pertama punya data.
 function pilihOtomatis() {
     const aktif = tampil.value.find((o) => o.id === aktifId.value);
-    if (aktif && jumlah(aktif.id) > 0) {
+    // Pilihan dari tautan dipertahankan walau tanpa titik GPS pada tanggal itu, sampai orang lain dipilih.
+    if (aktif && (jumlah(aktif.id) > 0 || aktif.id === props.pilihId)) {
+        nextTick(() => document.getElementById(`orang-${aktif.id}`)?.scrollIntoView({ block: 'nearest' }));
         muatLokasi();
         return;
     }
@@ -117,7 +123,7 @@ function muatLokasi() {
             // Respons lama (orang atau tanggal sudah diganti, atau peta sudah dilepas) dibuang.
             if (peta() !== map || aktifId.value !== id || tanggalDipilih.value !== tanggal) return;
             info.value = data.total ? `${data.total} titik lokasi` : 'Tidak ada data lokasi';
-            if (data.total) gambar(data, aktif.nama);
+            if (data.total) gambarRute(window.L, map, rute, data, aktif.nama);
             else rute.clearLayers();
         })
         .catch(() => { info.value = 'Gagal memuat data'; });
@@ -136,62 +142,13 @@ async function gantiTanggal() {
 }
 
 watch(grup, pilihOtomatis);
-
-function pointPopup(judul, loc, alamat) {
-    return '<div style="min-width:200px"><strong>' + judul + '</strong><br>'
-        + '<small>Waktu: ' + escapeHtml(loc.waktu) + '</small><br>'
-        + '<small class="text-gray-500">&#x1F4CD; ' + (alamat ? escapeHtml(alamat) : '<i>Memuat alamat...</i>') + '</small><br>'
-        + '<small class="text-gray-500">Lat: ' + loc.lat + ' | Lng: ' + loc.lng + '</small>'
-        + (loc.akurasi ? '<br><small class="text-gray-500">Akurasi: ' + loc.akurasi + 'm</small>' : '')
-        + '<br>' + tautanGoogleMap(loc.lat, loc.lng) + '</div>';
-}
-
-function gambar(data, nama) {
-    const L = window.L;
-    const map = peta();
-    rute.clearLayers();
-    const locs = data.locations;
-    if (!locs.length) return;
-
-    const path = locs.map((l) => [parseFloat(l.lat), parseFloat(l.lng)]);
-    L.polyline(path, { color: '#0d6efd', opacity: 0.8, weight: 4 }).addTo(rute);
-
-    locs.forEach((loc, i) => {
-        const first = i === 0;
-        const last = i === locs.length - 1;
-        const ll = [parseFloat(loc.lat), parseFloat(loc.lng)];
-        const marker = first || last
-            ? L.marker(ll, { icon: ikonLingkaran(first ? '#198754' : '#dc3545', ikonMotoris), zIndexOffset: 100 })
-            : L.circleMarker(ll, { radius: 5, fillColor: '#0d6efd', color: '#fff', weight: 1, fillOpacity: 0.8 });
-        const judul = first ? '&#x1F7E2; Start' : (last ? '&#x1F534; End' : '&#x1F535; Titik ' + (i + 1));
-        if (first || last) {
-            marker.bindTooltip(escapeHtml(nama) + ' &middot; ' + (first ? 'Start' : 'End'), { permanent: true, direction: 'top', offset: [0, -20], className: 'tracking-name-tooltip' });
-        }
-        marker.bindPopup(pointPopup(judul, loc));
-        let dimuat = false;
-        marker.on('popupopen', () => {
-            if (dimuat) return;
-            dimuat = true;
-            alamatDari(loc.lat, loc.lng).then((alamat) => marker.setPopupContent(pointPopup(judul, loc, alamat)));
-        });
-        marker.addTo(rute);
-    });
-
-    if (data.depo && parseFloat(data.depo.latitude) && parseFloat(data.depo.longitude)) {
-        const d = [parseFloat(data.depo.latitude), parseFloat(data.depo.longitude)];
-        L.marker(d, { icon: ikonLingkaran('#6f42c1', ikonDepo), zIndexOffset: 50 })
-            .bindPopup('<div class="text-center"><h6 class="mb-0">' + escapeHtml(data.depo.nama) + '</h6><small class="text-gray-500">Depo</small><br>' + tautanGoogleMap(d[0], d[1]) + '</div>')
-            .addTo(rute);
-    }
-
-    map.fitBounds(L.latLngBounds(path), { padding: [30, 30] });
-}
 </script>
 
 <template>
     <Head :title="`${title} · ${appName}`" />
     <AppLayout :breadcrumb-slug="slug">
         <PageHeader :title="title" />
+        <TabsHalaman />
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-3">
             <div class="lg:col-span-4">

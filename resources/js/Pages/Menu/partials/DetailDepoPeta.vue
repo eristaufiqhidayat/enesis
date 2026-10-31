@@ -3,13 +3,18 @@ import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
 import Button from '@/Components/ui/atoms/Button.vue';
 import Icon from '@/Components/ui/atoms/Icon.vue';
 import { useLeafletMap } from '@/Composables/useLeafletMap.js';
-import { escapeHtml, ikonDepo, ikonLingkaran } from '@/Support/peta.js';
+import { escapeHtml, ikonDepo, ikonLingkaran, ikonMotoris } from '@/Support/peta.js';
 
-// Peta lokasi depo di bagian Lokasi drawer detail. Koordinat diambil dari kolom latitude/longitude master_depo.
+// Peta satu titik di drawer: lokasi depo (kolom latitude/longitude master_depo) atau posisi terakhir motoris
+// (ikon 'motoris', baris Tracking Last Seen). Objek `depo` cukup memuat nama, latitude, dan longitude.
 const props = defineProps({
     depo: { type: Object, required: true },
     // Dipakai di drawer peta: peta mengisi tinggi drawer, bukan tinggi tetap di bagian Lokasi.
     drawer: { type: Boolean, default: false },
+    // Ikon penanda: 'depo' (merah) atau 'motoris' (biru).
+    ikon: { type: String, default: 'depo' },
+    // Keterangan di bawah nama pada popup penanda (mis. waktu terakhir terlihat); bila diisi popup langsung terbuka.
+    rincian: { type: String, default: null },
 });
 
 const wadah = ref(null);
@@ -28,9 +33,12 @@ const { peta } = useLeafletMap(wadah, {
     pusat: adaKoordinat ? [lat, lng] : undefined,
     zoom: 15,
     onSiap(map, L) {
-        L.marker([lat, lng], { icon: ikonLingkaran('#dc2626', ikonDepo) })
+        const motoris = props.ikon === 'motoris';
+        const penanda = L.marker([lat, lng], { icon: motoris ? ikonLingkaran('#0d6efd', ikonMotoris) : ikonLingkaran('#dc2626', ikonDepo) })
             .addTo(map)
-            .bindPopup(escapeHtml(props.depo.nama));
+            .bindPopup(escapeHtml(props.depo.nama) + (props.rincian ? `<br><small class="text-gray-500">${escapeHtml(props.rincian)}</small>` : ''));
+
+        if (props.rincian) penanda.openPopup();
         // Drawer dibuka dengan animasi, jadi ukuran peta dihitung ulang setelah elemen tampil.
         map.invalidateSize();
     },

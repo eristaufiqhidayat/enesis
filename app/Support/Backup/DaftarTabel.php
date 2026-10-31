@@ -16,14 +16,14 @@ class DaftarTabel
     /** Tabel yang berisi data pribadi (nama, telepon, lokasi GPS, gaji, akun). */
     public const PRIBADI = [
         'trx_absensi', 'trx_outlet_baru', 'trx_tracking', 'mk_karyawan', 'mk_user', 'mk_outlet', 'users', 'mobile_tokens',
-        'tracking_sales', 'tracking_sales_lokasi', 'tracking_koordinator', 'tracking_koordinator_lokasi',
+        'tracking_sales', 'tracking_sales_lokasi', 'tracking_koordinator', 'tracking_koordinator_lokasi', 'tanda_motoris',
         'lap_karyawan', 'lap_user', 'lap_penggajian_sales', 'lap_penggajian_koordinator', 'lap_absensi_sales', 'lap_absensi_koordinator',
         'karyawan_sales', 'karyawan_koordinator', 'karyawan_supervisor', 'karyawan_lainnya', 'login_session',
         'super_admin', 'user_sales', 'user_koordinator', 'user_lainnya',
     ];
 
     private const ENESIS = ['master_kuota_motoris', 'pengaturan_admin', 'hierarki_sales', 'area_polygon', 'area_depo',
-        'tracking_sales', 'tracking_sales_lokasi', 'tracking_koordinator', 'tracking_koordinator_lokasi'];
+        'tracking_sales', 'tracking_sales_lokasi', 'tracking_koordinator', 'tracking_koordinator_lokasi', 'tanda_motoris'];
 
     private const AKUN = ['users', 'roles', 'role_hak', 'riwayat_admin', 'mobile_tokens', 'mobile_uploads', 'mobile_idempotency'];
 

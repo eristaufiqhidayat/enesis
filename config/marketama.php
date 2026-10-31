@@ -23,6 +23,7 @@ use App\Support\Menu\Motoris\SumberPenjualanItem;
 use App\Support\Menu\Motoris\SumberSesiLogin;
 use App\Support\Menu\Motoris\SumberStokKompetitor;
 use App\Support\Menu\Motoris\SumberStokOutlet;
+use App\Support\Menu\Motoris\SumberTandaMotoris;
 use App\Support\Menu\SumberCheckinPagi;
 use App\Support\Menu\SumberJoinVisit;
 use App\Support\Menu\SumberMasterArea;
@@ -59,7 +60,7 @@ return [
         'karyawan_sales', 'karyawan_koordinator', 'karyawan_supervisor', 'karyawan_lainnya',
         // Grup A analisa menu (25 Okt 2026): dialihkan ke trx_* / mk_* (riwayat lama lewat enesis:migrasi-transaksi)
         'barang_canvassing', 'lap_barang_canvassing', 'lap_barang_habis_terjual', 'pengembalian_barang', 'lap_pengembalian_barang',
-        'tracking_sales', 'tracking_koordinator',
+        'tracking_sales', 'tracking_koordinator', 'motoris_ditandai',
         'penjualan_barang', 'lap_penjualan_barang', 'lap_penjualan_barang_detail', 'lap_effective_call', 'lap_effective_call_barang',
         'lap_penjualan_barang_terbaik_harian', 'lap_penjualan_barang_terbaik_mingguan', 'lap_penjualan_barang_terbaik_bulanan',
         'stok_outlet', 'lap_stok_outlet', 'stok_kompetitor', 'lap_stok_kompetitor',
@@ -68,6 +69,43 @@ return [
         'lap_join_visit', 'lap_absensi_koordinator', 'login_session', 'lap_insentif_sales',
         // Mencadangkan tabel motoris (trx_*, mk_*) bersama tabel lain.
         'backup_data',
+    ],
+
+    // Halaman terpisah (rute & hak sendiri) yang saling terhubung lewat baris tab di atas halaman:
+    // satu kelompok = slug => label tab, dalam urutan tab. Tab hanya memuat halaman yang boleh dibuka akun
+    // (lihat Akses::tabHalaman); halaman Last Seen juga memakai pasangan riwayatnya untuk tautan "Lihat riwayat".
+    // Di sidebar, slug pertama tiap kelompok (induk) mewakili seluruh kelompok dengan 'judul_sidebar'; slug lainnya
+    // disembunyikan selama induknya bisa dibuka akun (lihat Akses::satukanTab). Matriks hak role tetap per slug.
+    'tab_halaman' => [
+        ['tracking_sales' => 'Last Seen', 'tracking_sales_history_location' => 'Riwayat Lokasi', 'motoris_ditandai' => 'Ditandai'],
+        ['tracking_koordinator' => 'Last Seen', 'tracking_koordinator_history_location' => 'Riwayat Lokasi'],
+    ],
+
+    // Ambang indikasi GPS tidak wajar per motoris per tanggal (App\Support\Tracking\AnomaliGps). Lompatan = jarak antar dua
+    // titik berurutan >= jarak_km dan kecepatan implisit > kecepatan_kmh; kembali ke asal = titik berikutnya < kembali_km dari
+    // titik sebelum lompatan. Peringatan "indikasi" muncul bila lompatan >= min_lompatan dan yang kembali ke asal >= min_kembali.
+    'anomali_gps' => [
+        'jarak_km' => 3,
+        'kecepatan_kmh' => 120,
+        'kembali_km' => 0.5,
+        'min_lompatan' => 5,
+        'min_kembali' => 3,
+        // Titik menyimpang tunggal: >= menyimpang_km dari titik sebelum dan sesudahnya, sementara kedua tetangga itu saling
+        // < tetangga_km. Peringatan "indikasi" (selain aturan lompatan) muncul bila jumlahnya >= min_menyimpang.
+        'menyimpang_km' => 3,
+        'tetangga_km' => 1,
+        'min_menyimpang' => 3,
+    ],
+
+    // Jendela (hari, termasuk hari ini) tanda aktif yang dihitung di lencana "Ditandai" Lacak Motoris dan daftar "Tanda di tanggal lain".
+    'tanda_motoris_hari' => 30,
+
+    // Kategori tanda motoris (kode => label) yang diberikan koordinator dari drawer Riwayat Lacak Motoris (TandaMotorisController).
+    'tanda_motoris' => [
+        'penjualan_fiktif' => 'Penjualan fiktif',
+        'lokasi_palsu' => 'Lokasi / GPS palsu',
+        'kunjungan_tidak_wajar' => 'Kunjungan tidak wajar',
+        'potensi_kecurangan' => 'Potensi kecurangan lainnya',
     ],
 
     'menu' => [
@@ -128,6 +166,7 @@ return [
                 [
                     'slug' => 'tracking_sales',
                     'title' => 'Tracking Last Seen Sales',
+                    'judul_sidebar' => 'Lacak Motoris',
                     'icon' => 'map-pin',
                 ],
                 [
@@ -136,8 +175,14 @@ return [
                     'icon' => 'map-pin',
                 ],
                 [
+                    'slug' => 'motoris_ditandai',
+                    'title' => 'Motoris Ditandai',
+                    'icon' => 'flag',
+                ],
+                [
                     'slug' => 'tracking_koordinator',
                     'title' => 'Tracking Last Seen Koordinator',
+                    'judul_sidebar' => 'Tracking Koordinator',
                     'icon' => 'map-pin',
                 ],
                 [
@@ -943,6 +988,13 @@ return [
             'tables' => [],
             'same_as' => null,
         ],
+        'motoris_ditandai' => [
+            'title' => 'Motoris Ditandai',
+            'tables' => [
+                'tanda_motoris_rekap',
+            ],
+            'same_as' => null,
+        ],
         'tracking_koordinator' => [
             'title' => 'Tracking Last Seen Koordinator',
             'tables' => [
@@ -1713,12 +1765,10 @@ return [
                 'depo' => 'Depo',
                 'koordinator' => 'Koordinator',
                 'terakhir_terlihat' => 'Terakhir Terlihat',
-                'sejak' => 'Sejak',
-                'latitude' => 'Latitude',
-                'longitude' => 'Longitude',
-                'baterai' => 'Baterai',
+                'lokasi' => 'Lokasi',
+                'riwayat' => 'Riwayat',
+                'ditandai' => 'Ditandai',
                 'lokasi_palsu' => 'Lokasi Palsu',
-                'sumber' => 'Sumber',
             ],
         ],
         'tracking_last_seen_koordinator' => [
@@ -1729,12 +1779,25 @@ return [
                 'telepon' => 'Telepon',
                 'depo' => 'Depo',
                 'terakhir_terlihat' => 'Terakhir Terlihat',
-                'sejak' => 'Sejak',
-                'latitude' => 'Latitude',
-                'longitude' => 'Longitude',
-                'baterai' => 'Baterai',
+                'lokasi' => 'Lokasi',
+                'riwayat' => 'Riwayat',
                 'lokasi_palsu' => 'Lokasi Palsu',
-                'sumber' => 'Sumber',
+            ],
+        ],
+        'tanda_motoris_rekap' => [
+            'title' => 'Motoris Ditandai',
+            'sumber' => SumberTandaMotoris::class,
+            'columns' => [
+                'tanggal' => 'Tanggal',
+                'motoris' => 'Motoris',
+                'depo' => 'Depo',
+                'koordinator' => 'Koordinator',
+                'kategori' => 'Kategori',
+                'catatan' => 'Catatan',
+                'ditandai_oleh' => 'Ditandai Oleh',
+                'ditandai_pada' => 'Ditandai Pada',
+                'status' => 'Status',
+                'riwayat' => 'Riwayat',
             ],
         ],
         'pembayaran_pembelian' => [

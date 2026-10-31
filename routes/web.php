@@ -22,6 +22,7 @@ use App\Http\Controllers\LapLoadingBarangController;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\OutletBaruController;
 use App\Http\Controllers\PetaSebaranSalesController;
+use App\Http\Controllers\TandaMotorisController;
 use App\Http\Controllers\TrackingKoordinatorController;
 use App\Http\Controllers\TrackingSalesController;
 use App\Support\Master\MasterProduk;
@@ -66,6 +67,14 @@ Route::middleware(['auth', 'wajib-ganti-password'])->group(function () {
         ->middleware('hak:tracking_sales')->name('peta-sebaran-sales.data');
     Route::get('/peta_sebaran_sales/area', [PetaSebaranSalesController::class, 'area'])
         ->middleware('hak:tracking_sales')->name('peta-sebaran-sales.area');
+
+    // Tanda motoris (potensi kecurangan dll.) dari drawer Riwayat Lacak Motoris; hak mengikuti menu tracking_sales.
+    Route::get('/tracking_sales/tanda', [TandaMotorisController::class, 'index'])
+        ->middleware('hak:tracking_sales')->name('tanda-motoris.index');
+    Route::post('/tracking_sales/tanda', [TandaMotorisController::class, 'store'])
+        ->middleware('hak:tracking_sales,tambah')->name('tanda-motoris.store');
+    Route::delete('/tracking_sales/tanda/{tanda}', [TandaMotorisController::class, 'cabut'])
+        ->whereNumber('tanda')->middleware('hak:tracking_sales,tambah')->name('tanda-motoris.cabut');
 
     Route::prefix('master_area/design_area')->name('design-area.')->controller(DesignAreaController::class)->group(function () {
         Route::get('/', 'index')->middleware('hak:master_area')->name('index');

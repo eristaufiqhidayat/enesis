@@ -21,7 +21,7 @@ const trail = computed(() => {
                         return [section.label, item.title, child.title].filter(Boolean);
                     }
                 }
-            } else if ((item.slug ?? null) === currentSlug) {
+            } else if ((item.slug ?? null) === currentSlug || item.serumpun?.includes(currentSlug)) {
                 return [section.label, item.title].filter(Boolean);
             }
         }

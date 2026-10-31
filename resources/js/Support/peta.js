@@ -23,9 +23,16 @@ export function ikonLingkaran(warna, isi) {
     });
 }
 
-export const ikonMotoris = '<circle cx="16" cy="38" r="7" fill="none" stroke="#fff" stroke-width="3"/><circle cx="48" cy="38" r="7" fill="none" stroke="#fff" stroke-width="3"/>'
-    + '<line x1="16" y1="38" x2="32" y2="28" stroke="#fff" stroke-width="2.5"/><line x1="32" y1="28" x2="48" y2="38" stroke="#fff" stroke-width="2.5"/><circle cx="38" cy="22" r="5" fill="#fff"/>';
-export const ikonDepo = '<rect x="18" y="32" width="28" height="18" fill="#fff"/><polygon points="12,33 32,14 52,33" fill="#fff"/>';
+// Ikon Lucide (outline putih, sama dengan ikon menu aplikasi) di tengah lingkaran penanda 64x64: ikon 24px
+// diperbesar 1,5x dan digeser ke tengah.
+const ikonLucidePutih = (isi) => '<g transform="translate(14 14) scale(1.5)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + isi + '</g>';
+
+// Lucide "bike" (ikon menu motoris di sidebar): titik awal rute dan posisi motoris.
+export const ikonMotoris = ikonLucidePutih('<circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/>');
+// Lucide "flag": titik akhir rute.
+export const ikonBendera = ikonLucidePutih('<path d="M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528"/>');
+// Lucide "building" (ikon menu Master Warehouse / Depo di sidebar): penanda depo.
+export const ikonDepo = ikonLucidePutih('<path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M12 6h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M16 6h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/><path d="M8 6h.01"/><path d="M9 22v-3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/><rect x="4" y="2" width="16" height="20" rx="2"/>');
 
 export const tautanGoogleMap = (lat, lng) => '<a class="btn btn-sm btn-primary mt-2" style="font-size:11px" target="_blank" rel="noopener" href="https://maps.google.com/maps?q=loc:' + lat + ',' + lng + '&t=k">' + ikonPin + 'Lihat di Google Map</a>';
 

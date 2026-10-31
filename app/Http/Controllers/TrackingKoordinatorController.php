@@ -27,6 +27,7 @@ class TrackingKoordinatorController extends Controller
             'countsUrl' => route('tracking-koordinator.counts'),
             'tanggal' => $tanggal,
             'counts' => (object) $this->countsFor($tanggal),
+            'pilihId' => $request->integer('koordinator_id') ?: null,
         ]);
     }
 

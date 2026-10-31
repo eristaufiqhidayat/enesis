@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\Akses\Akses;
+use App\Support\Menu\SumberBerstatus;
 use App\Support\Menu\SumberBertanggal;
 use App\Support\Mobile\Pengaturan;
 use Carbon\Carbon;
@@ -55,7 +56,12 @@ class MenuController extends Controller
         $hasDateFilter = collect($konfigTabel)->contains(fn ($konfig) => $konfig['date_filter_column'] !== null);
         $tanggal = $hasDateFilter ? $this->resolveTanggal($request) : null;
         // Filter depo / koordinator untuk sumber bertanggal (mis. Sales Checkin Outlet Pagi).
-        $filter = ['depo' => $request->integer('depo') ?: null, 'koordinator' => $request->integer('koordinator') ?: null];
+        // Filter status (?status=) untuk sumber SumberBerstatus, mis. kebaruan posisi di Tracking Last Seen.
+        $filter = [
+            'depo' => $request->integer('depo') ?: null,
+            'koordinator' => $request->integer('koordinator') ?: null,
+            'status' => $request->query('status') !== null ? (string) $request->query('status') : null,
+        ];
 
         return Inertia::render('Menu/Show', [
             'slug' => $slug,
@@ -124,6 +130,10 @@ class MenuController extends Controller
                 if ($dateColumn !== null) {
                     $query->where($dateColumn, $tanggal);
                 }
+            }
+
+            if ($sumber instanceof SumberBerstatus && isset($sumber->pilihanStatus()[$filter['status'] ?? ''])) {
+                $sumber->batasiStatus($query, $filter['status']);
             }
 
             // PostgreSQL: LIKE hanya untuk teks dan peka huruf besar/kecil, jadi pakai CAST + ILIKE.
@@ -206,6 +216,7 @@ class MenuController extends Controller
                 'kpi' => $kpi,
                 'keterangan' => $bertanggal ? $sumber->keterangan() : null,
                 'filter_pilihan' => $bertanggal ? $sumber->pilihanFilter($request->user()) : null,
+                'pilihan_status' => $sumber instanceof SumberBerstatus ? $sumber->pilihanStatus() : null,
                 // Aksi per baris (mis. 'verifikasi_outlet_baru'), hanya untuk akun yang punya hak 'aksi_hak'
                 // (bawaan: ubah) di menu ini.
                 'aksi' => Akses::bisa($request->user(), $slug, config("marketama.tables.{$table}.aksi_hak", 'ubah'))
