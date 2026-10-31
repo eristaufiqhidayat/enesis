@@ -3,9 +3,7 @@ import { Head, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import PageHeader from '@/Components/ui/molecules/PageHeader.vue';
 import DataTable from '@/Components/ui/organisms/DataTable.vue';
-import DepoKoordinator from './partials/DepoKoordinator.vue';
 import FilterKehadiran from './partials/FilterKehadiran.vue';
-import SumberBadge from './partials/SumberBadge.vue';
 import { angka } from '@/Support/format.js';
 
 defineProps({
@@ -23,13 +21,13 @@ const appName = usePage().props.appName;
 
 const columns = {
     tanggal: 'Tanggal',
-    sales: 'Sales',
-    depo: 'Depo · Koordinator',
-    masuk: 'Checkin',
-    pulang: 'Checkout',
+    sales: 'Motoris',
+    depo: 'Depo',
+    koordinator: 'Koordinator',
+    masuk: 'Datang',
+    pulang: 'Pulang',
     durasi: 'Durasi',
     lokasi: 'Lokasi',
-    sumber: 'Sumber',
 };
 </script>
 
@@ -50,12 +48,14 @@ const columns = {
             :total="baris.total"
             :links="baris.links"
             empty-text="Tidak ada checkin depo pada tanggal ini."
+            tinggi-penuh
         >
             <template #header>
                 <FilterKehadiran
                     :action="`/${slug}`"
                     :filter="filter"
                     satu-tanggal
+                    :tampilkan-sumber="false"
                     :daftar-depo="daftarDepo"
                     :daftar-koordinator="daftarKoordinator"
                     :daftar-sumber="daftarSumber"
@@ -65,8 +65,8 @@ const columns = {
             <template #cell-sales="{ row }">
                 <span class="font-semibold">{{ row.sales }}</span>
             </template>
-            <template #cell-depo="{ row }">
-                <DepoKoordinator :depo="row.depo" :koordinator="row.koordinator" />
+            <template #cell-koordinator="{ row }">
+                {{ row.koordinator ?? '-' }}
             </template>
             <template #cell-lokasi="{ row }">
                 <span class="whitespace-nowrap">
@@ -76,9 +76,6 @@ const columns = {
                     </template>
                     <span v-else class="text-gray-500">—</span>
                 </span>
-            </template>
-            <template #cell-sumber="{ row }">
-                <SumberBadge :sumber="row.sumber" />
             </template>
         </DataTable>
     </AppLayout>

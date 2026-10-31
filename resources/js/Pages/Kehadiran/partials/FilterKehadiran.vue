@@ -1,9 +1,11 @@
 <script setup>
 import { computed, reactive, watch } from 'vue';
 import Button from '@/Components/ui/atoms/Button.vue';
+import Icon from '@/Components/ui/atoms/Icon.vue';
 import Input from '@/Components/ui/atoms/Input.vue';
 import Label from '@/Components/ui/atoms/Label.vue';
 import Select from '@/Components/ui/atoms/Select.vue';
+import Combobox from '@/Components/ui/molecules/Combobox.vue';
 import { useAmbilData } from '@/Support/ambilData.js';
 import { bersihkanQuery } from '@/Support/query.js';
 
@@ -18,6 +20,8 @@ const props = defineProps({
     cariOutlet: { type: String, default: null },
     // Halaman Checkin Depo: satu tanggal (bawaan hari ini) alih-alih rentang Dari/Sampai.
     satuTanggal: { type: Boolean, default: false },
+    // Halaman Checkin Depo tidak butuh filter sumber lagi.
+    tampilkanSumber: { type: Boolean, default: true },
     labelOrang: { type: String, default: 'Sales' },
     daftarDepo: { type: [Object, Array], default: () => ({}) },
     daftarKoordinator: { type: [Object, Array], default: () => ({}) },
@@ -94,12 +98,9 @@ function submit() {
             <Label for="outlet">Outlet</Label>
             <Input id="outlet" v-model="form.outlet" type="search" placeholder="Nama atau kode outlet…" />
         </div>
-        <div>
+        <div class="min-w-48">
             <Label for="depo">Depo</Label>
-            <Select id="depo" v-model="form.depo">
-                <option value="">Semua depo</option>
-                <option v-for="[id, nama] in Object.entries(daftarDepo)" :key="id" :value="id">{{ nama }}</option>
-            </Select>
+            <Combobox id="depo" v-model="form.depo" :options="daftarDepo" placeholder="Semua depo" />
         </div>
         <div v-if="adaKoordinator">
             <Label for="koordinator">Koordinator</Label>
@@ -108,12 +109,12 @@ function submit() {
                 <option v-for="[id, nama] in Object.entries(daftarKoordinator)" :key="id" :value="id">{{ nama }}</option>
             </Select>
         </div>
-        <div>
+        <div v-if="tampilkanSumber">
             <Label for="sumber">Sumber</Label>
             <Select id="sumber" v-model="form.sumber">
                 <option v-for="(label, kode) in daftarSumber" :key="kode" :value="kode">{{ label }}</option>
             </Select>
         </div>
-        <Button type="submit" :loading="memuat" :disabled="!berubah">Tampilkan</Button>
+        <Button type="submit" :loading="memuat" :disabled="!berubah"><Icon name="search" class="me-1 w-3.5 h-3.5" />Tampilkan</Button>
     </form>
 </template>

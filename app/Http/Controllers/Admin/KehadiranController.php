@@ -98,7 +98,6 @@ class KehadiranController extends Controller
                 'durasi' => $this->durasi($b->masuk_at, $b->pulang_at),
                 'peta' => $b->lat && $b->lng ? "https://www.google.com/maps?q={$b->lat},{$b->lng}" : null,
                 'jarak_m' => $b->jarak_m,
-                'sumber' => $b->sumber,
             ]);
 
         return Inertia::render('Kehadiran/CheckinDepo', $this->dataView($menu, $filter, $baris) + ['ringkas' => $ringkas]);
