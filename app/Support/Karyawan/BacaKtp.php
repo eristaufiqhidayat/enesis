@@ -3,42 +3,31 @@
 namespace App\Support\Karyawan;
 
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Process;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
-// Baca NIK, nama, tempat/tanggal lahir, dan alamat dari foto KTP lewat OCR (Tesseract, paket bahasa "ind"),
-// dipakai KaryawanController::bacaKtp() saat admin menambah karyawan sales (motoris) baru. Foto cuma dipakai
-// sebentar di sini (pra-proses lalu OCR) dan selalu dihapus sesudahnya — tidak ada foto KTP yang disimpan.
-// Hasil OCR tidak 100% akurat (tergantung kualitas foto): field yang gagal terbaca dikembalikan null supaya
-// admin mengisinya manual, bukan ditebak.
+// Baca NIK, nama, tempat/tanggal lahir, dan alamat dari foto KTP lewat OCR (Google Cloud Vision API,
+// "services.google_vision.key" / env GOOGLE_VISION_API_KEY), dipakai KaryawanController::bacaKtp() saat
+// admin menambah karyawan sales (motoris) baru. Dikirim lewat HTTP ke Google, bukan binary lokal, supaya
+// tetap jalan di shared hosting yang tidak bisa pasang paket sistem seperti Tesseract. Foto cuma dipakai
+// sebentar (pra-proses lalu OCR) dan tidak pernah disimpan. Hasil OCR tidak 100% akurat (tergantung kualitas
+// foto): field yang gagal terbaca dikembalikan null supaya admin mengisinya manual, bukan ditebak.
 class BacaKtp
 {
     /** @return array{nik: ?string, nama: ?string, tempat_lahir: ?string, tanggal_lahir: ?string, alamat: ?string, teks_mentah: string} */
     public static function baca(UploadedFile $file): array
     {
-        $folder = storage_path('app/tmp');
+        $gambarBase64 = self::praProses($file->getRealPath());
+        $teks = self::jalankanOcr($gambarBase64);
 
-        if (! is_dir($folder)) {
-            mkdir($folder, 0775, true);
-        }
-
-        $olahan = $folder.'/ktp-'.Str::random(16).'.png';
-
-        try {
-            self::praProses($file->getRealPath(), $olahan);
-            $teks = self::jalankanOcr($olahan);
-
-            return self::parseTeks($teks) + ['teks_mentah' => $teks];
-        } finally {
-            if (file_exists($olahan)) {
-                unlink($olahan);
-            }
-        }
+        return self::parseTeks($teks) + ['teks_mentah' => $teks];
     }
 
-    /** Perbesar gambar kecil, ubah ke abu-abu, pertajam kontras — supaya karakter lebih mudah dibaca OCR. */
-    private static function praProses(string $sumber, string $tujuan): void
+    /**
+     * Perbesar gambar kecil, ubah ke abu-abu, pertajam kontras -- supaya karakter lebih mudah dibaca OCR.
+     * Dikembalikan sebagai base64 PNG (format yang diminta Google Vision), bukan file di disk.
+     */
+    private static function praProses(string $sumber): string
     {
         $info = @getimagesize($sumber);
         $gambar = match ($info[2] ?? null) {
@@ -68,24 +57,46 @@ class BacaKtp
         imagefilter($gambar, IMG_FILTER_GRAYSCALE);
         imagefilter($gambar, IMG_FILTER_CONTRAST, -15);
 
-        imagepng($gambar, $tujuan);
+        ob_start();
+        imagepng($gambar);
+        $isi = (string) ob_get_clean();
         imagedestroy($gambar);
+
+        return base64_encode($isi);
     }
 
-    private static function jalankanOcr(string $gambar): string
+    private static function jalankanOcr(string $gambarBase64): string
     {
-        $proses = Process::timeout(30)->run(['tesseract', $gambar, 'stdout', '-l', 'ind', '--psm', '6']);
+        $kunci = config('services.google_vision.key');
 
-        if (! $proses->successful()) {
-            throw new RuntimeException('Tesseract gagal: '.$proses->errorOutput());
+        if (! $kunci) {
+            throw new RuntimeException('GOOGLE_VISION_API_KEY belum diatur di .env.');
         }
 
-        return $proses->output();
+        $respons = Http::timeout(20)->post('https://vision.googleapis.com/v1/images:annotate?key='.$kunci, [
+            'requests' => [[
+                'image' => ['content' => $gambarBase64],
+                'features' => [['type' => 'TEXT_DETECTION', 'maxResults' => 1]],
+                'imageContext' => ['languageHints' => ['id']],
+            ]],
+        ]);
+
+        if ($respons->failed()) {
+            throw new RuntimeException('Google Vision API gagal dipanggil: '.$respons->status());
+        }
+
+        $kesalahan = $respons->json('responses.0.error');
+
+        if ($kesalahan) {
+            throw new RuntimeException('Google Vision API error: '.($kesalahan['message'] ?? 'tidak diketahui'));
+        }
+
+        return (string) $respons->json('responses.0.fullTextAnnotation.text', '');
     }
 
     /**
      * Ambil NIK, nama, tempat/tanggal lahir, dan alamat dari teks mentah hasil OCR. Berdasarkan label baku
-     * KTP ("NIK", "Nama", "Tempat/Tgl Lahir", "Alamat") — field yang tidak ketemu dikembalikan null, bukan ditebak.
+     * KTP ("NIK", "Nama", "Tempat/Tgl Lahir", "Alamat") -- field yang tidak ketemu dikembalikan null, bukan ditebak.
      *
      * @return array{nik: ?string, nama: ?string, tempat_lahir: ?string, tanggal_lahir: ?string, alamat: ?string}
      */

@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    // Dipakai App\Support\Karyawan\BacaKtp untuk OCR foto KTP (lewat HTTP, tidak butuh binary di server --
+    // cocok untuk shared hosting yang tidak bisa pasang Tesseract). Dapatkan key di console.cloud.google.com
+    // (aktifkan "Cloud Vision API", lalu buat API key).
+    'google_vision' => [
+        'key' => env('GOOGLE_VISION_API_KEY'),
+    ],
+
 ];

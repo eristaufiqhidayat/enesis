@@ -5,6 +5,7 @@ namespace Tests\Feature\Admin;
 use App\Http\Controllers\Admin\KaryawanController;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -178,56 +179,43 @@ class KaryawanTest extends AdminTestCase
 
     public function test_baca_ktp_mengisi_nik_nama_tanggal_lahir_dan_alamat_dari_foto(): void
     {
-        $tesseract = (bool) trim((string) shell_exec('command -v tesseract 2>/dev/null'));
-        $font = '/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf';
+        config(['services.google_vision.key' => 'kunci-uji']);
+        Http::fake(['vision.googleapis.com/*' => Http::response(['responses' => [[
+            'fullTextAnnotation' => ['text' => "NIK : 3273010101990001\nNama : BUDI SANTOSO\nTempat/Tgl Lahir : BANDUNG, 01-01-1999\nAlamat : JL MERDEKA NO 12"],
+        ]]])]);
 
-        if (! $tesseract || ! is_file($font)) {
-            $this->markTestSkipped('Tesseract atau font uji coba tidak tersedia di lingkungan ini.');
-        }
+        $respons = $this->post('/karyawan_sales/baca-ktp', ['foto_ktp' => UploadedFile::fake()->image('ktp.jpg', 800, 500)])->assertOk();
 
-        $path = $this->buatFotoKtpUjiCoba($font);
+        $this->assertSame('3273010101990001', $respons->json('nik'));
+        $this->assertSame('BUDI SANTOSO', $respons->json('nama'));
+        $this->assertSame('BANDUNG', $respons->json('tempat_lahir'));
+        $this->assertSame('1999-01-01', $respons->json('tanggal_lahir'));
+        $this->assertSame('JL MERDEKA NO 12', $respons->json('alamat'));
 
-        try {
-            $respons = $this->post('/karyawan_sales/baca-ktp', [
-                'foto_ktp' => new UploadedFile($path, 'ktp.png', 'image/png', null, true),
-            ])->assertOk();
+        Http::assertSent(fn ($r) => str_contains($r->url(), 'vision.googleapis.com')
+            && $r['requests'][0]['imageContext']['languageHints'] === ['id']
+            && $r['requests'][0]['features'][0]['type'] === 'TEXT_DETECTION');
+    }
 
-            $this->assertSame('3273010101990001', $respons->json('nik'));
-            $this->assertStringContainsStringIgnoringCase('BUDI SANTOSO', (string) $respons->json('nama'));
-            $this->assertSame('1999-01-01', $respons->json('tanggal_lahir'));
-            $this->assertNotEmpty($respons->json('teks_mentah'));
-        } finally {
-            @unlink($path);
-        }
+    public function test_baca_ktp_balas_422_kalau_api_key_belum_diatur(): void
+    {
+        config(['services.google_vision.key' => null]);
+
+        $this->postJson('/karyawan_sales/baca-ktp', ['foto_ktp' => UploadedFile::fake()->image('ktp.jpg')])
+            ->assertStatus(422)->assertJson(['error' => 'Foto KTP tidak bisa dibaca. Coba foto yang lebih terang dan tidak miring.']);
+    }
+
+    public function test_baca_ktp_balas_422_kalau_google_vision_gagal(): void
+    {
+        config(['services.google_vision.key' => 'kunci-uji']);
+        Http::fake(['vision.googleapis.com/*' => Http::response(['responses' => [['error' => ['message' => 'API key not valid']]]])]);
+
+        $this->postJson('/karyawan_sales/baca-ktp', ['foto_ktp' => UploadedFile::fake()->image('ktp.jpg')])->assertStatus(422);
     }
 
     public function test_baca_ktp_menolak_file_bukan_gambar(): void
     {
         $this->postJson('/karyawan_sales/baca-ktp', ['foto_ktp' => UploadedFile::fake()->create('ktp.pdf', 10)])
             ->assertStatus(422)->assertJsonValidationErrors('foto_ktp');
-    }
-
-    /** Gambar putih berisi teks label KTP (font mono besar) -- cukup jelas untuk dibaca Tesseract. */
-    private function buatFotoKtpUjiCoba(string $font): string
-    {
-        $gambar = imagecreatetruecolor(1500, 900);
-        $putih = imagecolorallocate($gambar, 255, 255, 255);
-        $hitam = imagecolorallocate($gambar, 0, 0, 0);
-        imagefilledrectangle($gambar, 0, 0, 1500, 900, $putih);
-
-        foreach ([
-            'NIK : 3273010101990001',
-            'Nama : BUDI SANTOSO',
-            'Tempat/Tgl Lahir : BANDUNG, 01-01-1999',
-            'Alamat : JL MERDEKA NO 12',
-        ] as $i => $baris) {
-            imagettftext($gambar, 28, 0, 40, 100 + $i * 70, $hitam, $font, $baris);
-        }
-
-        $path = tempnam(sys_get_temp_dir(), 'ktp').'.png';
-        imagepng($gambar, $path);
-        imagedestroy($gambar);
-
-        return $path;
     }
 }
