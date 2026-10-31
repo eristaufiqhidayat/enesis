@@ -1,11 +1,17 @@
 <script setup>
 import { onMounted, onUnmounted, ref } from 'vue';
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import Breadcrumb from '@/Components/ui/molecules/Breadcrumb.vue';
 import Icon from '@/Components/ui/atoms/Icon.vue';
 import Tooltip from '@/Components/ui/atoms/Tooltip.vue';
+import { useTambahMuatan } from '@/Composables/useTambahMuatan.js';
 
 defineProps({ breadcrumbSlug: { type: String, default: null } });
+
+// Ikon muatan membuka modal Atur Muatan Motoris (organisms/ModalTambahMuatan.vue) di halaman yang sedang dibuka,
+// tanpa pindah halaman; hanya untuk akun yang punya hak tambah di menu barang_canvassing.
+const page = usePage();
+const { buka: bukaTambahMuatan } = useTambahMuatan();
 
 const notifOpen = ref(false);
 const notifWrapper = ref(null);
@@ -28,9 +34,9 @@ onUnmounted(() => document.removeEventListener('click', closeNotifOnOutsideClick
             <Tooltip label="Tambah Loading Barang" align="end"><Link class="shortcut-btn" href="/loading_barang/add" aria-label="Tambah Loading Barang">
                     <Icon name="truck" />
                 </Link></Tooltip>
-            <Tooltip label="Tambah Barang Canvassing" align="end"><Link class="shortcut-btn" href="/barang_canvassing/add">
+            <Tooltip v-if="page.props.bisaTambahMuatan" label="Atur Muatan Motoris" align="end"><button type="button" class="shortcut-btn" aria-label="Atur Muatan Motoris" @click="bukaTambahMuatan">
                     <Icon name="boxes" />
-                </Link></Tooltip>
+                </button></Tooltip>
             <Tooltip label="Peta Sebaran Sales" align="end"><Link class="shortcut-btn" href="/peta_sebaran_sales" aria-label="Peta Sebaran Sales">
                     <Icon name="map" />
                 </Link></Tooltip>
