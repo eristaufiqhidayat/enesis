@@ -58,6 +58,15 @@ const lapTerpilih = ref(null);
 const loadingTerpilih = ref(null);
 // Baris barang_canvassing (satu muatan) yang daftar produknya dibuka di drawer dari klik baris tabel; null = tertutup.
 const muatanTerpilih = ref(null);
+// Muatan dibatalkan dari drawer: tutup drawer dan muat ulang tabel (muatan itu sudah tidak ada di daftar).
+function muatanDibatalkan() {
+    muatanTerpilih.value = null;
+    muatTabelUlang();
+}
+// Item muatan diubah di drawer: muat ulang tabel daftar supaya ringkasan SKU/qty barisnya ikut terbarui.
+function muatTabelUlang() {
+    router.reload({ only: ['tables'], preserveScroll: true });
+}
 // Tombol Tambah di header membuka modal Atur Muatan Motoris (organisms/ModalTambahMuatan.vue, dipasang di AppLayout).
 const { buka: bukaTambahMuatan } = useTambahMuatan();
 // Distributor { id, nama } yang riwayat transaksinya dibuka di drawer kedua, di atas drawer detail; null = tertutup.
@@ -123,7 +132,7 @@ function formatAngka(nilai) {
 const warnaBadge = {
     checkin_pagi: { checkin_pertama_hari_ini: { 'Belum checkin': 'danger', '*': 'warning' } },
     loading_barang: { status_retur: { 'Belum Retur': 'danger', 'Sudah Retur': 'success' } },
-    barang_canvassing: { status: { Disiapkan: 'primary', Diterima: 'secondary', Dikembalikan: 'warning', Selesai: 'success' } },
+    barang_canvassing: { status: { Disiapkan: 'info', Diterima: 'secondary', Dikembalikan: 'warning', Selesai: 'success' } },
 };
 
 // Tab "Outlet Baru dari HP" (aksi verifikasi_outlet_baru): warna status dan tombol Setujui / Tolak.
@@ -418,7 +427,7 @@ function filterTabel(table, { nilai, operator }) {
         </Modal>
         <!-- Drawer produk muatan canvassing, dibuka dari klik baris di tabel barang_canvassing. -->
         <Modal :show="muatanTerpilih !== null" :title="muatanTerpilih?.canvassing_no ?? ''" placement="kanan" size="2xl" @close="muatanTerpilih = null">
-            <DetailMuatanCanvassing v-if="muatanTerpilih" :key="muatanTerpilih.source_id" :row="muatanTerpilih" />
+            <DetailMuatanCanvassing v-if="muatanTerpilih" :key="muatanTerpilih.source_id" :row="muatanTerpilih" @diubah="muatTabelUlang" @dibatalkan="muatanDibatalkan" />
         </Modal>
         <!-- Drawer riwayat transaksi distributor, dibuka dari Distributor Name di drawer detail (tampil di atasnya). -->
         <Modal :show="distributorTerpilih !== null" :title="`Riwayat ${distributorTerpilih?.nama ?? ''}`" placement="kanan" @close="distributorTerpilih = null">

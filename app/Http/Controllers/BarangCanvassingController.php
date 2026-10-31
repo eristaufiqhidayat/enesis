@@ -11,8 +11,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
-// Barang Canvassing: detail produk satu muatan untuk drawer di tabel (lihat Menu/Show.vue), serta opsi & simpan
-// muatan baru dari web (status disiapkan; aplikasi HP sales yang menerimanya).
+// Barang Canvassing: detail produk satu muatan untuk drawer di tabel (lihat Menu/Show.vue), opsi & simpan muatan
+// baru dari web (status disiapkan; aplikasi HP sales yang menerimanya), ubah item, dan batalkan (soft delete) selama masih Disiapkan.
 class BarangCanvassingController extends Controller
 {
     public function item(Request $request, int $canvassing)
@@ -25,9 +25,105 @@ class BarangCanvassingController extends Controller
 
         abort_if($baris->isEmpty(), 404);
 
+        $muatan = DB::table('trx_canvassing')->where('id', $canvassing)->first(['status', 'diterima_at']);
+
         return response()->json([
             'data' => $baris->map(fn ($row) => $sumber->ubahBaris($row))->values(),
+            // Item masih bisa diubah: muatan belum diterima motoris dan akun punya hak ubah (lihat ubahItem).
+            'dapat_diubah' => $this->masihDisiapkan($muatan) && Akses::bisa($request->user(), 'barang_canvassing', 'ubah'),
+            // Muatan masih bisa dibatalkan: belum diterima motoris dan akun punya hak hapus (lihat batalkan).
+            'dapat_dibatalkan' => $this->masihDisiapkan($muatan) && Akses::bisa($request->user(), 'barang_canvassing', 'hapus'),
         ]);
+    }
+
+    /**
+     * Ganti daftar item muatan yang masih Disiapkan: qty diubah, produk baru ditambah, produk yang dihilangkan
+     * dihapus. Baris muatan dikunci selama transaksi supaya tidak berebut dengan penerimaan di aplikasi HP.
+     */
+    public function ubahItem(Request $request, int $canvassing)
+    {
+        $data = $request->validate($this->aturanItem(), $this->pesanItem());
+
+        abort_unless(SumberCanvassing::dasar($request->user(), hanyaDiterima: false)->where('c.id', $canvassing)->exists(), 404);
+
+        $nomor = DB::transaction(function () use ($canvassing, $data) {
+            $muatan = DB::table('trx_canvassing')->where('id', $canvassing)->lockForUpdate()->first();
+
+            abort_unless($this->masihDisiapkan($muatan), 409, 'Muatan sudah diterima motoris, tidak bisa diubah.');
+
+            $lama = DB::table('trx_canvassing_item')->where('canvassing_id', $canvassing)->pluck('id', 'produk_id');
+            $baru = collect($data['items'])->keyBy('produk_id');
+
+            foreach ($baru as $produk => $item) {
+                if ($lama->has($produk)) {
+                    DB::table('trx_canvassing_item')->where('id', $lama[$produk])->update(['qty_bawa' => $item['qty_bawa']]);
+                } else {
+                    DB::table('trx_canvassing_item')->insert(['canvassing_id' => $canvassing, 'produk_id' => $produk, 'qty_bawa' => $item['qty_bawa']]);
+                }
+            }
+
+            DB::table('trx_canvassing_item')->whereIn('id', $lama->except($baru->keys()->all())->values())->delete();
+
+            return $muatan->nomor;
+        });
+
+        Akses::catat($request->user(), 'barang_canvassing', $canvassing, 'ubah', "Item muatan $nomor");
+
+        return response()->json(['ok' => true]);
+    }
+
+    /**
+     * Batalkan (soft delete) muatan yang masih Disiapkan: status jadi dibatalkan, dibatalkan_at dan dibatalkan_oleh
+     * (ID akun yang login) terisi, item tetap ada. Muatan yang dibatalkan hilang dari daftar dan aplikasi HP.
+     * Baris muatan dikunci selama transaksi supaya tidak berebut dengan penerimaan di aplikasi HP.
+     */
+    public function batalkan(Request $request, int $canvassing)
+    {
+        abort_unless(SumberCanvassing::dasar($request->user(), hanyaDiterima: false)->where('c.id', $canvassing)->exists(), 404);
+
+        $nomor = DB::transaction(function () use ($request, $canvassing) {
+            $muatan = DB::table('trx_canvassing')->where('id', $canvassing)->lockForUpdate()->first();
+
+            abort_unless($this->masihDisiapkan($muatan), 409, 'Muatan sudah diterima motoris, tidak bisa dibatalkan.');
+
+            DB::table('trx_canvassing')->where('id', $canvassing)->update([
+                'status' => 'dibatalkan',
+                'dibatalkan_at' => now(),
+                'dibatalkan_oleh' => $request->user()->id,
+            ]);
+
+            return $muatan->nomor;
+        });
+
+        Akses::catat($request->user(), 'barang_canvassing', $canvassing, 'hapus', "Batalkan muatan $nomor");
+
+        return response()->json(['ok' => true]);
+    }
+
+    /** Muatan Disiapkan = status disiapkan dan belum ada waktu terima (aplikasi HP mengisi diterima_at saat menerima). */
+    private function masihDisiapkan(?object $muatan): bool
+    {
+        return $muatan !== null && $muatan->status === 'disiapkan' && $muatan->diterima_at === null;
+    }
+
+    /** Aturan daftar item, dipakai bersama simpan muatan baru dan ubah item. */
+    private function aturanItem(): array
+    {
+        return [
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.produk_id' => ['required', 'integer', 'distinct', Rule::exists('mk_produk', 'id')],
+            'items.*.qty_bawa' => ['required', 'numeric', 'gt:0', 'max:9999999999'],
+        ];
+    }
+
+    private function pesanItem(): array
+    {
+        return [
+            'items.required' => 'Tambahkan minimal satu produk.',
+            'items.min' => 'Tambahkan minimal satu produk.',
+            'items.*.produk_id.distinct' => 'Produk tidak boleh dobel.',
+            'items.*.qty_bawa.gt' => 'Qty harus lebih dari 0.',
+        ];
     }
 
     /**
@@ -58,15 +154,7 @@ class BarangCanvassingController extends Controller
             'tanggal' => ['nullable', 'date_format:Y-m-d'],
             'depo_id' => ['required', 'integer', Rule::exists('mk_depo', 'id')],
             'karyawan_id' => ['required', 'integer'],
-            'items' => ['required', 'array', 'min:1'],
-            'items.*.produk_id' => ['required', 'integer', 'distinct', Rule::exists('mk_produk', 'id')],
-            'items.*.qty_bawa' => ['required', 'numeric', 'gt:0', 'max:9999999999'],
-        ], [
-            'items.required' => 'Tambahkan minimal satu produk.',
-            'items.min' => 'Tambahkan minimal satu produk.',
-            'items.*.produk_id.distinct' => 'Produk tidak boleh dobel.',
-            'items.*.qty_bawa.gt' => 'Qty harus lebih dari 0.',
-        ]);
+        ] + $this->aturanItem(), $this->pesanItem());
 
         $tanggal = $data['tanggal'] ?? now(config('mobile.zona_waktu'))->toDateString();
 
@@ -74,7 +162,8 @@ class BarangCanvassingController extends Controller
             throw ValidationException::withMessages(['karyawan_id' => 'Motoris tidak valid: harus Sales Motoris aktif di depo ini, punya koordinator, dan dalam cakupan Anda.']);
         }
 
-        $ada = DB::table('trx_canvassing')->where('karyawan_id', $data['karyawan_id'])->where('tanggal', $tanggal)->value('nomor');
+        $ada = DB::table('trx_canvassing')->where('karyawan_id', $data['karyawan_id'])->where('tanggal', $tanggal)
+            ->whereNull('dibatalkan_at')->value('nomor'); // muatan yang dibatalkan tidak dihitung
         if ($ada) {
             throw ValidationException::withMessages(['karyawan_id' => "Motoris ini sudah punya muatan di tanggal tersebut ($ada)."]);
         }

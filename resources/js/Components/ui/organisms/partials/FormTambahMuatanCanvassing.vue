@@ -4,9 +4,9 @@ import { useForm } from '@inertiajs/vue3';
 import Button from '@/Components/ui/atoms/Button.vue';
 import FieldError from '@/Components/ui/atoms/FieldError.vue';
 import DatePicker from '@/Components/ui/atoms/DatePicker.vue';
-import Input from '@/Components/ui/atoms/Input.vue';
 import Label from '@/Components/ui/atoms/Label.vue';
 import Alert from '@/Components/ui/molecules/Alert.vue';
+import BarisTambahProduk from '@/Components/ui/molecules/BarisTambahProduk.vue';
 import Combobox from '@/Components/ui/molecules/Combobox.vue';
 import DataTable from '@/Components/ui/organisms/DataTable.vue';
 import { angkaRingkas, tanggalSingkat } from '@/Support/format.js';
@@ -90,10 +90,7 @@ watch(langkah, (nilai) => emit('langkah', nilai), { immediate: true });
 const labelDepo = computed(() => depo.value.find((d) => String(d.value) === String(form.depo_id))?.label ?? '');
 const labelSales = computed(() => sales.value.find((x) => String(x.value) === String(form.karyawan_id))?.label ?? '');
 
-// Satu baris isian produk + qty; "Tambah" memindahkannya ke tabel produk di bawahnya (form.items).
-const produkDipilih = ref('');
-const qtyDipilih = ref('');
-const galatTambah = ref('');
+// Baris isian produk + qty (molecule BarisTambahProduk); "Tambah" memindahkannya ke tabel produk (form.items).
 const inputProduk = ref(null);
 const inputSales = ref(null);
 
@@ -141,27 +138,9 @@ const opsiProduk = computed(() => {
 
 const labelProduk = (id) => produk.value.find((p) => String(p.value) === String(id))?.label ?? `Produk ${id}`;
 
-function tambahProduk() {
-    galatTambah.value = '';
-
-    if (!produkDipilih.value) {
-        galatTambah.value = 'Pilih produk dulu.';
-
-        return;
-    }
-
-    if (!(Number(qtyDipilih.value) > 0)) {
-        galatTambah.value = 'Qty bawa harus lebih dari 0.';
-
-        return;
-    }
-
-    form.items.push({ produk_id: produkDipilih.value, qty_bawa: qtyDipilih.value });
+function tambahProduk(item) {
+    form.items.push(item);
     form.clearErrors('items');
-    produkDipilih.value = '';
-    qtyDipilih.value = '';
-    // Fokus kembali ke pencarian produk supaya produk berikutnya bisa langsung dicari.
-    nextTick(() => inputProduk.value?.fokus());
 }
 
 function hapusProduk(index) {
@@ -252,30 +231,13 @@ function simpan() {
             <p class="mb-0 text-xs text-gray-600">
                 Muatan untuk <b class="text-gray-900">{{ labelSales }}</b> · {{ labelDepo }} · {{ tanggalSingkat(form.tanggal) }}
             </p>
-            <div>
-                <div class="flex flex-col sm:flex-row sm:items-end gap-2">
-                    <div class="flex-1 min-w-0">
-                        <Label for="produk-baru">Produk</Label>
-                        <Combobox
-                            id="produk-baru"
-                            ref="inputProduk"
-                            v-model="produkDipilih"
-                            :options="opsiProduk"
-                            :disabled="!produk.length"
-                            :placeholder="produk.length ? 'Cari produk...' : 'Memuat produk...'"
-                            :clearable="false"
-                        />
-                    </div>
-                    <div class="sm:w-40">
-                        <Label for="qty-baru">Qty bawa</Label>
-                        <Input id="qty-baru" v-model="qtyDipilih" type="number" step="any" min="0" :disabled="!produk.length" @keydown.enter.prevent="tambahProduk" />
-                    </div>
-                    <div>
-                        <Button variant="light" :disabled="!produk.length" @click="tambahProduk">+ Tambah</Button>
-                    </div>
-                </div>
-                <FieldError v-if="galatTambah">{{ galatTambah }}</FieldError>
-            </div>
+            <BarisTambahProduk
+                ref="inputProduk"
+                :options="opsiProduk"
+                :disabled="!produk.length"
+                :placeholder="produk.length ? 'Cari produk...' : 'Memuat produk...'"
+                @tambah="tambahProduk"
+            />
 
             <div class="flex min-h-0 flex-1 flex-col">
                 <FieldError v-if="form.errors.items" class="mb-2">{{ form.errors.items }}</FieldError>

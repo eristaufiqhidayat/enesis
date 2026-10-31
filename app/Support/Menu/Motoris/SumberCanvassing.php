@@ -50,6 +50,7 @@ class SumberCanvassing implements SumberTabel
             ->leftJoin('mk_area as a', 'a.id', '=', 'k.area_aktif_id')
             // hanya canvassing dari Sales Koordinator ke Sales Motoris
             ->where('k.kategori', 'sales')->where('ko.kategori', 'koordinator')
+            ->whereNull('c.dibatalkan_at') // muatan yang dibatalkan dari web tidak ikut tampil di mana pun
             ->when($hanyaDiterima, fn ($w) => $w->whereNotNull('c.diterima_at'))
             ->when($mode === 'kembali', fn ($w) => $w->whereNotNull('c.dikembalikan_at'));
 
@@ -67,7 +68,7 @@ class SumberCanvassing implements SumberTabel
             ->leftJoinSub($terjual, 'j', fn ($j) => $j->on('j.canvassing_id', '=', 'c.id')->on('j.produk_id', '=', 'ci.produk_id'))
             ->orderByDesc($this->mode === 'kembali' ? 'c.dikembalikan_at' : 'c.diterima_at')->orderBy('c.nomor')->orderBy('ci.id')
             ->select([
-                'ci.id as source_id', 'c.nomor as canvassing_no', 'd.nama as warehouse_name', 'a.nama as area_name',
+                'ci.id as source_id', 'ci.produk_id', 'c.nomor as canvassing_no', 'd.nama as warehouse_name', 'a.nama as area_name',
                 'k.nama as salesperson_name', 'ko.nama as koordinator_name', 'c.diterima_at', 'c.dikembalikan_at',
                 'pr.nama as product_name', 'pr.kode as product_sku', 'pr.data as produk_data',
                 DB::raw('COALESCE(ci.qty_diterima, ci.qty_bawa) AS total_qty'), DB::raw('COALESCE(j.qty, 0) AS sale_qty'),
@@ -95,6 +96,7 @@ class SumberCanvassing implements SumberTabel
         $baris->sisa_qty = SumberPenjualan::angka($sisa);
         $baris->status_terjual = $sisa <= 0 ? 'Habis Terjual' : 'Belum Habis';
         $baris->pct_terjual = $total > 0 ? SumberPenjualan::angka(round($jual / $total * 100, 1)).'%' : '0%';
+        $baris->qty_bawa_mentah = (float) $baris->bawa_qty; // angka asli untuk mode ubah (angka() memakai koma desimal)
         $baris->bawa_qty = SumberPenjualan::angka($baris->bawa_qty);
         $baris->total_qty = SumberPenjualan::angka($total);
         $baris->sale_qty = SumberPenjualan::angka($jual);

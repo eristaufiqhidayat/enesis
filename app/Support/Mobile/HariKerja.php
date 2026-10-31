@@ -21,11 +21,11 @@ class HariKerja
         return DB::table('trx_checkin_depo')->where('karyawan_id', $this->karyawanId)->where('tanggal', $this->tanggal)->first();
     }
 
-    /** Canvassing hari ini (yang terbaru bila lebih dari satu). */
+    /** Canvassing hari ini (yang terbaru bila lebih dari satu), tanpa yang dibatalkan dari web. */
     public function canvassing(): ?object
     {
         return DB::table('trx_canvassing')->where('karyawan_id', $this->karyawanId)->where('tanggal', $this->tanggal)
-            ->orderByDesc('id')->first();
+            ->whereNull('dibatalkan_at')->orderByDesc('id')->first();
     }
 
     /** Canvassing hari ini yang sudah diterima sales (syarat kunjungan dan penjualan). */

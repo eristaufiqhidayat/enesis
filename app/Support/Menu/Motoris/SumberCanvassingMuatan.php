@@ -24,10 +24,10 @@ class SumberCanvassingMuatan implements SumberTabel
     public function query(?User $user): Builder
     {
         return SumberCanvassing::dasar($user, hanyaDiterima: false)
-            ->groupBy('c.id', 'c.nomor', 'c.status', 'c.diterima_at', 'c.disiapkan_at', 'c.dikembalikan_at', 'd.nama', 'k.nama', 'ko.nama', 'c.sumber')
+            ->groupBy('c.id', 'c.nomor', 'c.status', 'c.depo_id', 'c.diterima_at', 'c.disiapkan_at', 'c.dikembalikan_at', 'd.nama', 'k.nama', 'ko.nama', 'c.sumber')
             ->orderByRaw('COALESCE(c.diterima_at, c.disiapkan_at) DESC')->orderBy('c.nomor')
             ->select([
-                'c.id as source_id', 'c.nomor as canvassing_no', 'd.nama as warehouse_name',
+                'c.id as source_id', 'c.depo_id', 'c.nomor as canvassing_no', 'd.nama as warehouse_name',
                 'k.nama as salesperson_name', 'ko.nama as koordinator_name', 'c.status',
                 'c.diterima_at', 'c.dikembalikan_at', 'c.sumber',
                 DB::raw('COUNT(ci.id) AS jumlah_sku'),
@@ -40,6 +40,7 @@ class SumberCanvassingMuatan implements SumberTabel
     {
         $baris->status = match ($baris->status) {
             'disiapkan' => 'Disiapkan',
+            'dibatalkan' => 'Dibatalkan',
             'diterima' => 'Diterima',
             'dikembalikan' => 'Dikembalikan',
             'selesai' => 'Selesai',
