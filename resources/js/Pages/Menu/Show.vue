@@ -21,10 +21,10 @@ import DetailDepoPeta from './partials/DetailDepoPeta.vue';
 import DetailLapLoadingBarang from './partials/DetailLapLoadingBarang.vue';
 import DetailLoadingBarang from './partials/DetailLoadingBarang.vue';
 import DetailMuatanCanvassing from './partials/DetailMuatanCanvassing.vue';
-import FormTambahMuatanCanvassing from './partials/FormTambahMuatanCanvassing.vue';
 import RiwayatDistributor from './partials/RiwayatDistributor.vue';
 import Tabs from '@/Components/ui/molecules/Tabs.vue';
 import DataTable from '@/Components/ui/organisms/DataTable.vue';
+import { useTambahMuatan } from '@/Composables/useTambahMuatan.js';
 import { useAmbilData } from '@/Support/ambilData.js';
 import { tanggalWaktuPendek } from '@/Support/format.js';
 
@@ -39,7 +39,7 @@ const props = defineProps({
     hasDateFilter: { type: Boolean, default: false },
     // Filter depo / koordinator untuk tabel dengan sumber bertanggal (lihat SumberBertanggal).
     filter: { type: Object, default: () => ({ depo: null, koordinator: null }) },
-    // Punya hak tambah di menu ini (tombol Tambah yang membuka drawer form, saat ini hanya barang_canvassing).
+    // Punya hak tambah di menu ini (tombol Tambah yang membuka modal form, saat ini hanya barang_canvassing).
     bisaTambah: { type: Boolean, default: false },
 });
 
@@ -58,20 +58,8 @@ const lapTerpilih = ref(null);
 const loadingTerpilih = ref(null);
 // Baris barang_canvassing (satu muatan) yang daftar produknya dibuka di drawer dari klik baris tabel; null = tertutup.
 const muatanTerpilih = ref(null);
-// Modal form tambah muatan canvassing. Terbuka dari tombol Tambah, atau dari ?tambah=1 (ikon Topbar / tautan /add);
-// parameternya dibuang dari URL saat modal ditutup supaya muat ulang halaman tidak membuka modal lagi.
-const tambahSibuk = ref(false);
-const tambahLangkah = ref(1);
-const formTambah = ref(null);
-const tambahTerbuka = ref(props.bisaTambah && props.slug === 'barang_canvassing' && new URLSearchParams(window.location.search).has('tambah'));
-watch(tambahTerbuka, (terbuka) => {
-    const url = new URL(window.location.href);
-
-    if (terbuka || !url.searchParams.has('tambah')) return;
-
-    url.searchParams.delete('tambah');
-    window.history.replaceState(window.history.state, '', url);
-});
+// Tombol Tambah di header membuka modal Atur Muatan Motoris (organisms/ModalTambahMuatan.vue, dipasang di AppLayout).
+const { buka: bukaTambahMuatan } = useTambahMuatan();
 // Distributor { id, nama } yang riwayat transaksinya dibuka di drawer kedua, di atas drawer detail; null = tertutup.
 const distributorTerpilih = ref(null);
 const kolomLapLoadingBarang = computed(() => visibleTables.value.find((table) => table.name === 'lap_loading_barang')?.columns ?? {});
@@ -263,7 +251,7 @@ function filterTabel(table, { nilai, operator }) {
     <AppLayout>
         <PageHeader :title="page.title" :subtitle="subtitle">
             <template v-if="slug === 'barang_canvassing' && bisaTambah" #actions>
-                <Button @click="tambahTerbuka = true"><Icon name="plus" class="me-1" /> Tambah</Button>
+                <Button @click="bukaTambahMuatan"><Icon name="plus" class="me-1" /> Tambah</Button>
             </template>
         </PageHeader>
 
@@ -427,24 +415,6 @@ function filterTabel(table, { nilai, operator }) {
         <!-- Drawer detail loading barang, dibuka dari tautan Kode Transaksi di tabel loading_barang. -->
         <Modal :show="loadingTerpilih !== null" :title="loadingTerpilih?.kode_transaksi ?? ''" placement="kanan" @close="loadingTerpilih = null">
             <DetailLoadingBarang v-if="loadingTerpilih" :row="loadingTerpilih" :columns="kolomLoadingBarang" />
-        </Modal>
-        <!-- Modal form tambah muatan canvassing, dibuka dari tombol Tambah di tabel barang_canvassing. -->
-        <Modal :show="tambahTerbuka" title="Atur Muatan Motoris" size="xl" tinggi @close="tambahTerbuka = false">
-            <FormTambahMuatanCanvassing v-if="tambahTerbuka" ref="formTambah" @tersimpan="tambahTerbuka = false" @sibuk="tambahSibuk = $event" @langkah="tambahLangkah = $event" />
-            <template #footer>
-                <template v-if="tambahLangkah === 1">
-                    <Button variant="light" @click="tambahTerbuka = false">Batal</Button>
-                    <Button :disabled="tambahSibuk" @click="formTambah?.lanjut()">Lanjut</Button>
-                </template>
-                <template v-else-if="tambahLangkah === 2">
-                    <Button variant="light" :disabled="tambahSibuk" @click="formTambah?.kembali()">Kembali</Button>
-                    <Button :disabled="tambahSibuk" @click="formTambah?.lanjut()">Lanjut</Button>
-                </template>
-                <template v-else>
-                    <Button variant="light" :disabled="tambahSibuk" @click="formTambah?.kembali()">Kembali</Button>
-                    <Button type="submit" form="form-tambah-muatan" :loading="tambahSibuk" :disabled="tambahSibuk">Simpan muatan</Button>
-                </template>
-            </template>
         </Modal>
         <!-- Drawer produk muatan canvassing, dibuka dari klik baris di tabel barang_canvassing. -->
         <Modal :show="muatanTerpilih !== null" :title="muatanTerpilih?.canvassing_no ?? ''" placement="kanan" size="2xl" @close="muatanTerpilih = null">

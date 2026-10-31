@@ -2,6 +2,7 @@
 import { computed, provide } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 import Flash from '@/Components/ui/molecules/Flash.vue';
+import ModalTambahMuatan from '@/Components/ui/organisms/ModalTambahMuatan.vue';
 import Sidebar from '@/Components/ui/organisms/Sidebar.vue';
 import SettingsSideNav from '@/Components/ui/organisms/SettingsSideNav.vue';
 import Topbar from '@/Components/ui/organisms/Topbar.vue';
@@ -27,6 +28,7 @@ provide(PAGE_HEADER_SLUG, computed(() => props.breadcrumbSlug ?? page.props.curr
     <main>
         <Topbar :breadcrumb-slug="breadcrumbSlug" />
         <Flash />
+        <ModalTambahMuatan v-if="page.props.bisaTambahMuatan" />
         <div :class="{ 'settings-layout': adaPanel }">
             <SettingsSideNav v-if="adaPanel" />
             <div class="settings-content">

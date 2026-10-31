@@ -121,9 +121,9 @@ class BarangCanvassingTambahTest extends AdminTestCase
         $akun = $this->akun('lihat.saja', 'lainnya', 500);
         DB::table('users')->where('id', $akun->id)->update(['role_id' => $this->role('Lihat Saja', 'semua', ['barang_canvassing' => ['lihat']])]);
         $this->actingAs($akun->fresh())->get('/barang_canvassing/add')->assertForbidden();
-        $this->actingAs($akun->fresh())->get('/barang_canvassing')->assertInertia(fn ($p) => $p->where('bisaTambah', false));
+        $this->actingAs($akun->fresh())->get('/barang_canvassing')->assertInertia(fn ($p) => $p->where('bisaTambah', false)->where('bisaTambahMuatan', false));
 
-        $this->actingAs($this->admin)->get('/barang_canvassing')->assertInertia(fn ($p) => $p->where('bisaTambah', true));
+        $this->actingAs($this->admin)->get('/barang_canvassing')->assertInertia(fn ($p) => $p->where('bisaTambah', true)->where('bisaTambahMuatan', true));
     }
 
     public function test_opsi_tanpa_depo_memuat_depo_dan_tanggal_saja(): void

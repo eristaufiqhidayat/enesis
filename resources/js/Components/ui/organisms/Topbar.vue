@@ -1,11 +1,17 @@
 <script setup>
 import { onMounted, onUnmounted, ref } from 'vue';
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import Breadcrumb from '@/Components/ui/molecules/Breadcrumb.vue';
 import Icon from '@/Components/ui/atoms/Icon.vue';
 import Tooltip from '@/Components/ui/atoms/Tooltip.vue';
+import { useTambahMuatan } from '@/Composables/useTambahMuatan.js';
 
 defineProps({ breadcrumbSlug: { type: String, default: null } });
+
+// Shortcut truk membuka modal Atur Muatan Motoris (organisms/ModalTambahMuatan.vue) di halaman yang sedang dibuka;
+// hanya untuk akun yang punya hak tambah di menu barang_canvassing.
+const page = usePage();
+const { buka: bukaTambahMuatan } = useTambahMuatan();
 
 const notifOpen = ref(false);
 const notifWrapper = ref(null);
@@ -25,9 +31,9 @@ onUnmounted(() => document.removeEventListener('click', closeNotifOnOutsideClick
             <Breadcrumb :current-slug="breadcrumbSlug" />
         </div>
         <div class="flex items-center gap-2">
-            <Tooltip label="Tambah Loading Barang" align="end"><Link class="shortcut-btn" href="/loading_barang/add">
+            <Tooltip v-if="page.props.bisaTambahMuatan" label="Tambah Loading Barang" align="end"><button type="button" class="shortcut-btn" aria-label="Tambah Loading Barang" @click="bukaTambahMuatan">
                     <Icon name="truck" />
-                </Link></Tooltip>
+                </button></Tooltip>
             <Tooltip label="Tambah Barang Canvassing" align="end"><Link class="shortcut-btn" href="/barang_canvassing/add">
                     <Icon name="boxes" />
                 </Link></Tooltip>

@@ -44,6 +44,8 @@ class HandleInertiaRequests extends Middleware
             'searchMenu' => fn () => Akses::menuPencarian($request->user()),
             'currentSlug' => $request->route('slug') ?? $request->path(),
             'appName' => config('app.name'),
+            // Boleh menambah muatan canvassing: menampilkan modal Atur Muatan Motoris dan shortcut-nya di Topbar.
+            'bisaTambahMuatan' => fn () => Akses::bisa($request->user(), 'barang_canvassing', 'tambah'),
             // Pesan hasil aksi (redirect ->with('sukses'|'galat')), ditampilkan di atas halaman.
             'flash' => fn () => [
                 'sukses' => $request->session()->get('sukses'),
