@@ -30,8 +30,6 @@ const urlItem = `/barang_canvassing/${props.row.source_id}/item`;
 const KOLOM = {
     product_name: 'Produk',
     product_sku: 'SKU',
-    category_name: 'Kategori',
-    brand_name: 'Brand',
     unit_name: 'Satuan',
     bawa_qty: 'Qty Bawa',
     total_qty: 'Qty Diterima',
