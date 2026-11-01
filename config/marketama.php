@@ -29,6 +29,7 @@ use App\Support\Menu\SumberJoinVisit;
 use App\Support\Menu\SumberMasterArea;
 use App\Support\Menu\SumberOutletBaru;
 use App\Support\Menu\SumberOutletMaster;
+use App\Support\Menu\SumberTandaOutlet;
 
 // Struktur menu sidebar disamakan dengan Marketama Canvassing System.
 // Dihasilkan dari hasil penarikan data 22 Okt 2026.
@@ -60,7 +61,7 @@ return [
         'karyawan_sales', 'karyawan_koordinator', 'karyawan_supervisor', 'karyawan_lainnya',
         // Grup A analisa menu (25 Okt 2026): dialihkan ke trx_* / mk_* (riwayat lama lewat enesis:migrasi-transaksi)
         'barang_canvassing', 'lap_barang_canvassing', 'lap_barang_habis_terjual', 'pengembalian_barang', 'lap_pengembalian_barang',
-        'tracking_sales', 'tracking_koordinator', 'motoris_ditandai',
+        'tracking_sales', 'tracking_koordinator', 'motoris_ditandai', 'outlet_ditandai',
         'penjualan_barang', 'lap_penjualan_barang', 'lap_penjualan_barang_detail', 'lap_effective_call', 'lap_effective_call_barang',
         'lap_penjualan_barang_terbaik_harian', 'lap_penjualan_barang_terbaik_mingguan', 'lap_penjualan_barang_terbaik_bulanan',
         'stok_outlet', 'lap_stok_outlet', 'stok_kompetitor', 'lap_stok_kompetitor',
@@ -80,7 +81,7 @@ return [
     // Di sidebar, slug pertama tiap kelompok (induk) mewakili seluruh kelompok dengan 'judul_sidebar'; slug lainnya
     // disembunyikan selama induknya bisa dibuka akun (lihat Akses::satukanTab). Matriks hak role tetap per slug.
     'tab_halaman' => [
-        ['tracking_sales' => 'Lacak Motoris', 'motoris_ditandai' => 'Ditandai'],
+        ['tracking_sales' => 'Lacak Motoris', 'motoris_ditandai' => 'Ditandai', 'outlet_ditandai' => 'Lacak Outlet'],
         ['tracking_koordinator' => 'Last Seen', 'tracking_koordinator_history_location' => 'Riwayat Lokasi'],
     ],
 
@@ -200,6 +201,11 @@ return [
                 [
                     'slug' => 'motoris_ditandai',
                     'title' => 'Motoris Ditandai',
+                    'icon' => 'flag',
+                ],
+                [
+                    'slug' => 'outlet_ditandai',
+                    'title' => 'Lacak Outlet',
                     'icon' => 'flag',
                 ],
                 [
@@ -1015,6 +1021,15 @@ return [
             ],
             'same_as' => null,
         ],
+        'outlet_ditandai' => [
+            'title' => 'Lacak Outlet',
+            'tables' => [
+                'tanda_outlet_rekap',
+            ],
+            'same_as' => null,
+            // Tabel mengisi sisa tinggi layar dan header kolom tetap terlihat saat di-scroll (lihat DataTable.vue).
+            'tinggi_penuh' => true,
+        ],
         'tracking_koordinator' => [
             'title' => 'Tracking Last Seen Koordinator',
             'tables' => [
@@ -1816,6 +1831,20 @@ return [
                 'ditandai_pada' => 'Ditandai Pada',
                 'status' => 'Status',
                 'riwayat' => 'Riwayat',
+            ],
+        ],
+        'tanda_outlet_rekap' => [
+            'title' => 'Lacak Outlet',
+            'sumber' => SumberTandaOutlet::class,
+            'columns' => [
+                'outlet' => 'Outlet',
+                'motoris_noo' => 'Motoris (NOO)',
+                'koordinator' => 'Koordinator',
+                'area' => 'Area',
+                'depo' => 'Depo',
+                'kategori' => 'Kategori',
+                'ditandai_oleh' => 'Ditandai Oleh',
+                'ditandai_pada' => 'Ditandai Pada',
             ],
         ],
         'pembayaran_pembelian' => [

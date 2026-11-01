@@ -398,6 +398,9 @@ function filterTabel(table, { nilai, operator }) {
                                 {{ row.ditandai > 0 ? `${row.ditandai} tanda` : 'Tandai' }}
                             </button>
                         </template>
+                        <template v-if="table.name === 'tanda_outlet_rekap'" #cell-outlet="{ row }">
+                            <button type="button" class="tautan-depo" @click="outletTerpilih = { id: row.outlet_id, nama: row.outlet }">{{ row.outlet }}</button>
+                        </template>
                         <template v-if="tabelLastSeen.includes(table.name)" #cell-lokasi="{ row }">
                             <button v-if="row.latitude !== null && row.longitude !== null" type="button" class="tautan-depo" @click="posisiTerpilih = row">Lihat peta</button>
                         </template>
