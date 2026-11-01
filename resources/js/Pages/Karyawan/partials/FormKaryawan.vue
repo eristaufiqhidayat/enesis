@@ -87,7 +87,11 @@ async function aktifkanKamera() {
     }
 
     try {
-        streamKtp = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        // Minta resolusi setinggi mungkin ("ideal", bukan wajib) — tanpa ini kebanyakan webcam
+        // default ke 640x480, yang bikin teks di KTP terlalu buram buat dibaca OCR.
+        streamKtp = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
+        });
         kameraAktif.value = true;
         await nextTick();
         if (videoKtp.value) videoKtp.value.srcObject = streamKtp;
@@ -244,7 +248,7 @@ function simpan() {
                                     </template>
                                     <template v-else>
                                         <Button type="button" @click="aktifkanKamera">Aktifkan kamera</Button>
-                                        <small class="block text-gray-500 mt-1">Posisikan KTP rata dan terang di depan kamera, lalu klik Ambil foto.</small>
+                                        <small class="block text-gray-500 mt-1">Dekatkan KTP ke kamera sampai tulisannya memenuhi sebagian besar layar, pastikan terang dan tidak buram, lalu klik Ambil foto.</small>
                                         <Alert v-if="kameraError" variant="danger" class="mt-2">{{ kameraError }}</Alert>
                                     </template>
                                 </template>
