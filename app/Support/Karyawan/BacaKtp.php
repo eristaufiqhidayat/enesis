@@ -122,7 +122,9 @@ class BacaKtp
         ]);
 
         if ($respons->failed()) {
-            throw new RuntimeException('Google Vision API gagal dipanggil: '.$respons->status());
+            // Body disertakan (bukan cuma kode status) supaya alasan sesungguhnya dari Google (billing belum aktif,
+            // API key salah, API belum diaktifkan, dll) langsung kelihatan di log tanpa perlu curl manual.
+            throw new RuntimeException('Google Vision API gagal dipanggil: HTTP '.$respons->status().' -- '.Str::limit($respons->body(), 500));
         }
 
         $kesalahan = $respons->json('responses.0.error');
