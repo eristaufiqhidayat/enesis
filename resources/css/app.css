@@ -499,6 +499,9 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     /* Varian setinggi 90% layar (Modal.vue prop tinggi), dipakai bersama .modal-content-xl; body mengisi sisa tinggi sehingga footer selalu di dasar modal. */
     .modal-content-tinggi { @apply h-[90vh] max-h-[90vh]; }
     .modal-content-tinggi .modal-body { @apply min-h-0 flex-1; }
+    /* Modal tengah hampir sepenuh layar (mis. drawer Riwayat Lokasi): lebar & tinggi fleksibel, sisa spasi kecil di tepi layar (padding .modal-container). */
+    .modal-content-full { @apply flex h-[92vh] max-h-[92vh] w-[96vw] max-w-[96vw] flex-col; }
+    .modal-content-full .modal-body { @apply min-h-0 flex-1 overflow-auto; }
     .modal-header-primary { @apply rounded-t-md border-0 bg-gradient-to-r from-blue-600 to-sky-400 text-white; }
     .modal-header-primary .btn-close { @apply text-white/80 hover:text-white; }
     /* Drawer: panel setinggi layar yang menempel di kanan (Modal.vue placement="kanan"). Header dan footer tetap, body yang bergulir. */

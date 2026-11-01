@@ -510,8 +510,8 @@ function filterTabel(table, { nilai, operator }) {
                 drawer
             />
         </Modal>
-        <!-- Drawer rute harian, dibuka dari tombol Lihat riwayat di tabel Tracking Last Seen. -->
-        <Modal :show="riwayatTerpilih !== null" :title="riwayatTerpilih ? `Riwayat ${riwayatTerpilih.orang.nama}` : ''" placement="kanan" size="xl" @close="riwayatTerpilih = null">
+        <!-- Modal rute harian, dibuka dari tombol Lihat riwayat di tabel Tracking Last Seen: hampir sepenuh layar (butuh ruang lebih untuk peta + daftar kunjungan). -->
+        <Modal :show="riwayatTerpilih !== null" :title="riwayatTerpilih ? `Riwayat ${riwayatTerpilih.orang.nama}` : ''" size="full" @close="riwayatTerpilih = null">
             <RuteHarianPeta
                 v-if="riwayatTerpilih"
                 :orang="riwayatTerpilih.orang"
