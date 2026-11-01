@@ -4,6 +4,7 @@ namespace App\Support\Karyawan;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -72,7 +73,19 @@ class BacaKtp
      */
     private static function tesseractTersedia(): bool
     {
-        return Process::run('which tesseract')->successful();
+        $proses = Process::run('which tesseract');
+
+        // Logging sementara untuk diagnosis kenapa deteksi Tesseract gagal padahal sudah terpasang --
+        // hapus lagi setelah penyebabnya ketemu.
+        Log::info('BacaKtp: cek tesseract', [
+            'successful' => $proses->successful(),
+            'exitCode' => $proses->exitCode(),
+            'output' => $proses->output(),
+            'errorOutput' => $proses->errorOutput(),
+            'PATH' => getenv('PATH'),
+        ]);
+
+        return $proses->successful();
     }
 
     private static function ocrTesseract(\GdImage $gambar): string
@@ -122,7 +135,9 @@ class BacaKtp
         ]);
 
         if ($respons->failed()) {
-            throw new RuntimeException('Google Vision API gagal dipanggil: '.$respons->status());
+            // Body disertakan (bukan cuma kode status) supaya alasan sesungguhnya dari Google (billing belum aktif,
+            // API key salah, API belum diaktifkan, dll) langsung kelihatan di log tanpa perlu curl manual.
+            throw new RuntimeException('Google Vision API gagal dipanggil: HTTP '.$respons->status().' -- '.Str::limit($respons->body(), 500));
         }
 
         $kesalahan = $respons->json('responses.0.error');
