@@ -4,7 +4,6 @@ namespace App\Support\Karyawan;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -73,19 +72,7 @@ class BacaKtp
      */
     private static function tesseractTersedia(): bool
     {
-        $proses = Process::run('which tesseract');
-
-        // Logging sementara untuk diagnosis kenapa deteksi Tesseract gagal padahal sudah terpasang --
-        // hapus lagi setelah penyebabnya ketemu.
-        Log::info('BacaKtp: cek tesseract', [
-            'successful' => $proses->successful(),
-            'exitCode' => $proses->exitCode(),
-            'output' => $proses->output(),
-            'errorOutput' => $proses->errorOutput(),
-            'PATH' => getenv('PATH'),
-        ]);
-
-        return $proses->successful();
+        return Process::env(['PATH' => self::pathSistem()])->run('which tesseract')->successful();
     }
 
     private static function ocrTesseract(\GdImage $gambar): string
@@ -100,7 +87,8 @@ class BacaKtp
         imagepng($gambar, $path);
 
         try {
-            $proses = Process::timeout(30)->run('tesseract '.escapeshellarg($path).' stdout -l ind --psm 6');
+            $proses = Process::env(['PATH' => self::pathSistem()])->timeout(30)
+                ->run('tesseract '.escapeshellarg($path).' stdout -l ind --psm 6');
 
             if (! $proses->successful()) {
                 throw new RuntimeException('Tesseract gagal: '.$proses->errorOutput());
@@ -112,6 +100,19 @@ class BacaKtp
                 unlink($path);
             }
         }
+    }
+
+    /**
+     * PATH sistem diteruskan eksplisit ke proses "which"/"tesseract". Di sebagian environment (PATH yang
+     * dimodifikasi RVM/Flutter/nvm/dll di .zshrc atau sejenisnya), PATH yang dilihat proses PHP sendiri
+     * (getenv('PATH')) ternyata tidak otomatis ikut terbawa ke child process yang dijalankan Process::run()
+     * -- "which tesseract" gagal walau binary-nya ada dan PHP sendiri bisa lihat PATH yang benar. Meneruskan
+     * PATH secara eksplisit menghindari ketergantungan pada inheritance environment yang tidak selalu bisa
+     * diandalkan itu.
+     */
+    private static function pathSistem(): string
+    {
+        return getenv('PATH') ?: '/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin';
     }
 
     private static function ocrGoogleVision(\GdImage $gambar): string
