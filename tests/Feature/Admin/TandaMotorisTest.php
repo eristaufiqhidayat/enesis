@@ -173,6 +173,73 @@ class TandaMotorisTest extends AdminTestCase
         $this->actingAs($koor)->getJson(self::URL.'?sales_id=1&tanggal='.$this->kemarin)->assertJsonCount(0, 'tanda');
     }
 
+    public function test_pemberi_mengubah_catatan_dan_tercatat(): void
+    {
+        $koor = $this->koordinator();
+        $id = $this->tandai($koor)->json('id');
+
+        $this->actingAs($koor)->patchJson(self::URL.'/'.$id, ['catatan' => 'Catatan baru'])
+            ->assertOk()->assertJsonPath('catatan', 'Catatan baru')->assertJsonPath('kategori', 'penjualan_fiktif');
+
+        $this->assertSame('Catatan baru', DB::table('tanda_motoris')->find($id)->catatan);
+        $this->assertSame(['tambah', 'ubah'], DB::table('riwayat_admin')->where('objek', 'tanda_motoris')->orderBy('id')->pluck('aksi')->all());
+    }
+
+    public function test_catatan_boleh_dikosongkan_saat_ubah(): void
+    {
+        $koor = $this->koordinator();
+        $id = $this->tandai($koor)->json('id');
+
+        $this->actingAs($koor)->patchJson(self::URL.'/'.$id, ['catatan' => null])->assertOk()->assertJsonPath('catatan', null);
+        $this->assertNull(DB::table('tanda_motoris')->find($id)->catatan);
+    }
+
+    public function test_validasi_catatan_saat_ubah(): void
+    {
+        $koor = $this->koordinator();
+        $id = $this->tandai($koor)->json('id');
+
+        $this->actingAs($koor)->patchJson(self::URL.'/'.$id, ['catatan' => str_repeat('a', 501)])
+            ->assertUnprocessable()->assertJsonValidationErrors('catatan');
+    }
+
+    public function test_catatan_orang_lain_hanya_bisa_diubah_dengan_hak_hapus(): void
+    {
+        $id = $this->tandai($this->koordinator())->json('id');
+        $rekan = $this->akunDenganHak('rekan', ['lihat', 'tambah']);
+        $penghapus = $this->akunDenganHak('penghapus', ['lihat', 'tambah', 'hapus']);
+
+        $this->actingAs($rekan)->patchJson(self::URL.'/'.$id, ['catatan' => 'Dicoba rekan'])->assertForbidden();
+        $this->assertSame('Nota tidak wajar', DB::table('tanda_motoris')->find($id)->catatan);
+
+        $this->actingAs($penghapus)->patchJson(self::URL.'/'.$id, ['catatan' => 'Diubah penghapus'])->assertOk();
+        $this->assertSame('Diubah penghapus', DB::table('tanda_motoris')->find($id)->catatan);
+    }
+
+    public function test_ubah_tanda_yang_sudah_dicabut_atau_di_luar_cakupan_ditolak(): void
+    {
+        $koor = $this->koordinator();
+        $id = $this->tandai($koor)->json('id');
+        $this->actingAs($koor)->deleteJson(self::URL.'/'.$id)->assertOk();
+        $this->actingAs($koor)->patchJson(self::URL.'/'.$id, ['catatan' => 'Tetap dicoba'])->assertNotFound();
+
+        $luar = $this->tandai($this->admin, 2)->assertCreated()->json('id');
+        $this->actingAs($koor)->patchJson(self::URL.'/'.$luar, ['catatan' => 'Tetap dicoba'])->assertNotFound();
+    }
+
+    public function test_tanda_tanggal_lain_memuat_catatan_dan_bisa_cabut_untuk_review_langsung(): void
+    {
+        $koor = $this->koordinator();
+        $idHariLain = $this->tandai($koor, 1, ['tanggal' => now()->subDays(2)->toDateString(), 'catatan' => 'Catatan hari lain'])->json('id');
+
+        $res = $this->actingAs($koor)->getJson(self::URL.'?sales_id=1&tanggal='.$this->kemarin)->assertOk();
+
+        $res->assertJsonCount(1, 'lainnya')
+            ->assertJsonPath('lainnya.0.id', $idHariLain)
+            ->assertJsonPath('lainnya.0.catatan', 'Catatan hari lain')
+            ->assertJsonPath('lainnya.0.bisa_cabut', true);
+    }
+
     public function test_tanda_orang_lain_hanya_bisa_dicabut_dengan_hak_hapus(): void
     {
         $id = $this->tandai($this->koordinator())->json('id');

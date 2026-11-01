@@ -1000,11 +1000,13 @@ return [
             'same_as' => 'lap_pengembalian_barang',
         ],
         'tracking_sales' => [
-            'title' => 'Tracking Last Seen Sales',
+            'title' => 'Lacak Motoris',
             'tables' => [
                 'tracking_last_seen_sales',
             ],
             'same_as' => null,
+            // Tabel mengisi sisa tinggi layar dan header kolom tetap terlihat saat di-scroll (lihat DataTable.vue).
+            'tinggi_penuh' => true,
         ],
         'motoris_ditandai' => [
             'title' => 'Motoris Ditandai',
@@ -1786,7 +1788,6 @@ return [
                 'lokasi' => 'Lokasi',
                 'riwayat' => 'Riwayat',
                 'ditandai' => 'Ditandai',
-                'lokasi_palsu' => 'Lokasi Palsu',
             ],
         ],
         'tracking_last_seen_koordinator' => [
@@ -1799,7 +1800,6 @@ return [
                 'terakhir_terlihat' => 'Terakhir Terlihat',
                 'lokasi' => 'Lokasi',
                 'riwayat' => 'Riwayat',
-                'lokasi_palsu' => 'Lokasi Palsu',
             ],
         ],
         'tanda_motoris_rekap' => [

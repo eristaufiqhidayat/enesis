@@ -358,4 +358,106 @@ describe('TandaMotoris', () => {
 
         expect((await siapkan()).text()).toContain('Gagal memuat tanda motoris.');
     });
+
+    describe('mode drawer', () => {
+        // Tanda tanggal yang dilihat (24 Okt) dan tanggal lain, dengan bisa_cabut dari backend (bukan panel tersembunyi).
+        const lain = [
+            { id: 9, tanggal: '2026-10-22', kategori: 'lokasi_palsu', kategori_label: 'Lokasi / GPS palsu', catatan: null, oleh: 'koor', waktu: '2026-10-22 08:00', bisa_cabut: true },
+            { id: 8, tanggal: '2026-10-14', kategori: 'penjualan_fiktif', kategori_label: 'Penjualan fiktif', catatan: 'Nota aneh', oleh: 'admin', waktu: '2026-10-14 07:30', bisa_cabut: false },
+        ];
+
+        it('menggabung tanda tanggal ini dan tanggal lain jadi satu daftar, terurut tanggal kejadian terbaru dulu', async () => {
+            lainnya = lain;
+            const wrapper = await siapkan({ drawer: true });
+
+            expect(wrapper.text()).not.toContain('Tanda tanggal ini');
+            expect(wrapper.text()).not.toContain('Tanda tanggal lain');
+            expect(wrapper.find('.badge-danger').text()).toBe('4');
+
+            const item = wrapper.findAll('.tanda-motoris-item');
+            expect(item).toHaveLength(4);
+            // Tanda tanggal yang dilihat (24 Okt, props.tanggal) lebih baru dari tanggal lain (22 lalu 14 Okt).
+            expect(item.map((i) => i.text().match(/Tanggal kejadian: (\d+ \w+ \d+)/)[1])).toEqual([
+                '24 Okt 2026', '24 Okt 2026', '22 Okt 2026', '14 Okt 2026',
+            ]);
+        });
+
+        it('memformat tanggal kejadian dan waktu dibuat', async () => {
+            daftar = [tanda[0]];
+            const wrapper = await siapkan({ drawer: true });
+            const teks = wrapper.find('.tanda-motoris-item').text();
+
+            expect(teks).toContain('Tanggal kejadian: 24 Okt 2026');
+            expect(teks).toContain('Dibuat 25 Okt 2026 · 09:00 oleh koor');
+        });
+
+        it('tidak menampilkan tombol Tambah tanda', async () => {
+            const wrapper = await siapkan({ drawer: true });
+
+            expect(wrapper.text()).not.toContain('Tambah tanda');
+            expect(wrapper.text()).not.toContain('Tandai motoris');
+            expect(wrapper.find('form').exists()).toBe(false);
+        });
+
+        it('Ubah catatan dan Cabut hanya pada tanda yang bisa_cabut', async () => {
+            lainnya = lain; // 4 tanda: id 6 (false), id 5 (true), id 9 (true), id 8 (false).
+            const wrapper = await siapkan({ drawer: true });
+
+            expect(wrapper.findAll('button').filter((b) => b.text() === 'Ubah catatan')).toHaveLength(2);
+            expect(wrapper.findAll('button').filter((b) => b.text() === 'Cabut')).toHaveLength(2);
+        });
+
+        it('mengubah catatan mengirim PATCH lalu memuat ulang', async () => {
+            daftar = [tanda[0]]; // id 5, bisa_cabut true, catatan 'Nota tidak wajar'.
+            const wrapper = await siapkan({ drawer: true });
+            await wrapper.find('.tanda-motoris-item').findAll('button').find((b) => b.text() === 'Ubah catatan').trigger('click');
+
+            const textarea = wrapper.find('.tanda-motoris-item textarea');
+            expect(textarea.element.value).toBe('Nota tidak wajar');
+            await textarea.setValue('Catatan baru');
+            await wrapper.find('.tanda-motoris-item form').trigger('submit');
+            await flushPromises();
+
+            const [url, opsi] = panggilan('PATCH')[0];
+            expect(url).toBe(`${URL}/5`);
+            expect(opsi.headers['X-CSRF-TOKEN']).toBe('token-rahasia');
+            expect(JSON.parse(opsi.body)).toEqual({ catatan: 'Catatan baru' });
+            expect(panggilan('GET')).toHaveLength(2);
+            expect(wrapper.find('.tanda-motoris-item form').exists()).toBe(false);
+        });
+
+        it('menampilkan galat validasi saat mengubah catatan dan membiarkan form terbuka', async () => {
+            daftar = [tanda[0]];
+            balasan.PATCH = { ok: false, status: 422, json: () => Promise.resolve({ errors: { catatan: ['Catatan terlalu panjang.'] } }) };
+            const wrapper = await siapkan({ drawer: true });
+            await wrapper.find('.tanda-motoris-item').findAll('button').find((b) => b.text() === 'Ubah catatan').trigger('click');
+            await wrapper.find('.tanda-motoris-item form').trigger('submit');
+            await flushPromises();
+
+            expect(wrapper.find('.tanda-motoris-item form').text()).toContain('Catatan terlalu panjang.');
+            expect(panggilan('GET')).toHaveLength(1);
+        });
+
+        it('Batal pada form Ubah catatan menutup form tanpa mengirim apa pun', async () => {
+            daftar = [tanda[0]];
+            const wrapper = await siapkan({ drawer: true });
+            await wrapper.find('.tanda-motoris-item').findAll('button').find((b) => b.text() === 'Ubah catatan').trigger('click');
+            await wrapper.find('.tanda-motoris-item form').findAll('button').find((b) => b.text() === 'Batal').trigger('click');
+
+            expect(wrapper.find('.tanda-motoris-item form').exists()).toBe(false);
+            expect(panggilan('PATCH')).toHaveLength(0);
+        });
+
+        it('mencabut tanda setelah konfirmasi lalu memuat ulang', async () => {
+            daftar = [tanda[0]];
+            const wrapper = await siapkan({ drawer: true });
+            await wrapper.find('.tanda-motoris-item').findAll('button').find((b) => b.text() === 'Cabut').trigger('click');
+            await flushPromises();
+
+            expect(window.confirm).toHaveBeenCalled();
+            const [url] = panggilan('DELETE')[0];
+            expect(url).toBe(`${URL}/5`);
+            expect(panggilan('GET')).toHaveLength(2);
+        });
+    });
 });

@@ -57,7 +57,7 @@ class TrackingLastSeenStatusTest extends AdminTestCase
             ->loadDeferredProps(fn (Assert $p) => $p
                 ->where('tables.0.columns', [
                     'nama' => 'Nama', 'telepon' => 'Telepon', 'depo' => 'Depo', 'koordinator' => 'Koordinator',
-                    'terakhir_terlihat' => 'Terakhir Terlihat', 'lokasi' => 'Lokasi', 'riwayat' => 'Riwayat', 'ditandai' => 'Ditandai', 'lokasi_palsu' => 'Lokasi Palsu',
+                    'terakhir_terlihat' => 'Terakhir Terlihat', 'lokasi' => 'Lokasi', 'riwayat' => 'Riwayat', 'ditandai' => 'Ditandai',
                 ])
                 ->where('tables.0.rows.data.0.nama', 'HP Baru Lama Lawas')
                 ->where('tables.0.rows.data.0.status', 'Hari ini')

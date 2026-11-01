@@ -36,17 +36,13 @@ class TandaMotorisController extends Controller
             ->orderBy('id')->get()
             ->map(fn ($t) => $this->bentuk($t, $request->user()));
 
-        // Tanda aktif motoris yang sama pada tanggal lain dalam jendela hari terakhir, supaya pola lintas hari terlihat.
+        // Tanda aktif motoris yang sama pada tanggal lain dalam jendela hari terakhir, supaya pola lintas hari terlihat
+        // dan koordinator bisa langsung meninjau (ubah catatan / cabut) tanpa pindah tanggal dulu.
         $awal = Pengaturan::sekarang()->subDays((int) config('marketama.tanda_motoris_hari') - 1)->toDateString();
         $lainnya = DB::table('tanda_motoris')
             ->where('karyawan_id', $motoris->id)->whereNull('dicabut_at')->where('tanggal', '>=', $awal)->where('tanggal', '<>', $tanggal)
             ->orderByDesc('tanggal')->orderByDesc('id')->limit(50)->get()
-            ->map(fn ($t) => [
-                'id' => (int) $t->id,
-                'tanggal' => substr((string) $t->tanggal, 0, 10),
-                'kategori_label' => $this->label($t->kategori),
-                'oleh' => $t->dibuat_nama,
-            ]);
+            ->map(fn ($t) => [...$this->bentuk($t, $request->user()), 'tanggal' => substr((string) $t->tanggal, 0, 10)]);
 
         return response()->json([
             'tanda' => $tanda->values(),
@@ -93,6 +89,27 @@ class TandaMotorisController extends Controller
         return response()->json($this->bentuk(DB::table('tanda_motoris')->find($id), $user), 201);
     }
 
+    /** Ubah catatan satu tanda (kategori dan tanggal tetap): hanya pemberinya atau akun dengan hak Hapus. */
+    public function update(Request $request, int $tanda): JsonResponse
+    {
+        $data = $request->validate(['catatan' => ['nullable', 'string', 'max:500']]);
+
+        $user = $request->user();
+        $baris = DB::table('tanda_motoris')->where('id', $tanda)->whereNull('dicabut_at')->first();
+
+        abort_unless($baris, 404);
+
+        $motoris = $this->motoris($request, (int) $baris->karyawan_id);
+
+        abort_unless($this->bolehUbah($baris, $user), 403, 'Anda tidak boleh mengubah tanda ini.');
+
+        DB::table('tanda_motoris')->where('id', $tanda)->update(['catatan' => $data['catatan'] ?? null, 'updated_at' => now()]);
+
+        Akses::catat($user, 'tanda_motoris', $tanda, 'ubah', "Ubah catatan tanda {$motoris->nama} (".substr((string) $baris->tanggal, 0, 10).'): '.$this->label($baris->kategori));
+
+        return response()->json($this->bentuk(DB::table('tanda_motoris')->find($tanda), $user));
+    }
+
     /** Cabut (soft) satu tanda: hanya pemberinya atau akun dengan hak Hapus. */
     public function cabut(Request $request, int $tanda): JsonResponse
     {
@@ -103,7 +120,7 @@ class TandaMotorisController extends Controller
 
         $motoris = $this->motoris($request, (int) $baris->karyawan_id);
 
-        abort_unless($this->bolehCabut($baris, $user), 403, 'Anda tidak boleh mencabut tanda ini.');
+        abort_unless($this->bolehUbah($baris, $user), 403, 'Anda tidak boleh mencabut tanda ini.');
 
         // Dua pencabut bersamaan: hanya yang pertama berhasil.
         $berubah = DB::table('tanda_motoris')->where('id', $tanda)->whereNull('dicabut_at')
@@ -132,7 +149,8 @@ class TandaMotorisController extends Controller
         return config("marketama.tanda_motoris.{$kategori}", $kategori);
     }
 
-    private function bolehCabut(object $tanda, ?User $user): bool
+    /** Boleh mengubah catatan atau mencabut tanda ini: pemberinya (dengan hak Tambah) atau akun dengan hak Hapus. */
+    private function bolehUbah(object $tanda, ?User $user): bool
     {
         return $tanda->dicabut_at === null && (
             Akses::bisa($user, self::MENU, 'hapus')
@@ -150,7 +168,7 @@ class TandaMotorisController extends Controller
             'catatan' => $tanda->catatan,
             'oleh' => $tanda->dibuat_nama,
             'waktu' => JamLokal::format($tanda->created_at, 'Y-m-d H:i'),
-            'bisa_cabut' => $this->bolehCabut($tanda, $user),
+            'bisa_cabut' => $this->bolehUbah($tanda, $user),
         ];
     }
 }
