@@ -4,6 +4,7 @@ namespace App\Support\Karyawan;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -72,7 +73,19 @@ class BacaKtp
      */
     private static function tesseractTersedia(): bool
     {
-        return Process::run('which tesseract')->successful();
+        $proses = Process::run('which tesseract');
+
+        // Logging sementara untuk diagnosis kenapa deteksi Tesseract gagal padahal sudah terpasang --
+        // hapus lagi setelah penyebabnya ketemu.
+        Log::info('BacaKtp: cek tesseract', [
+            'successful' => $proses->successful(),
+            'exitCode' => $proses->exitCode(),
+            'output' => $proses->output(),
+            'errorOutput' => $proses->errorOutput(),
+            'PATH' => getenv('PATH'),
+        ]);
+
+        return $proses->successful();
     }
 
     private static function ocrTesseract(\GdImage $gambar): string
