@@ -103,12 +103,13 @@ return [
     // Jendela (hari, termasuk hari ini) tanda aktif yang dihitung di lencana "Ditandai" Lacak Motoris dan daftar "Tanda di tanggal lain".
     'tanda_motoris_hari' => 30,
 
-    // Ambang indikasi kunjungan berturutan berjarak dekat (spec 054): dipakai AnomaliJarakKunjungan sebagai
-    // fallback bila kuncinya belum pernah disimpan di pengaturan_admin; nilai yang berlaku sehari-hari diatur dari
-    // halaman Pengaturan Deteksi Kunjungan (database), bukan di sini.
+    // Bawaan ambang indikasi kunjungan berturutan berjarak dekat (spec 054, spec 058). Nilai yang berlaku disimpan di
+    // localStorage browser pengguna (tombol Ambang di modal Riwayat Lacak Motoris) dan dikirim bersama permintaan locations;
+    // angka ini dipakai AnomaliJarakKunjungan hanya bila permintaan tidak membawanya (harus sama dengan bawaan di
+    // resources/js/Support/deteksiKunjungan.js).
     'deteksi_jarak_kunjungan' => [
-        'jarak_dekat_meter' => 5,
-        'min_kunjungan_berturutan' => 4,
+        'jarak_dekat_meter' => 11,
+        'min_kunjungan_berturutan' => 3,
     ],
 
     // Kategori tanda motoris (kode => label) yang diberikan koordinator dari drawer Riwayat Lacak Motoris (TandaMotorisController).
@@ -781,11 +782,6 @@ return [
                             'slug' => 'waktu_aktif_app',
                             'title' => 'Hari Kerja Aktif',
                             'icon' => 'clock',
-                        ],
-                        [
-                            'slug' => 'deteksi_kunjungan',
-                            'title' => 'Pengaturan Deteksi Kunjungan',
-                            'icon' => 'flag',
                         ],
                         [
                             'slug' => 'target_setting',

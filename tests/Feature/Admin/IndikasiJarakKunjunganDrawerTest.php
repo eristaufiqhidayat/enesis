@@ -46,6 +46,24 @@ class IndikasiJarakKunjunganDrawerTest extends AdminTestCase
             ->assertJsonPath('indikasi_jarak_kunjungan.0.saran.kategori', 'pola_kunjungan_tidak_wajar');
     }
 
+    public function test_ambang_dari_query_menentukan_indikasi(): void
+    {
+        $this->kunjunganBerdekatan('2026-10-24'); // 4 kunjungan, jarak 0 m
+
+        // Minimum 5 tidak terpenuhi oleh 4 kunjungan; minimum 4 dan jarak 1 m terpenuhi.
+        $this->getJson(self::URL.'?sales_id=1&tanggal=2026-10-24&min_kunjungan=5')->assertOk()->assertJsonCount(0, 'indikasi_jarak_kunjungan');
+        $this->getJson(self::URL.'?sales_id=1&tanggal=2026-10-24&min_kunjungan=4&jarak_dekat_m=1')->assertOk()
+            ->assertJsonCount(1, 'indikasi_jarak_kunjungan')
+            ->assertJsonPath('indikasi_jarak_kunjungan.0.jumlah', 4);
+    }
+
+    public function test_ambang_query_yang_tidak_sah_ditolak(): void
+    {
+        $this->getJson(self::URL.'?sales_id=1&tanggal=2026-10-24&jarak_dekat_m=0')->assertUnprocessable();
+        $this->getJson(self::URL.'?sales_id=1&tanggal=2026-10-24&min_kunjungan=1')->assertUnprocessable();
+        $this->getJson(self::URL.'?sales_id=1&tanggal=2026-10-24&min_kunjungan=abc')->assertUnprocessable();
+    }
+
     public function test_dua_runtun_terpisah_dalam_sehari_sama_sama_dilaporkan(): void
     {
         DB::table('mk_outlet')->insert([
@@ -81,14 +99,6 @@ class IndikasiJarakKunjunganDrawerTest extends AdminTestCase
         ]);
 
         $this->getJson(self::URL.'?sales_id=1&tanggal=2026-10-25')->assertOk()->assertJsonPath('indikasi_jarak_kunjungan', []);
-    }
-
-    public function test_ambang_bisa_diubah_dari_pengaturan(): void
-    {
-        DB::table('pengaturan_admin')->insert(['kunci' => 'deteksi_kunjungan.min_kunjungan_berturutan', 'nilai' => '5', 'created_at' => now(), 'updated_at' => now()]);
-        $this->kunjunganBerdekatan('2026-10-26'); // hanya 4 berturutan, sekarang di bawah ambang 5
-
-        $this->getJson(self::URL.'?sales_id=1&tanggal=2026-10-26')->assertOk()->assertJsonPath('indikasi_jarak_kunjungan', []);
     }
 
     public function test_tanggal_tanpa_kunjungan_tidak_punya_indikasi(): void

@@ -55,7 +55,7 @@ describe('RuteHarianPeta', () => {
         jawab({ total: 2, locations: [{ lat: '-7.1', lng: '112.1' }, { lat: '-7.2', lng: '112.2' }], depo: null });
         const wrapper = await siapkan();
 
-        expect(fetch).toHaveBeenCalledWith('/tracking_sales_history_location/locations?sales_id=11&tanggal=2026-10-21');
+        expect(fetch).toHaveBeenCalledWith('/tracking_sales_history_location/locations?sales_id=11&tanggal=2026-10-21&jarak_dekat_m=11&min_kunjungan=3');
         expect(gambarRute).toHaveBeenCalledWith(L, map, lapisan, expect.objectContaining({ total: 2 }), 'Rudi');
         expect(wrapper.text()).toContain('2 titik lokasi');
     });
@@ -97,6 +97,24 @@ describe('RuteHarianPeta', () => {
 
         expect(wrapper.find('.spinner').exists()).toBe(false);
         expect(wrapper.text()).toContain('Gagal memuat data');
+    });
+
+    it('mengirim ambang deteksi jarak dekat dari localStorage ke endpoint Sales', async () => {
+        localStorage.setItem('enesis.deteksiKunjungan', JSON.stringify({ jarak_dekat_meter: 25, min_kunjungan_berturutan: 6 }));
+        jawab({ total: 0, locations: [], depo: null });
+        await siapkan();
+
+        expect(fetch).toHaveBeenCalledWith('/tracking_sales_history_location/locations?sales_id=11&tanggal=2026-10-21&jarak_dekat_m=25&min_kunjungan=6');
+        localStorage.clear();
+    });
+
+    it('tidak mengirim ambang ke endpoint Koordinator (tanpa analisis kunjungan)', async () => {
+        jawab({ total: 0, locations: [], depo: null });
+        mount(RuteHarianPeta, { props: { ...props, idParam: 'koordinator_id', locationsUrl: '/tracking_koordinator_history_location/locations' } });
+        useLeafletMap.mock.calls.at(-1)[1].onSiap(map, L);
+        await flushPromises();
+
+        expect(fetch).toHaveBeenCalledWith('/tracking_koordinator_history_location/locations?koordinator_id=11&tanggal=2026-10-21');
     });
 
     it('menampilkan pesan dan mengosongkan rute bila tidak ada titik', async () => {
@@ -252,11 +270,11 @@ describe('RuteHarianPeta', () => {
 
             await wrapper.find('[aria-label="Hari sebelumnya"]').trigger('click');
             await flushPromises();
-            expect(fetch).toHaveBeenLastCalledWith('/tracking_sales_history_location/locations?sales_id=11&tanggal=2026-10-20');
+            expect(fetch).toHaveBeenLastCalledWith('/tracking_sales_history_location/locations?sales_id=11&tanggal=2026-10-20&jarak_dekat_m=11&min_kunjungan=3');
 
             await wrapper.find('[aria-label="Hari berikutnya"]').trigger('click');
             await flushPromises();
-            expect(fetch).toHaveBeenLastCalledWith('/tracking_sales_history_location/locations?sales_id=11&tanggal=2026-10-21');
+            expect(fetch).toHaveBeenLastCalledWith('/tracking_sales_history_location/locations?sales_id=11&tanggal=2026-10-21&jarak_dekat_m=11&min_kunjungan=3');
         });
 
         it('menonaktifkan hari berikutnya bila tanggalnya hari ini', async () => {

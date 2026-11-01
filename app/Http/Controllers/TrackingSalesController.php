@@ -21,6 +21,9 @@ class TrackingSalesController extends Controller
         $data = $request->validate([
             'sales_id' => ['required', 'integer'],
             'tanggal' => ['required', 'date'],
+            // Ambang deteksi jarak dekat dari pengaturan di browser pengguna (opsional; bawaan dari config).
+            'jarak_dekat_m' => ['nullable', 'integer', 'min:1', 'max:10000'],
+            'min_kunjungan' => ['nullable', 'integer', 'min:2', 'max:100'],
         ]);
 
         $id = (int) $data['sales_id'];
@@ -54,7 +57,7 @@ class TrackingSalesController extends Controller
             'anomali_gps' => AnomaliGps::analisis($locations, $kunjungan->where('lokasi_palsu', true)->count()),
             // Indikasi kunjungan outlet berturutan berjarak dekat (spec 054): daftar runtun yang memenuhi ambang
             // (bisa lebih dari satu per hari), urut dari yang terpanjang; array kosong bila tidak ada.
-            'indikasi_jarak_kunjungan' => AnomaliJarakKunjungan::analisis($kunjungan),
+            'indikasi_jarak_kunjungan' => AnomaliJarakKunjungan::analisis($kunjungan, $request->integer('jarak_dekat_m') ?: null, $request->integer('min_kunjungan') ?: null),
             // Call dan Effective Call hari itu terhadap targetnya (pengaturan per depo, sama dengan KPI di aplikasi HP).
             'kpi' => $dalamCakupan ? $this->kpiHari($id, $data['tanggal'], $kunjungan->count()) : null,
         ]);

@@ -17,12 +17,19 @@ use Illuminate\Support\Collection;
 class AnomaliJarakKunjungan
 {
     /**
+     * Ambang (jarak dekat dalam meter dan minimum kunjungan berturutan) dikirim pemanggil: modal Riwayat membacanya dari
+     * localStorage browser pengguna dan meneruskannya lewat query endpoint locations; tanpa nilai dipakai bawaan di
+     * config('marketama.deteksi_jarak_kunjungan').
+     *
      * @param  Collection<int, object>  $kunjungan  hasil KunjunganHarian::untuk, terurut jam checkin
      * @return array<int, array{jumlah: int, kunjungan_id: array<int, int>, outlet_id: array<int, int>, dari_jam: string, sampai_jam: string, saran: array{kategori: string, catatan: string}}> urut dari yang terpanjang; kosong bila tidak ada runtun yang memenuhi ambang
      */
-    public static function analisis(Collection $kunjungan): array
+    public static function analisis(Collection $kunjungan, ?int $jarakDekatMeter = null, ?int $minKunjunganBerturutan = null): array
     {
-        $ambang = PengaturanDeteksiKunjungan::ambil();
+        $ambang = [
+            'jarak_dekat_meter' => $jarakDekatMeter ?? (int) config('marketama.deteksi_jarak_kunjungan.jarak_dekat_meter', 11),
+            'min_kunjungan_berturutan' => $minKunjunganBerturutan ?? (int) config('marketama.deteksi_jarak_kunjungan.min_kunjungan_berturutan', 3),
+        ];
         $kunjungan = $kunjungan->values();
 
         if ($kunjungan->isEmpty()) {

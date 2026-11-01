@@ -7,9 +7,11 @@ import Spinner from '@/Components/ui/atoms/Spinner.vue';
 import Modal from '@/Components/ui/molecules/Modal.vue';
 import Tabs from '@/Components/ui/molecules/Tabs.vue';
 import { useLeafletMap } from '@/Composables/useLeafletMap.js';
+import { bacaDeteksi } from '@/Support/deteksiKunjungan.js';
 import { angka, angkaRingkas, desimal, durasiSingkat, jarakSingkat, ringkasanPenjualan } from '@/Support/format.js';
 import { geserTanggal, hariIni, ringkasanKunjungan, saringKunjungan, susunTemuan, tandaKunjungan, tingkatKunjungan } from '@/Support/pusatKendali.js';
 import { gambarKunjungan, gambarLompatan, gambarRute } from '@/Support/rute.js';
+import PengaturanDeteksiMotoris from './PengaturanDeteksiMotoris.vue';
 import RingkasanHariMotoris from './RingkasanHariMotoris.vue';
 import TandaMotoris from './TandaMotoris.vue';
 import TandaOutlet from './TandaOutlet.vue';
@@ -139,7 +141,14 @@ function muat() {
     aktifId.value = null;
     sorotIds.value = [];
     sudahMuat.value = false;
-    fetch(props.locationsUrl + '?' + new URLSearchParams({ [props.idParam]: props.id, tanggal }))
+    const parameter = { [props.idParam]: props.id, tanggal };
+    // Ambang deteksi jarak dekat dari pengaturan di browser ini (localStorage); hanya endpoint Sales yang menganalisis kunjungan.
+    if (props.idParam === 'sales_id') {
+        const deteksi = bacaDeteksi();
+        parameter.jarak_dekat_m = deteksi.jarak_dekat_meter;
+        parameter.min_kunjungan = deteksi.min_kunjungan_berturutan;
+    }
+    fetch(props.locationsUrl + '?' + new URLSearchParams(parameter))
         .then((r) => r.json())
         .then(async (data) => {
             // Respons lama (tanggal sudah diganti atau drawer sudah ditutup) dibuang.
@@ -225,6 +234,8 @@ watch(tanggalDipilih, muat);
             </div>
             <span class="flex items-center gap-1.5 text-sm text-gray-500" :aria-busy="memuatData"><Spinner v-if="memuatData" />{{ memuatData ? 'Memuat titik lokasi...' : info }}</span>
             <TemuanMotoris :temuan="temuan" :siap="sudahMuat" @fokus="fokusTemuan" />
+            <!-- Ambang deteksi jarak dekat (localStorage) hanya relevan untuk Sales, satu-satunya yang punya kunjungan outlet. -->
+            <PengaturanDeteksiMotoris v-if="idParam === 'sales_id'" @berubah="muat" />
         </div>
         <TandaMotoris v-if="tandaUrl" class="ml-auto" :url="tandaUrl" :sales-id="id" :tanggal="tanggalDipilih" :saran="peringatan?.saran ?? null" @pilih-tanggal="tanggalDipilih = $event" />
     </div>
