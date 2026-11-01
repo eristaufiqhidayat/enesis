@@ -406,7 +406,13 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     .rute-harian-kolom { @apply max-h-64 space-y-2 overflow-y-auto lg:max-h-none; }
     /* Tanda motoris (potensi kecurangan dll.) di kolom kiri drawer Riwayat: form, daftar, dan satu tanda per kartu. */
     .tanda-motoris { @apply relative space-y-2 rounded-md border border-gray-200 bg-white p-2; }
+    /* Tanda motoris di baris header modal Riwayat: tanpa kotak, sejajar dengan tanggal, status, dan Temuan di kirinya. */
+    .tanda-motoris.tanda-motoris-datar { @apply rounded-none border-0 bg-transparent p-0; }
+    /* space-y-2 memberi margin bawah pada baris header begitu ada saudara sesudahnya (form/panel melayang), menambah tinggi dan mendorong konten di bawah header; di varian datar tidak ada jarak antarelemen. */
+    .tanda-motoris.tanda-motoris-datar > * { @apply mb-0; }
     .tanda-motoris-form { @apply space-y-2 rounded-md bg-gray-50 p-2; }
+    /* Form Tandai motoris melayang (absolute) di bawah header, sama seperti panel daftar tanda, supaya tidak mendorong peta dan daftar kunjungan. */
+    .tanda-motoris-form.tanda-motoris-form-melayang { @apply absolute left-0 right-0 top-full z-30 mt-1 rounded-md border border-gray-200 bg-white p-3 shadow-lg; }
     .tanda-motoris-daftar { @apply m-0 space-y-1 p-0; }
     .tanda-motoris-item { @apply rounded-md border border-red-200 bg-red-50/40 px-2 py-1.5; }
     /* Daftar tanda melayang di atas konten saat counter "Tanda motoris" diklik, supaya tidak mendorong tata letak. */
@@ -507,6 +513,7 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     /* Drawer: panel setinggi layar yang menempel di kanan (Modal.vue placement="kanan"). Header dan footer tetap, body yang bergulir. */
     .modal-container-kanan { @apply items-stretch justify-end p-0; }
     .modal-drawer { @apply flex h-full w-full max-w-3xl flex-col bg-white shadow-lg; }
+    .modal-drawer.modal-drawer-sm { @apply max-w-md; }
     .modal-drawer.modal-drawer-xl { @apply max-w-6xl; }
     .modal-drawer.modal-drawer-2xl { @apply max-w-[90vw]; }
     .modal-drawer .modal-header, .modal-drawer .modal-footer { @apply shrink-0; }
@@ -515,6 +522,10 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     @keyframes modal-drawer-keluar { from { transform: translateX(0); } to { transform: translateX(100%); } }
 
     /* Transisi buka/tutup modal (lihat <Transition> di Modal.vue). */
+    /* Panel melayang (flyover: Temuan, Tanda motoris): muncul memudar sambil turun sedikit, keluar lebih cepat. */
+    .flyover-enter-active { @apply transition duration-150 ease-out; }
+    .flyover-leave-active { @apply transition duration-100 ease-in; }
+    .flyover-enter-from, .flyover-leave-to { @apply opacity-0 -translate-y-1; }
     .modal-backdrop-enter-active, .modal-backdrop-leave-active { @apply transition-opacity duration-200; }
     .modal-backdrop-enter-from, .modal-backdrop-leave-to { @apply opacity-0; }
     .modal-content-enter-active { @apply transition duration-200 ease-out; }
@@ -535,6 +546,7 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     .stat-label { @apply mt-3 mb-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-gray-400; }
     .stat-row { @apply flex items-center justify-between gap-2 border-b border-dashed border-gray-200 py-1; }
 
+    .skeleton { @apply rounded bg-gray-200; }
     .spinner { @apply inline-block h-3 w-3 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600 align-[-2px]; }
     .spinner-md { @apply h-5 w-5 align-middle; }
 }
@@ -557,6 +569,52 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     .progress { @apply h-2 overflow-hidden rounded bg-gray-200; }
     .progress-bar { @apply h-2 rounded bg-blue-600 transition-all; }
     .alert-warning { @apply bg-amber-50 text-amber-800 border border-amber-200; }
+    /* Tombol "Temuan" + panel melayang di modal Riwayat Lacak Motoris (TemuanMotoris.vue): warna mengikuti tingkat tertinggi. */
+    .temuan-motoris { @apply relative; }
+    .temuan-tombol { @apply inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-semibold; }
+    .temuan-tombol-bahaya { @apply border-red-300 bg-red-50 text-red-700 hover:bg-red-100; }
+    .temuan-tombol-waspada { @apply border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100; }
+    .temuan-tombol-info { @apply border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100; }
+    .temuan-tombol-bersih { @apply cursor-default border-green-200 bg-green-50 text-green-700; }
+    .temuan-ikon { @apply h-3.5 w-3.5 transition-transform; }
+    .temuan-panel { @apply absolute left-0 top-full z-30 mt-1 max-h-[60vh] w-[26rem] max-w-[85vw] overflow-y-auto rounded-md border border-gray-200 bg-white p-2 shadow-lg; }
+    .temuan-item { @apply flex w-full items-start gap-2 rounded-md border px-2 py-1.5 text-left hover:bg-blue-50; }
+    .temuan-item-bahaya { @apply border-red-200; }
+    .temuan-item-waspada { @apply border-amber-200; }
+    .temuan-item-info { @apply border-gray-200; }
+    .temuan-tingkat { @apply mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase leading-tight; }
+    .temuan-tingkat-bahaya { @apply bg-red-600 text-white; }
+    .temuan-tingkat-waspada { @apply bg-amber-100 text-amber-800; }
+    .temuan-tingkat-info { @apply bg-sky-100 text-sky-800; }
+    /* Strip KPI hari itu (RingkasanHariMotoris.vue). */
+    .kpi-hari { @apply m-0 grid grid-cols-2 gap-2 sm:grid-cols-5; }
+    .kpi-item { @apply rounded-md border border-gray-200 bg-white px-3 py-1.5; }
+    .kpi-label { @apply text-[11px] font-semibold uppercase tracking-wide text-gray-500; }
+    .kpi-nilai { @apply m-0 text-base font-semibold text-gray-800; }
+    .kpi-nilai-baik { @apply text-green-700; }
+    .kpi-nilai-waspada { @apply text-orange-600; }
+    .kpi-catatan { @apply ml-1 text-xs font-normal text-gray-500; }
+    /* Kunjungan yang disorot dari klik temuan, dan legenda peta rute harian. */
+    /* Peringatan pada kartu kunjungan: chip outline berikon, warna sama dengan tingkat di panel Temuan (hasil beli/tidak beli ditunjukkan warna nomor). */
+    /* Tombol bendera di samping kartu: abu-abu berbingkai = belum ditandai; bendera merah terisi di atas latar putih = outlet sudah ditandai. */
+    .btn.tombol-tanda-belum { @apply border-gray-200 text-gray-400 hover:bg-gray-50 hover:text-gray-600; }
+    .btn.tombol-tanda-aktif { @apply border-red-600 bg-red-600 text-white hover:bg-red-700; }
+    .tombol-tanda-ditandai svg, .tombol-tanda-aktif svg { @apply fill-current; }
+    .tanda-kunjungan { @apply inline-flex items-center gap-0.5 rounded border bg-white px-1.5 py-0.5 text-[11px] font-semibold leading-tight; }
+    .tanda-kunjungan-ikon { @apply h-3 w-3; }
+    .tanda-kunjungan-bahaya { @apply border-red-400 text-red-700; }
+    .tanda-kunjungan-waspada { @apply border-amber-400 text-amber-800; }
+    .tanda-kunjungan-info { @apply border-gray-300 text-gray-500; }
+    .rute-kunjungan.rute-kunjungan-bahaya { @apply border-l-4 border-l-red-500; }
+    .rute-kunjungan.rute-kunjungan-waspada { @apply border-l-4 border-l-amber-400; }
+    .rute-kunjungan.rute-kunjungan-sorot { @apply border-amber-400 bg-amber-50 ring-1 ring-amber-300; }
+    .peta-rute-wadah { @apply relative lg:h-full lg:min-h-0; }
+    .peta-legenda { @apply absolute bottom-2 left-2 z-10 flex max-w-[18rem] flex-wrap gap-x-3 gap-y-1 rounded-md bg-white/95 px-2 py-1.5 text-[11px] text-gray-700 shadow; }
+    .peta-legenda-item { @apply inline-flex items-center gap-1; }
+    .peta-legenda-titik { @apply inline-block h-3 w-3 rounded-full border border-white shadow-sm; }
+    .peta-legenda-cincin { @apply inline-block h-3 w-3 rounded-full border-2 border-red-600 bg-white; }
+    .peta-legenda-garis { @apply inline-block h-0 w-4 border-t-[3px] border-blue-600; }
+    .peta-legenda-garis.peta-legenda-lompatan { @apply border-dashed border-red-600; }
 }
 
 /* Master produk (Produk, Produk Kompetitor): foto produk di daftar dan form. */

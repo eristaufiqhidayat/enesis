@@ -55,12 +55,11 @@ Route::middleware(['auth', 'wajib-ganti-password'])->group(function () {
     Route::get('/tracking_koordinator_history_location/counts', [TrackingKoordinatorController::class, 'counts'])
         ->middleware('hak:tracking_koordinator_history_location')->name('tracking-koordinator.counts');
 
-    Route::get('/tracking_sales_history_location', [TrackingSalesController::class, 'index'])
-        ->middleware('hak:tracking_sales_history_location');
+    // Halaman Riwayat Lokasi sales sudah digantikan modal Riwayat di Lacak Motoris; tautan lama dialihkan ke sana.
+    // Slug ini kini hanya hak akses (lihat 'tanpa_halaman' di config) untuk endpoint `locations` yang dipakai modal.
+    Route::redirect('/tracking_sales_history_location', '/tracking_sales');
     Route::get('/tracking_sales_history_location/locations', [TrackingSalesController::class, 'locations'])
         ->middleware('hak:tracking_sales_history_location')->name('tracking-sales.locations');
-    Route::get('/tracking_sales_history_location/counts', [TrackingSalesController::class, 'counts'])
-        ->middleware('hak:tracking_sales_history_location')->name('tracking-sales.counts');
 
     // Peta sebaran sales se-Indonesia (ikon peta di kanan atas); data = Tracking Last Seen Sales.
     Route::get('/peta_sebaran_sales', [PetaSebaranSalesController::class, 'index'])

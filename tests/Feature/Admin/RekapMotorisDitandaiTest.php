@@ -163,11 +163,11 @@ class RekapMotorisDitandaiTest extends AdminTestCase
         $this->actingAs($dengan)->get('/motoris_ditandai')->assertOk();
     }
 
-    public function test_rekap_adalah_tab_ketiga_dan_tidak_menambah_entri_sidebar(): void
+    public function test_rekap_adalah_tab_kedua_dan_tidak_menambah_entri_sidebar(): void
     {
         $this->get('/motoris_ditandai')->assertOk()->assertInertia(fn (Assert $p) => $p
-            ->where('tabHalaman.2', ['slug' => 'motoris_ditandai', 'label' => 'Ditandai'])
-            ->has('tabHalaman', 3)
+            ->where('tabHalaman.1', ['slug' => 'motoris_ditandai', 'label' => 'Ditandai'])
+            ->has('tabHalaman', 2)
         );
 
         $sidebar = collect(Akses::menu($this->admin))->flatMap(fn ($g) => $g['items'])->pluck('slug')->all();

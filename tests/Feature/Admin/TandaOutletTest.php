@@ -16,8 +16,8 @@ class TandaOutletTest extends AdminTestCase
         parent::setUp();
 
         DB::table('mk_outlet')->insert([
-            ['id' => 10, 'kode' => 'OUT-10', 'nama' => 'Warung Aming'],
-            ['id' => 20, 'kode' => 'OUT-20', 'nama' => 'Toko Dua'],
+            ['id' => 10, 'kode' => 'OUT-10', 'nama' => 'Warung Aming', 'dibuat_oleh' => 'Budi Santoso', 'dibuat_pada' => '2026-10-22 11:23:00'],
+            ['id' => 20, 'kode' => 'OUT-20', 'nama' => 'Toko Dua', 'dibuat_oleh' => null, 'dibuat_pada' => null],
         ]);
     }
 
@@ -73,6 +73,30 @@ class TandaOutletTest extends AdminTestCase
         $this->assertStringContainsString('Outlet fiktif', $catatan->keterangan);
     }
 
+    public function test_tanda_kembar_pada_outlet_dan_kategori_yang_sama_ditolak_dengan_nama_penanda(): void
+    {
+        $koor = $this->koordinator();
+        $this->tandai($koor)->assertCreated();
+
+        $this->tandai($koor)->assertUnprocessable()->assertJsonValidationErrors('kategori');
+        $res = $this->tandai($koor);
+        $this->assertStringContainsString('sudah ditandai oleh koor', $res->json('errors.kategori.0'));
+        $this->assertSame(1, DB::table('tanda_outlet')->where('outlet_id', 10)->count());
+
+        // Kategori lain pada outlet yang sama, dan kategori yang sama pada outlet lain, tetap boleh.
+        $this->tandai($koor, 10, ['kategori' => 'alamat_tidak_sesuai'])->assertCreated();
+        $this->tandai($koor, 20)->assertCreated();
+    }
+
+    public function test_kategori_yang_tandanya_sudah_dicabut_boleh_ditandai_lagi(): void
+    {
+        $koor = $this->koordinator();
+        $id = $this->tandai($koor)->json('id');
+        $this->actingAs($koor)->deleteJson(self::URL.'/'.$id)->assertOk();
+
+        $this->tandai($koor)->assertCreated();
+    }
+
     public function test_catatan_boleh_kosong(): void
     {
         $this->tandai($this->koordinator(), 10, ['catatan' => null])->assertCreated()->assertJsonPath('catatan', null);
@@ -91,6 +115,20 @@ class TandaOutletTest extends AdminTestCase
         $this->assertSame([$aktif], array_column($res->json('tanda'), 'id'));
         $res->assertJsonPath('bisa_tambah', true)
             ->assertJsonPath('kategori.alamat_tidak_sesuai', 'Alamat/lokasi tidak sesuai');
+    }
+
+    public function test_daftar_memuat_pendaftar_outlet_dan_waktunya(): void
+    {
+        $koor = $this->koordinator();
+        $res = $this->actingAs($koor)->getJson(self::URL.'?outlet_id=10')->assertOk();
+
+        $res->assertJsonPath('outlet.nama', 'Warung Aming')
+            ->assertJsonPath('outlet.dibuat_oleh', 'Budi Santoso')
+            ->assertJsonPath('outlet.dibuat_pada', '2026-10-22 11:23:00');
+
+        $this->actingAs($koor)->getJson(self::URL.'?outlet_id=20')->assertOk()
+            ->assertJsonPath('outlet.dibuat_oleh', null)
+            ->assertJsonPath('outlet.dibuat_pada', null);
     }
 
     public function test_akun_hanya_lihat_bisa_melihat_tapi_tidak_menandai(): void

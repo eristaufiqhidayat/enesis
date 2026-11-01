@@ -97,9 +97,11 @@ class KunjunganDrawerRiwayatTest extends AdminTestCase
         $kunjungan(3, ['tidak_beli_keterangan' => 'harga naik']);
         $kunjungan(4, ['keterangan_lama' => 'Stok Banyak', 'sumber' => 'lama', 'sumber_id' => 9001]);
         $kunjungan(5, []);
+        // Kategori lama 1 = jenis kunjungan "Penjualan Produk", bukan alasan tidak beli.
+        $kunjungan(6, ['kategori_lama' => 1, 'keterangan_lama' => 'Penjualan Produk', 'sumber' => 'lama', 'sumber_id' => 9002]);
 
         $this->assertSame(
-            ['Pemilik tidak di tempat — sedang keluar', 'kode_baru', 'harga naik', 'Stok Banyak', null],
+            ['Pemilik tidak di tempat — sedang keluar', 'kode_baru', 'harga naik', 'Stok Banyak', null, null],
             array_column($this->getJson(self::URL.'?sales_id=3&tanggal=2026-10-24')->assertOk()->json('kunjungan'), 'keterangan')
         );
     }

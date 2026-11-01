@@ -90,10 +90,10 @@ describe('TandaMotoris', () => {
     });
 
     it('tombol Tandai hanya tampil bila akun punya hak Tambah', async () => {
-        expect((await siapkan()).text()).toContain('Tandai');
+        expect((await siapkan()).text()).toContain('Tambah tanda');
 
         bisaTambah = false;
-        expect((await siapkan()).text()).not.toContain('Tandai');
+        expect((await siapkan()).text()).not.toContain('Tambah tanda');
     });
 
     it('tombol Cabut hanya pada tanda yang boleh dicabut', async () => {
@@ -163,6 +163,20 @@ describe('TandaMotoris', () => {
         expect(wrapper.find('select').element.value).toBe('');
         expect(wrapper.find('textarea').element.value).toBe('');
         expect(wrapper.find('form').text()).not.toContain('Terisi dari peringatan');
+    });
+
+    it('tombol Tandai tetap ada saat form terbuka dan menutup form bila diklik lagi', async () => {
+        const wrapper = await siapkan();
+        const tombol = () => wrapper.findAll('button').find((b) => /^(Tandai|Tambah tanda)$/.test(b.text()));
+
+        await tombol().trigger('click');
+        expect(wrapper.find('form').exists()).toBe(true);
+        expect(tombol().classes()).toContain('tombol-tanda-aktif');
+        expect(tombol().attributes('aria-expanded')).toBe('true');
+
+        await tombol().trigger('click');
+        expect(wrapper.find('form').exists()).toBe(false);
+        expect(tombol().classes()).not.toContain('tombol-tanda-aktif');
     });
 
     it('Batal menutup dan mengosongkan form tanpa mengirim apa pun', async () => {
@@ -266,6 +280,55 @@ describe('TandaMotoris', () => {
 
             expect(wrapper.find('.tanda-motoris-lain').exists()).toBe(false);
         });
+    });
+
+    it('klik di luar menyembunyikan form tetapi isian yang sudah diketik tetap ada saat dibuka lagi', async () => {
+        const wrapper = await siapkan();
+        const tombol = () => wrapper.findAll('button').find((b) => /^(Tandai|Tambah tanda)$/.test(b.text()));
+
+        await tombol().trigger('click');
+        await wrapper.find('textarea').setValue('Catatan saya');
+        document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        await flushPromises();
+        expect(wrapper.find('form').exists()).toBe(false);
+
+        await tombol().trigger('click');
+        expect(wrapper.find('textarea').element.value).toBe('Catatan saya');
+    });
+
+    it('klik di luar tetap menutup panel walau elemen yang diklik menghentikan propagasi (mis. peta)', async () => {
+        lainnya = [{ id: 9, tanggal: '2026-10-22', kategori_label: 'Lokasi / GPS palsu', oleh: 'koor' }];
+        const wrapper = await siapkan();
+        await bukaLainnya(wrapper);
+        const peta = document.createElement('div');
+        peta.addEventListener('click', (e) => e.stopPropagation());
+        document.body.append(peta);
+
+        peta.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        await flushPromises();
+
+        expect(wrapper.find('.tanda-motoris-lain').exists()).toBe(false);
+    });
+
+    it('memberi keterangan hanya pada kategori yang sudah punya tanda aktif', async () => {
+        daftar = [tanda[0]];
+        const wrapper = await siapkan();
+        await wrapper.find('button.btn-outline-danger').trigger('click');
+
+        const opsi = wrapper.findAll('option').map((o) => o.text());
+        expect(opsi).toContain('Penjualan fiktif (sudah ditandai)');
+        expect(opsi).toContain('Lokasi / GPS palsu');
+    });
+
+    it('menampilkan pesan penolakan server di bawah kategori', async () => {
+        balasan = { POST: { ok: false, status: 422, json: () => Promise.resolve({ errors: { kategori: ['Kategori ini sudah ditandai oleh koor pada 2026-10-25 09:00.'] } }) } };
+        pasangFetch();
+        const wrapper = await siapkan();
+        await wrapper.find('button.btn-outline-danger').trigger('click');
+        await wrapper.find('form').trigger('submit');
+        await flushPromises();
+
+        expect(wrapper.find('form').text()).toContain('Kategori ini sudah ditandai oleh koor');
     });
 
     it('menampilkan pesan bila daftar gagal dimuat', async () => {

@@ -1,15 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { infoRiwayat, riwayatTabel, tabelLastSeen } from './riwayat.js';
 
-const tigaTab = [
-    { slug: 'tracking_sales', label: 'Last Seen' },
-    { slug: 'tracking_sales_history_location', label: 'Riwayat Lokasi' },
-    { slug: 'motoris_ditandai', label: 'Ditandai' },
-];
-const tabKoordinator = [
-    { slug: 'tracking_koordinator', label: 'Last Seen' },
-    { slug: 'tracking_koordinator_history_location', label: 'Riwayat Lokasi' },
-];
+const tigaTab = ['tracking_sales', 'tracking_sales_history_location', 'motoris_ditandai'];
+const tabKoordinator = ['tracking_koordinator', 'tracking_koordinator_history_location'];
 const sales = { id: 11, nama: 'Rudi', terakhir_terlihat: '2026-10-22 11:00:00' };
 
 describe('infoRiwayat', () => {
@@ -25,7 +18,7 @@ describe('infoRiwayat', () => {
         expect(infoRiwayat('tracking_last_seen_sales', sales, urutTerbalik).slug).toBe('tracking_sales_history_location');
     });
 
-    it('Last Seen Koordinator: memakai halaman riwayat koordinator dan tidak butuh hak Sales', () => {
+    it('Last Seen Koordinator: memakai hak riwayat koordinator dan tidak butuh hak Sales', () => {
         const koordinator = { id: 5, nama: 'Koor', terakhir_terlihat: '2026-10-21 09:00:00' };
 
         expect(infoRiwayat('tracking_last_seen_koordinator', koordinator, tabKoordinator)).toEqual({
@@ -45,7 +38,7 @@ describe('infoRiwayat', () => {
         });
     });
 
-    it('null bila akun tidak boleh membuka halaman riwayat', () => {
+    it('null bila akun tidak punya hak riwayat', () => {
         expect(infoRiwayat('tracking_last_seen_sales', sales, [tigaTab[0]])).toBeNull();
         expect(infoRiwayat('tracking_last_seen_sales', sales, [])).toBeNull();
         expect(infoRiwayat('tracking_last_seen_sales', sales, undefined)).toBeNull();

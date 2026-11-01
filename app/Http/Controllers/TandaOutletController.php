@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 // Tanda outlet: koordinator menandai outlet yang berpotensi curang (outlet fiktif, alamat tidak sesuai, dll.) dari
 // drawer Riwayat Lacak Motoris atau menu All Outlet. Berbeda dari tanda motoris, tanda ini melekat pada OUTLET
@@ -34,6 +35,12 @@ class TandaOutletController extends Controller
             ->map(fn ($t) => $this->bentuk($t, $request->user()));
 
         return response()->json([
+            // Siapa yang mendaftarkan outlet dan kapan (data asal Marketama), sebagai konteks sebelum menandai.
+            'outlet' => [
+                'nama' => $outlet->nama,
+                'dibuat_oleh' => $outlet->dibuat_oleh,
+                'dibuat_pada' => $outlet->dibuat_pada,
+            ],
             'tanda' => $tanda->values(),
             'bisa_tambah' => Akses::bisa($request->user(), self::MENU, 'tambah'),
             'kategori' => config('marketama.tanda_outlet'),
@@ -50,6 +57,13 @@ class TandaOutletController extends Controller
 
         $outlet = $this->outlet((int) $data['outlet_id']);
         $user = $request->user();
+
+        // Outlet berada di polygon satu motoris (satu koordinator): tanda kembar dengan kategori sama tidak menambah informasi.
+        $sudah = DB::table('tanda_outlet')->where('outlet_id', $outlet->id)->where('kategori', $data['kategori'])->whereNull('dicabut_at')->first();
+
+        if ($sudah) {
+            throw ValidationException::withMessages(['kategori' => "Kategori ini sudah ditandai oleh {$sudah->dibuat_nama} pada ".JamLokal::format($sudah->created_at, 'Y-m-d H:i').'.']);
+        }
 
         $id = DB::table('tanda_outlet')->insertGetId([
             'outlet_id' => $outlet->id,
@@ -90,7 +104,7 @@ class TandaOutletController extends Controller
     /** Outlet master (mk_outlet); selain itu 404. */
     private function outlet(int $id): object
     {
-        $outlet = DB::table('mk_outlet')->where('id', $id)->first(['id', 'nama']);
+        $outlet = DB::table('mk_outlet')->where('id', $id)->first(['id', 'nama', 'dibuat_oleh', 'dibuat_pada']);
 
         abort_unless($outlet, 404);
 

@@ -1,12 +1,14 @@
 <script setup>
-import { onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import Badge from '@/Components/ui/atoms/Badge.vue';
 import Button from '@/Components/ui/atoms/Button.vue';
 import FieldError from '@/Components/ui/atoms/FieldError.vue';
 import Icon from '@/Components/ui/atoms/Icon.vue';
 import Label from '@/Components/ui/atoms/Label.vue';
 import Select from '@/Components/ui/atoms/Select.vue';
+import Skeleton from '@/Components/ui/atoms/Skeleton.vue';
 import Textarea from '@/Components/ui/atoms/Textarea.vue';
+import { tanggalWaktuPendek } from '@/Support/format.js';
 
 // Tanda outlet (TandaOutletController): koordinator menandai outlet yang berpotensi curang (outlet fiktif, alamat
 // tidak sesuai, dll.). Berbeda dari tanda motoris, tanda ini melekat ke OUTLET (bukan per kunjungan/tanggal), jadi
@@ -24,7 +26,13 @@ const props = defineProps({
 const emit = defineEmits(['berubah']);
 
 const tanda = ref([]);
+// Pendaftar outlet { nama, dibuat_oleh, dibuat_pada } dari master outlet; null sebelum dimuat.
+const outlet = ref(null);
 const kategori = ref({});
+// Pilihan kategori; yang sudah punya tanda aktif diberi keterangan (server menolak tanda kembar).
+const pilihanKategori = computed(() => Object.fromEntries(
+    Object.entries(kategori.value).map(([kunci, label]) => [kunci, tanda.value.some((t) => t.kategori === kunci) ? `${label} (sudah ditandai)` : label]),
+));
 const bisaTambah = ref(false);
 const memuat = ref(true);
 const formBuka = ref(false);
@@ -34,6 +42,13 @@ const menyimpan = ref(false);
 // Galat validasi per kolom ({ kategori: ['...'] }) dan pesan umum untuk galat lain.
 const galat = ref({});
 const pesan = ref(null);
+
+// "22 Okt 2026 · 11:23" bila formatnya Y-m-d H:i; selain itu apa adanya dari sumber.
+function waktuPendaftaran(nilai) {
+    const waktu = tanggalWaktuPendek(nilai);
+
+    return waktu ? `${waktu.tanggal} · ${waktu.jam}` : nilai;
+}
 
 const csrf = () => document.querySelector('meta[name="csrf-token"]')?.content;
 
@@ -50,6 +65,7 @@ async function muat() {
         // Respons lama (outlet sudah diganti) dibuang.
         if (outletId !== props.outletId) return;
         tanda.value = data.tanda;
+        outlet.value = data.outlet ?? null;
         kategori.value = data.kategori;
         bisaTambah.value = data.bisa_tambah;
     } catch {
@@ -120,6 +136,8 @@ async function cabut(item) {
 onMounted(muat);
 watch(() => props.outletId, () => {
     batal();
+    outlet.value = null;
+    tanda.value = [];
     muat();
 });
 </script>
@@ -129,8 +147,18 @@ watch(() => props.outletId, () => {
         <div class="flex flex-wrap items-center gap-2">
             <h6 class="font-semibold text-sm mb-0">Tanda outlet</h6>
             <Badge v-if="tanda.length" variant="danger">{{ tanda.length }}</Badge>
-            <Button v-if="bisaTambah && !formBuka" variant="outline-danger" class="ml-auto" @click="bukaForm"><Icon name="flag" class="me-1" />Tandai</Button>
+            <Button v-if="bisaTambah && !formBuka" variant="outline-danger" class="ml-auto" @click="bukaForm"><Icon name="flag" class="me-1" />{{ tanda.length ? 'Tambah tanda' : 'Tandai' }}</Button>
         </div>
+
+        <!-- Kerangka dua baris (pendaftar outlet dan satu tanda) selama data awal diambil; muat ulang setelah simpan/cabut tidak mengosongkan isi. -->
+        <div v-if="memuat && !outlet" class="animate-pulse space-y-2" role="status" aria-busy="true" aria-label="Memuat data outlet">
+            <Skeleton class="h-3 w-3/4" />
+            <Skeleton class="h-12 w-full" />
+        </div>
+
+        <p v-if="outlet" class="mb-0 text-xs text-gray-600">
+            <span class="font-semibold">Didaftarkan oleh:</span> {{ outlet.dibuat_oleh || 'tidak diketahui' }}<template v-if="outlet.dibuat_pada"> · {{ waktuPendaftaran(outlet.dibuat_pada) }}</template>
+        </p>
 
         <p v-if="pesan" class="mb-0 text-xs text-red-600">{{ pesan }}</p>
 
@@ -138,7 +166,7 @@ watch(() => props.outletId, () => {
             <p v-if="saran" class="mb-0 text-xs text-gray-500">Terisi dari indikasi jarak antar kunjungan; ubah bila perlu.</p>
             <div>
                 <Label>Kategori</Label>
-                <Select v-model="kategoriDipilih" :options="kategori" placeholder="Pilih kategori" aria-label="Kategori tanda" />
+                <Select v-model="kategoriDipilih" :options="pilihanKategori" placeholder="Pilih kategori" aria-label="Kategori tanda" />
                 <FieldError v-if="galat.kategori">{{ galat.kategori[0] }}</FieldError>
             </div>
             <div>

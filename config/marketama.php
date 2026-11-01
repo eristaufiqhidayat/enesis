@@ -42,7 +42,7 @@ return [
         // Utama
         'monitoring_harian_sales', 'rekap_pencapaian_sku', 'summary_all_depo', 'motoris_report',
         // Canvassing
-        'checkin_depo', 'lap_checkin_checkout', 'tracking_sales_history_location', 'tracking_koordinator_history_location',
+        'checkin_depo', 'lap_checkin_checkout', 'tracking_koordinator_history_location',
         // Aktivitas Canvas
         'checkin_outlet', 'lap_checkin_outlet',
         // Absensi
@@ -71,13 +71,16 @@ return [
         'backup_data',
     ],
 
+    // Slug yang menentukan boleh tidaknya akun membuka modal Riwayat dari tabel (shared prop slugRiwayat).
+    'slug_riwayat' => ['tracking_sales', 'tracking_sales_history_location', 'tracking_koordinator_history_location'],
+
     // Halaman terpisah (rute & hak sendiri) yang saling terhubung lewat baris tab di atas halaman:
     // satu kelompok = slug => label tab, dalam urutan tab. Tab hanya memuat halaman yang boleh dibuka akun
     // (lihat Akses::tabHalaman); halaman Last Seen juga memakai pasangan riwayatnya untuk tautan "Lihat riwayat".
     // Di sidebar, slug pertama tiap kelompok (induk) mewakili seluruh kelompok dengan 'judul_sidebar'; slug lainnya
     // disembunyikan selama induknya bisa dibuka akun (lihat Akses::satukanTab). Matriks hak role tetap per slug.
     'tab_halaman' => [
-        ['tracking_sales' => 'Last Seen', 'tracking_sales_history_location' => 'Riwayat Lokasi', 'motoris_ditandai' => 'Ditandai'],
+        ['tracking_sales' => 'Last Seen', 'motoris_ditandai' => 'Ditandai'],
         ['tracking_koordinator' => 'Last Seen', 'tracking_koordinator_history_location' => 'Riwayat Lokasi'],
     ],
 
@@ -187,9 +190,11 @@ return [
                     'icon' => 'map-pin',
                 ],
                 [
+                    // Hak melihat modal Riwayat di Lacak Motoris (endpoint `locations`); tidak punya halaman sendiri.
                     'slug' => 'tracking_sales_history_location',
-                    'title' => 'Tracking History Sales Location',
+                    'title' => 'Riwayat Lokasi Motoris',
                     'icon' => 'map-pin',
+                    'tanpa_halaman' => true,
                 ],
                 [
                     'slug' => 'motoris_ditandai',
@@ -1003,11 +1008,6 @@ return [
             'tables' => [
                 'tracking_last_seen_sales',
             ],
-            'same_as' => null,
-        ],
-        'tracking_sales_history_location' => [
-            'title' => 'Tracking History Sales Location',
-            'tables' => [],
             'same_as' => null,
         ],
         'motoris_ditandai' => [

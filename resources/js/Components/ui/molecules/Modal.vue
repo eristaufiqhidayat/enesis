@@ -8,7 +8,7 @@ const tumpukan = [];
 const props = defineProps({
     show: { type: Boolean, default: false },
     title: { type: String, required: true },
-    // 'md' (bawaan, lihat .modal-content) atau 'xl' (.modal-content-xl - tabel lebar, scroll sendiri, maks 92vh; pada drawer: .modal-drawer-xl, lebih lebar) atau '2xl' (hanya drawer: .modal-drawer-2xl, 90% lebar layar) atau 'full' (hanya modal tengah: .modal-content-full, hampir sepenuh layar dengan sedikit spasi di tepi).
+    // 'md' (bawaan, lihat .modal-content) atau 'xl' (.modal-content-xl - tabel lebar, scroll sendiri, maks 92vh; pada drawer: .modal-drawer-xl, lebih lebar) atau '2xl' (hanya drawer: .modal-drawer-2xl, 90% lebar layar) atau 'sm' (hanya drawer: .modal-drawer-sm, sempit untuk form pendek) atau 'full' (hanya modal tengah: .modal-content-full, hampir sepenuh layar dengan sedikit spasi di tepi).
     size: { type: String, default: 'md' },
     // 'tengah' (bawaan) atau 'kanan': drawer setinggi layar yang geser dari kanan (.modal-drawer). Prop size 'xl' / '2xl' melebarkan drawer.
     placement: { type: String, default: 'tengah' },
@@ -74,7 +74,7 @@ onUnmounted(() => {
             <!-- Drawer tidak memakai transisi Vue (:css="false"): masuk & keluarnya animasi CSS sendiri. -->
             <Transition :name="kanan ? 'modal-drawer' : 'modal-content'" :css="!kanan">
                 <div
-                    :class="kanan ? ['modal-drawer', { 'modal-drawer-xl': size === 'xl', 'modal-drawer-2xl': size === '2xl', 'modal-drawer-tutup': sedangTutup }] : ['modal-content', { 'modal-content-xl': size === 'xl', 'modal-content-full': size === 'full', 'modal-content-tinggi': tinggi }]"
+                    :class="kanan ? ['modal-drawer', { 'modal-drawer-sm': size === 'sm', 'modal-drawer-xl': size === 'xl', 'modal-drawer-2xl': size === '2xl', 'modal-drawer-tutup': sedangTutup }] : ['modal-content', { 'modal-content-xl': size === 'xl', 'modal-content-full': size === 'full', 'modal-content-tinggi': tinggi }]"
                     role="dialog"
                     aria-modal="true"
                     :aria-label="title"

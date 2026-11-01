@@ -39,6 +39,21 @@ class TandaMotorisTest extends AdminTestCase
         ]);
     }
 
+    public function test_tanda_kembar_pada_motoris_tanggal_dan_kategori_yang_sama_ditolak(): void
+    {
+        $koor = $this->koordinator();
+        $this->tandai($koor)->assertCreated();
+
+        $res = $this->tandai($koor)->assertUnprocessable()->assertJsonValidationErrors('kategori');
+        $this->assertStringContainsString('sudah ditandai oleh koor', $res->json('errors.kategori.0'));
+        $this->assertSame(1, DB::table('tanda_motoris')->where('karyawan_id', 1)->count());
+
+        // Kategori lain, tanggal lain, atau motoris lain tetap boleh.
+        $this->tandai($koor, 1, ['kategori' => 'lokasi_palsu'])->assertCreated();
+        $this->tandai($koor, 1, ['tanggal' => now()->subDays(2)->toDateString()])->assertCreated();
+        $this->tandai($koor, 3)->assertCreated();
+    }
+
     public function test_role_bawaan_koordinator_boleh_menandai_tapi_tidak_mencabut_tanda_orang_lain(): void
     {
         $koor = $this->koordinator();

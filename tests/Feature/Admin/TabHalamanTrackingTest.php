@@ -5,14 +5,13 @@ namespace Tests\Feature\Admin;
 use App\Support\Akses\Akses;
 use Inertia\Testing\AssertableInertia as Assert;
 
-// Tab penghubung Last Seen <-> Riwayat Lokasi (sales & koordinator) dan pilihan awal di halaman riwayat.
+// Tab penghubung Last Seen <-> Ditandai (sales) dan Last Seen <-> Riwayat Lokasi (koordinator); riwayat sales kini modal.
 class TabHalamanTrackingTest extends AdminTestCase
 {
-    public function test_sales_punya_tiga_tab_dan_koordinator_dua_tab_di_semua_halamannya(): void
+    public function test_sales_punya_dua_tab_tanpa_riwayat_dan_koordinator_dua_tab_di_semua_halamannya(): void
     {
         $sales = [
             ['slug' => 'tracking_sales', 'label' => 'Last Seen'],
-            ['slug' => 'tracking_sales_history_location', 'label' => 'Riwayat Lokasi'],
             ['slug' => 'motoris_ditandai', 'label' => 'Ditandai'],
         ];
         $koordinator = [
@@ -39,7 +38,7 @@ class TabHalamanTrackingTest extends AdminTestCase
     {
         $role = $this->role('Dua Halaman', 'semua', [
             'tracking_sales' => ['lihat'],
-            'tracking_sales_history_location' => ['lihat'],
+            'motoris_ditandai' => ['lihat'],
         ]);
         $this->actingAs($this->akun('pemantau', 'koordinator', null, ['role_id' => $role]));
 
@@ -68,39 +67,50 @@ class TabHalamanTrackingTest extends AdminTestCase
         $this->assertNotContains('tracking_sales_history_location', $slug);
         $this->assertNotContains('tracking_koordinator_history_location', $slug);
         $this->assertSame('Lacak Motoris', $item['title']);
-        $this->assertSame(['tracking_sales_history_location', 'motoris_ditandai'], $item['serumpun']);
+        $this->assertSame(['motoris_ditandai'], $item['serumpun']);
     }
 
-    public function test_sidebar_menampilkan_riwayat_sendiri_bila_akun_tak_boleh_buka_last_seen(): void
+    public function test_hak_riwayat_sales_tidak_punya_entri_sidebar_dan_tidak_membuka_halaman(): void
     {
         $role = $this->role('Hanya Riwayat', 'semua', ['tracking_sales_history_location' => ['lihat']]);
-        $slug = $this->slugSidebar($this->akun('pemantau', 'koordinator', null, ['role_id' => $role]));
+        $akun = $this->akun('pemantau', 'koordinator', null, ['role_id' => $role]);
 
-        $this->assertContains('tracking_sales_history_location', $slug);
-        $this->assertNotContains('tracking_sales', $slug);
+        $this->assertNotContains('tracking_sales_history_location', $this->slugSidebar($akun));
+        $this->assertNotContains('tracking_sales_history_location', $this->slugSidebar($this->admin));
+        $this->assertNotContains('tracking_sales_history_location', array_column(Akses::menuPencarian($this->admin), 'slug'));
     }
 
-    public function test_pencarian_sidebar_tetap_menemukan_halaman_riwayat(): void
+    public function test_pencarian_sidebar_tetap_menemukan_halaman_riwayat_koordinator(): void
     {
         $cari = collect(Akses::menuPencarian($this->admin))->pluck('title', 'slug');
 
-        $this->assertSame('Tracking History Sales Location', $cari['tracking_sales_history_location']);
         $this->assertSame('Tracking History Koordinator Location', $cari['tracking_koordinator_history_location']);
     }
 
-    public function test_matriks_hak_role_tetap_memuat_kedua_halaman(): void
+    public function test_matriks_hak_role_tetap_memuat_hak_riwayat_sales(): void
     {
         $this->assertContains('tracking_sales', Akses::semuaSlug());
         $this->assertContains('tracking_sales_history_location', Akses::semuaSlug());
     }
 
-    public function test_riwayat_menerima_pilihan_awal_dari_query(): void
+    public function test_halaman_riwayat_sales_lama_dialihkan_ke_lacak_motoris(): void
     {
-        $this->get('/tracking_sales_history_location?sales_id=11&tanggal=2026-10-21')
-            ->assertOk()->assertInertia(fn (Assert $p) => $p->where('pilihId', 11)->where('tanggal', '2026-10-21'));
-        $this->get('/tracking_sales_history_location')
-            ->assertOk()->assertInertia(fn (Assert $p) => $p->where('pilihId', null));
+        $this->get('/tracking_sales_history_location?sales_id=11&tanggal=2026-10-21')->assertRedirect('/tracking_sales');
+        $this->get('/tracking_sales_history_location/counts?tanggal=2026-10-21')->assertNotFound();
+    }
 
+    public function test_slug_riwayat_dibagikan_sesuai_hak_akun(): void
+    {
+        $this->get('/home')->assertOk()->assertInertia(fn (Assert $p) => $p
+            ->where('slugRiwayat', ['tracking_sales', 'tracking_sales_history_location', 'tracking_koordinator_history_location']));
+
+        $role = $this->role('Hanya Last Seen', 'semua', ['tracking_sales' => ['lihat']]);
+        $this->actingAs($this->akun('pemantau', 'koordinator', null, ['role_id' => $role]));
+        $this->get('/tracking_sales')->assertOk()->assertInertia(fn (Assert $p) => $p->where('slugRiwayat', ['tracking_sales']));
+    }
+
+    public function test_riwayat_koordinator_menerima_pilihan_awal_dari_query(): void
+    {
         $this->get('/tracking_koordinator_history_location?koordinator_id=137&tanggal=2026-10-21')
             ->assertOk()->assertInertia(fn (Assert $p) => $p->where('pilihId', 137));
         $this->get('/tracking_koordinator_history_location')

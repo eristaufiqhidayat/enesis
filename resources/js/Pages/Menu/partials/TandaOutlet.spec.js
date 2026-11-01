@@ -11,6 +11,7 @@ const tanda = [
 ];
 
 let daftar;
+let outlet;
 let bisaTambah;
 let balasan;
 
@@ -18,7 +19,7 @@ function pasangFetch() {
     global.fetch = vi.fn((url, opsi = {}) => {
         const metode = opsi.method ?? 'GET';
         if (metode === 'GET') {
-            return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ tanda: daftar, bisa_tambah: bisaTambah, kategori }) });
+            return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ outlet, tanda: daftar, bisa_tambah: bisaTambah, kategori }) });
         }
 
         return Promise.resolve(balasan[metode] ?? { ok: true, status: metode === 'POST' ? 201 : 200, json: () => Promise.resolve({}) });
@@ -37,6 +38,7 @@ async function siapkan(lain = {}) {
 describe('TandaOutlet', () => {
     beforeEach(() => {
         daftar = tanda;
+        outlet = { nama: 'Warung Aming', dibuat_oleh: 'Budi Santoso', dibuat_pada: '2026-10-22 11:23:00' };
         bisaTambah = true;
         balasan = {};
         document.head.innerHTML = '<meta name="csrf-token" content="token-rahasia">';
@@ -58,6 +60,33 @@ describe('TandaOutlet', () => {
         expect(item[0].text()).toContain('koor · 2026-10-25 09:00');
         expect(item[0].text()).toContain('Alamat tidak ditemukan');
         expect(item[1].text()).toContain('Alamat/lokasi tidak sesuai');
+    });
+
+    it('menampilkan kerangka (skeleton) dua baris selama data outlet diambil lalu menyembunyikannya', async () => {
+        const wrapper = mount(TandaOutlet, { props });
+
+        expect(wrapper.find('[role="status"]').attributes('aria-label')).toBe('Memuat data outlet');
+        expect(wrapper.findAll('[role="status"] .skeleton')).toHaveLength(2);
+        expect(wrapper.find('.spinner').exists()).toBe(false);
+        expect(wrapper.text()).not.toContain('Belum ada tanda untuk outlet ini.');
+
+        await flushPromises();
+        expect(wrapper.find('[role="status"]').exists()).toBe(false);
+    });
+
+    it('menampilkan siapa yang mendaftarkan outlet dan kapan', async () => {
+        const teks = (await siapkan()).text();
+
+        expect(teks).toContain('Didaftarkan oleh: Budi Santoso');
+        expect(teks).toContain('22 Okt 2026 · 11:23');
+    });
+
+    it('menampilkan "tidak diketahui" bila pendaftar kosong, dan waktu apa adanya bila formatnya lain', async () => {
+        outlet = { nama: 'X', dibuat_oleh: null, dibuat_pada: '22 Oct 2026 11:23' };
+        const teks = (await siapkan()).text();
+
+        expect(teks).toContain('Didaftarkan oleh: tidak diketahui');
+        expect(teks).toContain('22 Oct 2026 11:23');
     });
 
     it('tidak mengirim event berubah saat memuat awal', async () => {
@@ -91,10 +120,10 @@ describe('TandaOutlet', () => {
     });
 
     it('tombol Tandai hanya tampil bila akun punya hak Tambah', async () => {
-        expect((await siapkan()).text()).toContain('Tandai');
+        expect((await siapkan()).text()).toContain('Tambah tanda');
 
         bisaTambah = false;
-        expect((await siapkan()).text()).not.toContain('Tandai');
+        expect((await siapkan()).text()).not.toContain('Tambah tanda');
     });
 
     it('tombol Cabut hanya pada tanda yang boleh dicabut', async () => {

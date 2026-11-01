@@ -23,7 +23,7 @@ class KunjunganHarian
             ->where('kj.karyawan_id', $karyawanId)->where('kj.tanggal', substr($tanggal, 0, 10))
             ->orderBy('kj.checkin_at')->orderBy('kj.id')
             ->select(['kj.id', 'kj.outlet_id', 'kj.checkin_at', 'kj.checkout_at', 'kj.durasi_detik', 'kj.lat', 'kj.lng', 'kj.jarak_m',
-                'kj.di_luar_rute', 'kj.mock_location', 'kj.tidak_beli_kategori', 'kj.tidak_beli_keterangan', 'kj.keterangan_lama'])
+                'kj.di_luar_rute', 'kj.mock_location', 'kj.tidak_beli_kategori', 'kj.tidak_beli_keterangan', 'kj.kategori_lama', 'kj.keterangan_lama'])
             ->selectRaw('COALESCE(o.nama, ob.nama) as outlet')
             ->addSelect('o.kode as kode_outlet')
             ->selectSub($ditandai, 'outlet_ditandai')
@@ -66,13 +66,15 @@ class KunjunganHarian
     /**
      * Alasan tidak beli yang terbaca: label kode HP (config mobile.alasan_tidak_beli; kode tak dikenal apa adanya)
      * digabung dengan teks bebas dari HP; kunjungan lama hasil migrasi menyimpannya di keterangan_lama.
+     * Kategori lama 1 ("Penjualan Produk") adalah jenis kunjungannya, bukan alasan tidak beli, jadi tidak ditampilkan
+     * sebagai alasan (mis. kunjungan kategori itu yang transaksinya tidak ada).
      */
     private static function alasan(object $k): ?string
     {
         $label = $k->tidak_beli_kategori ? config("mobile.alasan_tidak_beli.{$k->tidak_beli_kategori}", $k->tidak_beli_kategori) : null;
         $teks = collect([$label, $k->tidak_beli_keterangan])->filter()->implode(' — ');
 
-        return $teks !== '' ? $teks : ($k->keterangan_lama ?: null);
+        return $teks !== '' ? $teks : ((int) $k->kategori_lama === 1 ? null : ($k->keterangan_lama ?: null));
     }
 
     /**

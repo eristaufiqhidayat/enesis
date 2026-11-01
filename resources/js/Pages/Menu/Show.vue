@@ -83,9 +83,9 @@ const kolomLapLoadingBarang = computed(() => visibleTables.value.find((table) =>
 const kolomLoadingBarang = computed(() => visibleTables.value.find((table) => table.name === 'loading_barang')?.columns ?? {});
 
 // Baris tabel (Tracking Last Seen, rekap Motoris Ditandai) yang rutenya dibuka di drawer Riwayat:
-// { orang, slug, idParam, tanggal }. Tujuan dan izinnya ditentukan Support/riwayat.js dari prop bersama tabHalaman.
+// { orang, slug, idParam, tanggal }. Tujuan dan izinnya ditentukan Support/riwayat.js dari prop bersama slugRiwayat.
 const riwayatTerpilih = ref(null);
-const infoRiwayat = (table, row, tanggalPilih = null) => infoRiwayatBaris(table.name, row, usePage().props.tabHalaman, tanggalPilih);
+const infoRiwayat = (table, row, tanggalPilih = null) => infoRiwayatBaris(table.name, row, usePage().props.slugRiwayat, tanggalPilih);
 
 function tutupDetailDepo() {
     depoTerpilih.value = null;
@@ -497,7 +497,7 @@ function filterTabel(table, { nilai, operator }) {
             <DetailArea v-if="areaTerpilih" :area="areaTerpilih" />
         </Modal>
         <!-- Drawer Tanda Outlet, dibuka dari kolom Ditandai di tabel mk_outlet (menu All Outlet). -->
-        <Modal :show="outletTerpilih !== null" :title="`Tanda Outlet · ${outletTerpilih?.nama ?? ''}`" placement="kanan" @close="outletTerpilih = null">
+        <Modal :show="outletTerpilih !== null" :title="`Tanda Outlet · ${outletTerpilih?.nama ?? ''}`" placement="kanan" size="sm" @close="outletTerpilih = null">
             <TandaOutlet v-if="outletTerpilih" :url="'/outlet_all/tanda'" :outlet-id="outletTerpilih.id" @berubah="muatTabelUlang" />
         </Modal>
         <!-- Drawer peta posisi terakhir motoris, dibuka dari tautan Lihat peta di tabel Tracking Last Seen. -->

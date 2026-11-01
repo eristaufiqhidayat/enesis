@@ -1,5 +1,5 @@
-// Tabel yang punya tautan membuka drawer Riwayat (rute harian, kunjungan, tanda motoris) beserta halaman Riwayat Lokasi
-// tujuannya dan nama parameter id-nya. Dipakai Menu/Show.vue untuk tabel Tracking Last Seen dan rekap Motoris Ditandai.
+// Tabel yang punya tautan membuka modal Riwayat (rute harian, kunjungan, tanda motoris) beserta slug hak dan endpoint
+// `locations`-nya dan nama parameter id-nya. Dipakai Menu/Show.vue untuk tabel Tracking Last Seen dan rekap Motoris Ditandai.
 export const riwayatTabel = {
     tracking_last_seen_sales: { slug: 'tracking_sales_history_location', idParam: 'sales_id' },
     tracking_last_seen_koordinator: { slug: 'tracking_koordinator_history_location', idParam: 'koordinator_id' },
@@ -16,15 +16,15 @@ const POLA_TANGGAL = /^\d{4}-\d{2}-\d{2}$/;
  *
  * @param {string} namaTabel nama tabel menu (kunci riwayatTabel)
  * @param {object} baris baris tabel
- * @param {Array<{slug: string}>} tabHalaman tab halaman yang boleh dibuka akun (shared prop tabHalaman)
+ * @param {string[]} slugRiwayat slug riwayat yang boleh diakses akun (shared prop slugRiwayat)
  * @param {string|null} tanggalPilih tanggal yang dibuka; bawaannya tanggal terakhir terlihat (Last Seen) atau tanggal tanda (rekap)
  * @returns {{orang: object, slug: string, idParam: string, tanggal: string}|null}
  */
-export function infoRiwayat(namaTabel, baris, tabHalaman, tanggalPilih = null) {
+export function infoRiwayat(namaTabel, baris, slugRiwayat, tanggalPilih = null) {
     const tujuan = riwayatTabel[namaTabel];
-    const ada = (slug) => (tabHalaman ?? []).some((tab) => tab.slug === slug);
+    const ada = (slug) => (slugRiwayat ?? []).includes(slug);
 
-    // Halaman riwayat harus boleh dibuka; drawer Sales juga memuat tanda motoris, yang memakai hak Tracking Last Seen Sales.
+    // Hak riwayat harus dimiliki; modal Sales juga memuat tanda motoris, yang memakai hak Tracking Last Seen Sales.
     if (!tujuan || !ada(tujuan.slug) || (tujuan.idParam === 'sales_id' && !ada('tracking_sales'))) return null;
 
     const rekap = namaTabel === 'tanda_motoris_rekap';
