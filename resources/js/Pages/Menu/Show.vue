@@ -506,7 +506,6 @@ function filterTabel(table, { nilai, operator }) {
                 :id-param="riwayatTerpilih.idParam"
                 :tanggal="riwayatTerpilih.tanggal"
                 :locations-url="`/${riwayatTerpilih.slug}/locations`"
-                :halaman-url="`/${riwayatTerpilih.slug}?${riwayatTerpilih.idParam}=${riwayatTerpilih.orang.id}&tanggal=${riwayatTerpilih.tanggal}`"
                 :tanda-url="riwayatTerpilih.idParam === 'sales_id' ? '/tracking_sales/tanda' : null"
             />
         </Modal>

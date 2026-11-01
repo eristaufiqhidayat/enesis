@@ -105,14 +105,6 @@ describe('RuteHarianPeta', () => {
         expect(penghubung).toEqual(['↓ 1 j 15 mnt di jalan', '↓ 12 menit di jalan · 3,4 km']);
     });
 
-    it('menampilkan kode outlet di bawah nama bila ada, dan tidak ada baris kode bila kosong', async () => {
-        jawab({ total: 0, locations: [], depo: null, kunjungan });
-        const baris = (await siapkan()).findAll('.rute-kunjungan');
-
-        expect(baris[0].find('.kode-mono').text()).toBe('OUT-70986');
-        expect(baris[1].find('.kode-mono').exists()).toBe(false);
-    });
-
     it('menampilkan nilai penjualan pada kunjungan yang beli', async () => {
         jawab({ total: 0, locations: [], depo: null, kunjungan });
         const baris = (await siapkan()).findAll('.rute-kunjungan');

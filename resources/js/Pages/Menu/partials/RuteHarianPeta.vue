@@ -1,9 +1,7 @@
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue';
-import { Link } from '@inertiajs/vue3';
 import Badge from '@/Components/ui/atoms/Badge.vue';
 import DatePicker from '@/Components/ui/atoms/DatePicker.vue';
-import Alert from '@/Components/ui/molecules/Alert.vue';
 import { useLeafletMap } from '@/Composables/useLeafletMap.js';
 import { angka, angkaRingkas, desimal, durasiSingkat, jarakSingkat, ringkasanPenjualan, rupiah } from '@/Support/format.js';
 import { gambarKunjungan, gambarLompatan, gambarRute } from '@/Support/rute.js';
@@ -13,14 +11,12 @@ import TandaMotoris from './TandaMotoris.vue';
 // kunjungan outlet di kiri peta bila endpoint mengirim `kunjungan` (Sales). Titik diambil dari endpoint `locations`
 // halaman Riwayat Lokasi; tanggal bisa diganti tanpa menutup drawer.
 const props = defineProps({
-    // Dari baris tabel: { nama }. Halaman penuh dibuka lewat `halamanUrl`.
+    // Dari baris tabel: { nama }.
     orang: { type: Object, required: true },
     locationsUrl: { type: String, required: true },
     idParam: { type: String, required: true },
     id: { type: Number, required: true },
     tanggal: { type: String, required: true },
-    // Halaman Riwayat Lokasi lengkap untuk orang dan tanggal ini (daftar orang, filter).
-    halamanUrl: { type: String, required: true },
     // Endpoint tanda motoris (TandaMotorisController); null = tanpa fitur tanda (mis. drawer Koordinator).
     tandaUrl: { type: String, default: null },
 });
@@ -143,22 +139,20 @@ watch(tanggalDipilih, muat);
 </script>
 
 <template>
-    <div class="flex flex-wrap items-center gap-2 mb-2">
+    <div class="lg:flex lg:h-full lg:min-h-0 lg:flex-col">
+    <div class="flex flex-wrap items-start gap-2 mb-1 lg:shrink-0">
         <DatePicker v-model="tanggalDipilih" aria-label="Tanggal rute" class="w-36" />
-        <span class="text-sm text-gray-500">{{ info }}</span>
-        <Link class="tautan-depo ml-auto text-sm" :href="halamanUrl">Buka halaman Riwayat Lokasi</Link>
+        <span class="text-sm text-gray-500 mt-1.5">{{ info }}</span>
+        <TandaMotoris v-if="tandaUrl" class="ml-auto w-full sm:w-80" :url="tandaUrl" :sales-id="id" :tanggal="tanggalDipilih" :saran="peringatan?.saran ?? null" @pilih-tanggal="tanggalDipilih = $event" />
     </div>
-    <Alert v-if="peringatan" :variant="peringatan.terdeteksi ? 'danger' : 'warning'" class="mb-2" role="alert">
-        <strong>{{ peringatan.judul }}.</strong> {{ peringatan.isi }}
-        <span v-if="peringatan.catatan" class="block text-xs mt-1">{{ peringatan.catatan }}</span>
-    </Alert>
-    <div class="rute-harian" :class="{ 'rute-harian-daftar': kunjungan !== null }">
+    <div class="rute-harian lg:min-h-0 lg:flex-1" :class="{ 'rute-harian-daftar': kunjungan !== null }">
         <div v-if="kunjungan !== null" class="rute-harian-kolom">
-            <TandaMotoris v-if="tandaUrl" :url="tandaUrl" :sales-id="id" :tanggal="tanggalDipilih" :saran="peringatan?.saran ?? null" @pilih-tanggal="tanggalDipilih = $event" />
+            <div class="sticky top-0 z-10 bg-white text-sm pb-2">
+                <span class="font-semibold">Kunjungan outlet ({{ kunjungan.length }})</span>
+                <span v-if="kunjungan.length" class="text-gray-500"> · {{ ringkasanHari.beli }} beli · {{ ringkasanHari.tidak }} tidak beli · {{ rupiah(ringkasanHari.total) }}</span>
+                <span v-else class="text-gray-500"> · Tidak ada kunjungan outlet pada tanggal ini.</span>
+            </div>
             <section class="space-y-2" aria-label="Kunjungan outlet">
-                <h6 class="font-semibold text-sm">Kunjungan outlet ({{ kunjungan.length }})</h6>
-                <p v-if="kunjungan.length" class="rute-ringkasan-hari">{{ ringkasanHari.beli }} beli · {{ ringkasanHari.tidak }} tidak beli · {{ rupiah(ringkasanHari.total) }}</p>
-                <p v-if="!kunjungan.length" class="text-sm text-gray-500">Tidak ada kunjungan outlet pada tanggal ini.</p>
                 <template v-for="(k, i) in kunjungan" :key="k.id">
                     <p v-if="k.perjalanan" class="rute-perjalanan">
                         ↓ {{ durasiSingkat(k.perjalanan.menit) }} di jalan<template v-if="k.perjalanan.jarak_m !== null"> · {{ jarakSingkat(k.perjalanan.jarak_m) }}</template>
@@ -172,7 +166,6 @@ watch(tanggalDipilih, muat);
                         <span class="rute-kunjungan-nomor" :class="k.beli ? 'rute-kunjungan-beli' : 'rute-kunjungan-tidak'">{{ i + 1 }}</span>
                         <span class="min-w-0 flex-1">
                             <span class="block font-semibold truncate">{{ k.outlet }}</span>
-                            <span v-if="k.kode_outlet" class="block kode-mono text-gray-500">{{ k.kode_outlet }}</span>
                             <span class="block text-xs text-gray-500">
                                 {{ k.jam }}<template v-if="k.keluar"> – {{ k.keluar }}</template><template v-if="k.durasi_menit !== null"> · {{ k.durasi_menit }} menit</template>
                             </span>
@@ -190,5 +183,6 @@ watch(tanggalDipilih, muat);
             </section>
         </div>
         <div ref="wadah" class="detail-depo-peta detail-depo-peta-drawer-bar"></div>
+    </div>
     </div>
 </template>

@@ -398,17 +398,19 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     /* Layar penuh: wadah menutupi seluruh layar di atas drawer, peta mengisi tinggi penuh tanpa sudut membulat. */
     /* Drawer peta: tinggi mengikuti layar dikurangi header drawer dan padding body (perkiraan tetap). */
     .detail-depo-peta.detail-depo-peta-drawer { @apply h-[calc(100vh-8rem)]; }
-    /* Peta drawer dengan baris tanggal/info di atasnya (rute harian di Tracking Last Seen). */
-    .detail-depo-peta.detail-depo-peta-drawer-bar { @apply h-[calc(100vh-12rem)]; }
-    /* Drawer rute harian: daftar kunjungan outlet di kiri peta (satu kolom di layar sempit). */
+    /* Peta drawer dengan baris tanggal/info di atasnya (rute harian di Tracking Last Seen): tinggi mengikuti baris grid (lihat .rute-harian), bukan perkiraan tetap, supaya tidak ada ruang kosong saat baris atas berubah tinggi. */
+    .detail-depo-peta.detail-depo-peta-drawer-bar { @apply h-64 w-full lg:h-full; }
+    /* Drawer rute harian: daftar kunjungan outlet di kiri peta (satu kolom di layar sempit), mengisi tinggi drawer sepenuhnya. */
     .rute-harian { @apply grid grid-cols-1 gap-3; }
     .rute-harian.rute-harian-daftar { @apply lg:grid-cols-[18rem_minmax(0,1fr)]; }
-    .rute-harian-kolom { @apply max-h-64 space-y-2 overflow-y-auto lg:max-h-[calc(100vh-12rem)]; }
+    .rute-harian-kolom { @apply max-h-64 space-y-2 overflow-y-auto lg:max-h-none; }
     /* Tanda motoris (potensi kecurangan dll.) di kolom kiri drawer Riwayat: form, daftar, dan satu tanda per kartu. */
-    .tanda-motoris { @apply space-y-2 rounded-md border border-gray-200 bg-white p-2; }
+    .tanda-motoris { @apply relative space-y-2 rounded-md border border-gray-200 bg-white p-2; }
     .tanda-motoris-form { @apply space-y-2 rounded-md bg-gray-50 p-2; }
     .tanda-motoris-daftar { @apply m-0 space-y-1 p-0; }
     .tanda-motoris-item { @apply rounded-md border border-red-200 bg-red-50/40 px-2 py-1.5; }
+    /* Daftar tanda melayang di atas konten saat counter "Tanda motoris" diklik, supaya tidak mendorong tata letak. */
+    .tanda-motoris-panel { @apply absolute left-0 right-0 top-full z-20 mt-1 max-h-72 overflow-y-auto rounded-md border border-gray-200 bg-white p-2 shadow-lg; }
     /* Satu baris "tanda di tanggal lain": klik memindahkan tanggal drawer. */
     .tanda-motoris-lain { @apply w-full rounded-md border border-gray-200 bg-white px-2 py-1 text-left text-xs hover:bg-blue-50; }
     /* Ringkasan hari itu di bawah judul daftar kunjungan. */

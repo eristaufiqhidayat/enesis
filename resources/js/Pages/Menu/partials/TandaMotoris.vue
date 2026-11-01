@@ -1,8 +1,9 @@
 <script setup>
-import { onMounted, ref, watch } from 'vue';
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import Badge from '@/Components/ui/atoms/Badge.vue';
 import Button from '@/Components/ui/atoms/Button.vue';
 import FieldError from '@/Components/ui/atoms/FieldError.vue';
+import Icon from '@/Components/ui/atoms/Icon.vue';
 import Label from '@/Components/ui/atoms/Label.vue';
 import Select from '@/Components/ui/atoms/Select.vue';
 import Textarea from '@/Components/ui/atoms/Textarea.vue';
@@ -35,6 +36,18 @@ const menyimpan = ref(false);
 // Galat validasi per kolom ({ kategori: ['...'] }) dan pesan umum untuk galat lain.
 const galat = ref({});
 const pesan = ref(null);
+// Id tanda yang catatannya sedang ditampilkan (diklik dari daftar); null = semua tertutup.
+const terbukaId = ref(null);
+// Daftar tanda ditampilkan sebagai panel melayang (absolute) saat counter diklik, supaya tidak mendorong konten di bawahnya.
+const daftarBuka = ref(false);
+const wadah = ref(null);
+
+function tutupDiLuar(e) {
+    if (wadah.value && !wadah.value.contains(e.target)) {
+        daftarBuka.value = false;
+        lainBuka.value = false;
+    }
+}
 
 const csrf = () => document.querySelector('meta[name="csrf-token"]')?.content;
 
@@ -118,19 +131,29 @@ async function cabut(item) {
 }
 
 onMounted(muat);
-// Tanggal drawer diganti: muat tanda tanggal itu dan tutup form yang belum disimpan.
+onMounted(() => document.addEventListener('click', tutupDiLuar));
+onBeforeUnmount(() => document.removeEventListener('click', tutupDiLuar));
+// Tanggal drawer diganti: muat tanda tanggal itu, tutup form & daftar yang belum disimpan.
 watch(() => props.tanggal, () => {
     batal();
+    daftarBuka.value = false;
+    lainBuka.value = false;
     muat();
 });
+
 </script>
 
 <template>
-    <section class="tanda-motoris" aria-label="Tanda motoris">
+    <section ref="wadah" class="tanda-motoris" aria-label="Tanda motoris">
         <div class="flex flex-wrap items-center gap-2">
             <h6 class="font-semibold text-sm mb-0">Tanda motoris</h6>
-            <Badge v-if="tanda.length" variant="danger">{{ tanda.length }}</Badge>
-            <Button v-if="bisaTambah && !formBuka" variant="outline-danger" class="ml-auto" @click="bukaForm">Tandai motoris</Button>
+            <button v-if="tanda.length" type="button" class="cursor-pointer" :aria-expanded="daftarBuka" title="Tanda pada tanggal ini" @click="lainBuka = false; daftarBuka = !daftarBuka">
+                <Badge variant="danger">{{ tanda.length }}</Badge>
+            </button>
+            <button v-if="lainnya.length" type="button" class="cursor-pointer" :aria-expanded="lainBuka" title="Tanda di tanggal lain" @click="daftarBuka = false; lainBuka = !lainBuka">
+                <Badge variant="warning">{{ lainnya.length }}</Badge>
+            </button>
+            <Button v-if="bisaTambah && !formBuka" variant="outline-danger" class="ml-auto" @click="bukaForm"><Icon name="flag" class="me-1" />Tandai</Button>
         </div>
 
         <p v-if="pesan" class="mb-0 text-xs text-red-600">{{ pesan }}</p>
@@ -154,23 +177,26 @@ watch(() => props.tanggal, () => {
             </div>
         </form>
 
-        <ul v-if="tanda.length" class="tanda-motoris-daftar">
-            <li v-for="item in tanda" :key="item.id" class="tanda-motoris-item">
-                <div class="flex flex-wrap items-center gap-2">
-                    <Badge variant="danger">{{ item.kategori_label }}</Badge>
-                    <span class="text-xs text-gray-500">{{ item.oleh }} · {{ item.waktu }}</span>
-                    <button v-if="item.bisa_cabut" type="button" class="tautan-depo ml-auto text-xs" @click="cabut(item)">Cabut</button>
-                </div>
-                <p v-if="item.catatan" class="mb-0 mt-1 text-sm">{{ item.catatan }}</p>
-            </li>
-        </ul>
-        <p v-else-if="!memuat && !pesan" class="mb-0 text-xs text-gray-500">Belum ada tanda pada tanggal ini.</p>
+        <div v-if="daftarBuka" class="tanda-motoris-panel">
+            <ul v-if="tanda.length" class="tanda-motoris-daftar">
+                <li v-for="item in tanda" :key="item.id" class="tanda-motoris-item">
+                    <div
+                        class="flex flex-wrap items-center gap-x-2 gap-y-1"
+                        :class="{ 'cursor-pointer': item.catatan }"
+                        @click="item.catatan && (terbukaId = terbukaId === item.id ? null : item.id)"
+                    >
+                        <Badge variant="danger">{{ item.kategori_label }}</Badge>
+                        <span class="text-xs text-gray-500">{{ item.oleh }} · {{ item.waktu }}</span>
+                        <button v-if="item.bisa_cabut" type="button" class="tautan-depo ml-auto text-xs" @click.stop="cabut(item)">Cabut</button>
+                    </div>
+                    <p v-if="item.catatan && terbukaId === item.id" class="mb-0 mt-1 text-sm">{{ item.catatan }}</p>
+                </li>
+            </ul>
+            <p v-else-if="!memuat && !pesan" class="mb-0 text-xs text-gray-500">Belum ada tanda pada tanggal ini.</p>
+        </div>
 
-        <div v-if="lainnya.length">
-            <button type="button" class="tautan-depo text-xs" :aria-expanded="lainBuka" @click="lainBuka = !lainBuka">
-                {{ lainBuka ? 'Sembunyikan' : 'Lihat' }} tanda di tanggal lain ({{ lainnya.length }})
-            </button>
-            <ul v-if="lainBuka" class="tanda-motoris-daftar mt-1">
+        <div v-if="lainBuka && lainnya.length" class="tanda-motoris-panel">
+            <ul class="tanda-motoris-daftar">
                 <li v-for="item in lainnya" :key="item.id">
                     <button type="button" class="tanda-motoris-lain" @click="$emit('pilih-tanggal', item.tanggal)">
                         <span class="font-semibold">{{ tanggalSingkat(item.tanggal) }}</span> · {{ item.kategori_label }} · {{ item.oleh }}

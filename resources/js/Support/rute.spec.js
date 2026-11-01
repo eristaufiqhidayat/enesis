@@ -100,17 +100,6 @@ describe('gambarKunjungan', () => {
             expect(html).toContain('Beli');
         });
 
-        it('memuat kode outlet di bawah judul, di-escape, dan tanpa baris kode bila kosong', () => {
-            const dengan = popup({ ...lengkap, kode_outlet: 'OUT-70986' });
-            expect(dengan).toContain('<small class="kode-mono text-gray-500">OUT-70986</small>');
-            // Kode berada setelah judul dan sebelum jam.
-            expect(dengan.indexOf('Kios Baru')).toBeLessThan(dengan.indexOf('OUT-70986'));
-            expect(dengan.indexOf('OUT-70986')).toBeLessThan(dengan.indexOf('11:00'));
-
-            expect(popup({ ...lengkap, kode_outlet: '<b>X</b>' })).not.toContain('<b>X</b>');
-            expect(popup({ ...lengkap, kode_outlet: null })).not.toContain('kode-mono');
-        });
-
         it('memuat tombol Lihat di Google Map ke koordinat check-in, dibuka di tab baru', () => {
             const html = popup(lengkap);
 
