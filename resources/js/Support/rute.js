@@ -61,8 +61,8 @@ function popupKunjungan(nomor, k) {
     const lencana = [];
     if (k.di_luar_rute) lencana.push('<span class="badge badge-warning">Di luar rute</span>');
     if (k.lokasi_palsu) lencana.push('<span class="badge badge-danger">Lokasi palsu</span>');
+    if (k.outlet_ditandai) lencana.push('<span class="badge badge-danger">Ditandai</span>');
 
-    if (k.kode_outlet) baris.push('<small class="kode-mono text-gray-500">' + escapeHtml(k.kode_outlet) + '</small>');
     baris.push('<small>' + escapeHtml(k.jam) + (k.keluar ? ' – ' + escapeHtml(k.keluar) : '') + (k.durasi_menit !== null ? ' (' + k.durasi_menit + ' menit)' : '') + '</small>');
     baris.push('<small class="text-gray-500">' + (k.beli ? 'Beli' + (k.penjualan ? ': ' + ringkasanPenjualan(k.penjualan) : '') : 'Tidak beli' + (k.keterangan ? ': ' + escapeHtml(k.keterangan) : '')) + '</small>');
     if (lencana.length) baris.push('<div class="popup-kunjungan-lencana">' + lencana.join('') + '</div>');

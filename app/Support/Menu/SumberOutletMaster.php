@@ -19,6 +19,9 @@ class SumberOutletMaster implements SumberTabel
 
     public function query(?User $user): Builder
     {
+        // Lencana "Ditandai" (tanda outlet, spec 053): jumlah tanda aktif outlet itu, lepas dari motoris/tanggal kunjungan.
+        $ditandai = DB::table('tanda_outlet as t')->whereColumn('t.outlet_id', 'o.id')->whereNull('t.dicabut_at')->selectRaw('COUNT(*)');
+
         return DB::table('mk_outlet as o')
             ->leftJoin('mk_area as a', 'a.id', '=', 'o.area_id')
             ->leftJoin('mk_depo as d', 'd.id', '=', 'a.depo_id')
@@ -31,11 +34,14 @@ class SumberOutletMaster implements SumberTabel
                 'o.latitude', 'o.longitude', 'o.verifikasi', 'o.status_fiktif',
                 'o.dibuat_oleh', 'o.dibuat_pada',
             ])
+            ->selectSub($ditandai, 'ditandai')
             ->orderBy('o.id');
     }
 
     public function ubahBaris(object $baris): object
     {
+        $baris->ditandai = (int) $baris->ditandai;
+
         return $baris;
     }
 

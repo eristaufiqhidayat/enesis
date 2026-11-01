@@ -21,13 +21,6 @@ class BreadcrumbTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page->where('slug', 'tracking_koordinator_history_location'));
     }
 
-    public function test_tracking_sales_menampilkan_breadcrumb_yang_benar(): void
-    {
-        $this->get('/tracking_sales_history_location')
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page->where('slug', 'tracking_sales_history_location'));
-    }
-
     public function test_design_area_menampilkan_breadcrumb_master_area(): void
     {
         // Breadcrumb dirender Topbar Vue dari prop slug, jadi yang diuji adalah slug halaman.

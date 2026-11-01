@@ -1,38 +1,66 @@
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue';
-import { Link } from '@inertiajs/vue3';
-import Badge from '@/Components/ui/atoms/Badge.vue';
+import Button from '@/Components/ui/atoms/Button.vue';
 import DatePicker from '@/Components/ui/atoms/DatePicker.vue';
-import Alert from '@/Components/ui/molecules/Alert.vue';
+import Icon from '@/Components/ui/atoms/Icon.vue';
+import Spinner from '@/Components/ui/atoms/Spinner.vue';
+import Modal from '@/Components/ui/molecules/Modal.vue';
+import Tabs from '@/Components/ui/molecules/Tabs.vue';
 import { useLeafletMap } from '@/Composables/useLeafletMap.js';
-import { angka, angkaRingkas, desimal, durasiSingkat, jarakSingkat, ringkasanPenjualan, rupiah } from '@/Support/format.js';
+import { bacaDeteksi } from '@/Support/deteksiKunjungan.js';
+import { angka, angkaRingkas, desimal, durasiSingkat, jarakSingkat, ringkasanPenjualan } from '@/Support/format.js';
+import { geserTanggal, hariIni, ringkasanKunjungan, saringKunjungan, susunTemuan, tandaKunjungan, tingkatKunjungan } from '@/Support/pusatKendali.js';
 import { gambarKunjungan, gambarLompatan, gambarRute } from '@/Support/rute.js';
+import PengaturanDeteksiMotoris from './PengaturanDeteksiMotoris.vue';
+import RingkasanHariMotoris from './RingkasanHariMotoris.vue';
 import TandaMotoris from './TandaMotoris.vue';
+import TandaOutlet from './TandaOutlet.vue';
+import TemuanMotoris from './TemuanMotoris.vue';
+
+// Tanda outlet (spec 053) selalu di endpoint ini, lepas dari idParam (Sales/Koordinator): hak mengikuti menu outlet_all.
+const TANDA_OUTLET_URL = '/outlet_all/tanda';
 
 // Rute GPS satu orang pada satu tanggal di drawer (tombol Lihat riwayat di tabel Tracking Last Seen), dengan daftar
 // kunjungan outlet di kiri peta bila endpoint mengirim `kunjungan` (Sales). Titik diambil dari endpoint `locations`
 // halaman Riwayat Lokasi; tanggal bisa diganti tanpa menutup drawer.
 const props = defineProps({
-    // Dari baris tabel: { nama }. Halaman penuh dibuka lewat `halamanUrl`.
+    // Dari baris tabel: { nama }.
     orang: { type: Object, required: true },
     locationsUrl: { type: String, required: true },
     idParam: { type: String, required: true },
     id: { type: Number, required: true },
     tanggal: { type: String, required: true },
-    // Halaman Riwayat Lokasi lengkap untuk orang dan tanggal ini (daftar orang, filter).
-    halamanUrl: { type: String, required: true },
     // Endpoint tanda motoris (TandaMotorisController); null = tanpa fitur tanda (mis. drawer Koordinator).
     tandaUrl: { type: String, default: null },
 });
 
 const wadah = ref(null);
+// Kolom daftar kunjungan (bergulir sendiri); dipakai menggulir ke kunjungan yang ditunjuk temuan.
+const kolom = ref(null);
 const tanggalDipilih = ref(props.tanggal);
-const info = ref('Memuat...');
+const info = ref('');
+// true selama titik lokasi tanggal yang dipilih diambil (spinner di samping tanggal).
+const memuatData = ref(true);
+// false sampai pemuatan pertama selesai (berhasil atau gagal): selama itu peta ditutup penuh oleh spinner, bukan dibiarkan kosong.
+const pernahMuat = ref(false);
 // Kunjungan outlet pada tanggal itu; null = endpoint tanpa data kunjungan (kolom daftar disembunyikan).
 const kunjungan = ref(null);
 const aktifId = ref(null);
+// Outlet yang drawer Tanda Outlet-nya sedang dibuka ({ id, nama }); null = tertutup.
+const outletTerpilih = ref(null);
 // Indikasi GPS tidak wajar pada tanggal itu (AnomaliGps di endpoint locations); null = tidak ada peringatan.
 const anomali = ref(null);
+// Indikasi kunjungan outlet berturutan berjarak dekat (AnomaliJarakKunjungan, spec 054): daftar runtun yang
+// memenuhi ambang pada tanggal itu (bisa lebih dari satu per hari); kosong = tidak ada peringatan.
+const indikasiJarak = ref([]);
+// Call dan Effective Call hari itu beserta target depo ({ call, ec, target: { call, ec } }); null bila endpoint tidak mengirim.
+const kpi = ref(null);
+// true setelah data tanggal yang dipilih selesai dimuat (tombol Temuan baru tampil, supaya tidak berkedip "Tidak ada temuan").
+const sudahMuat = ref(false);
+// Penyaring daftar kunjungan (semua | beli | tidak | bermasalah) dan id kunjungan yang disorot dari klik temuan.
+const filter = ref('semua');
+const sorotIds = ref([]);
+const hariIniPola = hariIni();
 
 // Isi banner: "terdeteksi" = HP menandai mock location (bukti dari perangkat); "indikasi" = hanya pola lompatan posisi.
 const peringatan = computed(() => {
@@ -66,12 +94,25 @@ const peringatan = computed(() => {
     };
 });
 
-// Ringkasan hari itu dari kunjungan yang ditampilkan: jumlah beli / tidak beli dan total nilai penjualan aktif.
-const ringkasanHari = computed(() => {
-    const daftar = kunjungan.value ?? [];
-    const beli = daftar.filter((k) => k.beli).length;
+// KPI hari itu (kunjungan, beli, tidak beli, penjualan, jam kerja) dari kunjungan yang ditampilkan.
+const ringkasanHari = computed(() => ringkasanKunjungan(kunjungan.value ?? []));
 
-    return { beli, tidak: daftar.length - beli, total: daftar.reduce((jumlah, k) => jumlah + (k.penjualan?.total ?? 0), 0) };
+// Semua indikasi dalam satu daftar untuk tombol Temuan.
+const temuan = computed(() => susunTemuan({ anomali: anomali.value, indikasiJarak: indikasiJarak.value, kunjungan: kunjungan.value ?? [] }));
+
+// Filter daftar: nomor tetap mengikuti urutan asli (sama dengan penanda peta), bukan urutan hasil saringan.
+const nomorAsli = computed(() => new Map((kunjungan.value ?? []).map((k, i) => [k.id, i + 1])));
+const kunjunganTampil = computed(() => saringKunjungan(kunjungan.value ?? [], filter.value, indikasiJarak.value));
+const tabFilter = computed(() => {
+    const daftar = kunjungan.value ?? [];
+
+    return [
+        { key: 'semua', label: `Semua (${daftar.length})` },
+        { key: 'beli', label: `Beli (${ringkasanHari.value.beli})` },
+        { key: 'tidak', label: `Tidak beli (${ringkasanHari.value.tidak})` },
+        { key: 'bermasalah', label: `Bermasalah (${saringKunjungan(daftar, 'bermasalah', indikasiJarak.value).length})` },
+        { key: 'ditandai', label: `Ditandai (${saringKunjungan(daftar, 'ditandai').length})` },
+    ];
 });
 
 // Layer dan marker Leaflet bukan state reaktif Vue: disimpan di luar ref supaya tidak di-proxy.
@@ -96,9 +137,18 @@ function muat() {
     if (!map || !tanggalDipilih.value) return;
 
     const tanggal = tanggalDipilih.value;
-    info.value = 'Memuat...';
+    memuatData.value = true;
     aktifId.value = null;
-    fetch(props.locationsUrl + '?' + new URLSearchParams({ [props.idParam]: props.id, tanggal }))
+    sorotIds.value = [];
+    sudahMuat.value = false;
+    const parameter = { [props.idParam]: props.id, tanggal };
+    // Ambang deteksi jarak dekat dari pengaturan di browser ini (localStorage); hanya endpoint Sales yang menganalisis kunjungan.
+    if (props.idParam === 'sales_id') {
+        const deteksi = bacaDeteksi();
+        parameter.jarak_dekat_m = deteksi.jarak_dekat_meter;
+        parameter.min_kunjungan = deteksi.min_kunjungan_berturutan;
+    }
+    fetch(props.locationsUrl + '?' + new URLSearchParams(parameter))
         .then((r) => r.json())
         .then(async (data) => {
             // Respons lama (tanggal sudah diganti atau drawer sudah ditutup) dibuang.
@@ -106,6 +156,11 @@ function muat() {
             const L = window.L;
             kunjungan.value = data.kunjungan ?? null;
             anomali.value = data.anomali_gps ?? null;
+            indikasiJarak.value = data.indikasi_jarak_kunjungan ?? [];
+            kpi.value = data.kpi ?? null;
+            sudahMuat.value = true;
+            memuatData.value = false;
+            pernahMuat.value = true;
             info.value = data.total ? `${data.total} titik lokasi` : 'Tidak ada data lokasi pada tanggal ini';
             // Lebar peta berubah saat kolom daftar muncul atau hilang.
             await nextTick();
@@ -117,7 +172,7 @@ function muat() {
             gambarLompatan(L, lapisanLompatan, data.anomali_gps?.segmen ?? [], data.anomali_gps?.titik_menyimpang ?? []);
             sesuaikanBatas(L, map, data);
         })
-        .catch(() => { info.value = 'Gagal memuat data'; });
+        .catch(() => { memuatData.value = false; pernahMuat.value = true; info.value = 'Gagal memuat data'; });
 }
 
 // Peta mencakup rute dan semua penanda kunjungan.
@@ -128,6 +183,31 @@ function sesuaikanBatas(L, map, data) {
     ];
     if (titik.length) map.fitBounds(L.latLngBounds(titik), { padding: [30, 30] });
 }
+
+// Outlet dalam salah satu runtun jarak dekat (spec 054) membuka drawer Tanda Outlet dengan saran kategori & catatan terisi.
+function bukaTandaOutlet(k) {
+    const runtun = indikasiJarak.value.find((r) => r.outlet_id.includes(k.outlet_id));
+    outletTerpilih.value = { id: k.outlet_id, nama: k.outlet, saran: runtun?.saran ?? null };
+}
+
+// Klik temuan: peta memperbesar titik-titiknya dan daftar menyorot kunjungan terkait (filter dikembalikan ke Semua).
+async function fokusTemuan(t) {
+    sorotIds.value = t.kunjunganId;
+    if (t.kunjunganId.length) filter.value = 'semua';
+
+    const map = peta();
+    if (map && t.titik.length) map.fitBounds(window.L.latLngBounds(t.titik), { padding: [60, 60], maxZoom: 18 });
+
+    // Daftar menggulir ke kunjungan pertama yang ditunjuk (setelah filter dikembalikan ke Semua dan daftar digambar ulang).
+    const pertama = (kunjungan.value ?? []).find((k) => t.kunjunganId.includes(k.id));
+    if (!pertama) return;
+
+    await nextTick();
+    kolom.value?.querySelector(`[data-kunjungan-id="${pertama.id}"]`)?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+}
+
+const bisaMaju = computed(() => tanggalDipilih.value < hariIniPola);
+const geser = (hari) => { tanggalDipilih.value = geserTanggal(tanggalDipilih.value, hari); };
 
 function fokus(k) {
     aktifId.value = k.id;
@@ -143,52 +223,90 @@ watch(tanggalDipilih, muat);
 </script>
 
 <template>
-    <div class="flex flex-wrap items-center gap-2 mb-2">
-        <DatePicker v-model="tanggalDipilih" aria-label="Tanggal rute" class="w-36" />
-        <span class="text-sm text-gray-500">{{ info }}</span>
-        <Link class="tautan-depo ml-auto text-sm" :href="halamanUrl">Buka halaman Riwayat Lokasi</Link>
+    <div class="lg:flex lg:h-full lg:min-h-0 lg:flex-col">
+    <div class="flex flex-wrap items-start gap-2 mb-2 lg:shrink-0">
+        <!-- Tanggal, status memuat, dan tombol Temuan sebaris dan rata tengah vertikal; kotak Tanda motoris (lebih tinggi) tetap di kanan atas. -->
+        <div class="flex flex-wrap items-center gap-2">
+            <div class="flex items-center gap-1">
+                <Button variant="light" aria-label="Hari sebelumnya" title="Hari sebelumnya" @click="geser(-1)"><Icon name="chevron-left" class="w-4 h-4" /></Button>
+                <DatePicker v-model="tanggalDipilih" :max="hariIniPola" aria-label="Tanggal rute" class="w-36" />
+                <Button variant="light" aria-label="Hari berikutnya" title="Hari berikutnya" :disabled="!bisaMaju" @click="geser(1)"><Icon name="chevron-right" class="w-4 h-4" /></Button>
+            </div>
+            <span class="flex items-center gap-1.5 text-sm text-gray-500" :aria-busy="memuatData"><Spinner v-if="memuatData" />{{ memuatData ? 'Memuat titik lokasi...' : info }}</span>
+            <TemuanMotoris :temuan="temuan" :siap="sudahMuat" @fokus="fokusTemuan" />
+            <!-- Ambang deteksi jarak dekat (localStorage) hanya relevan untuk Sales, satu-satunya yang punya kunjungan outlet. -->
+            <PengaturanDeteksiMotoris v-if="idParam === 'sales_id'" @berubah="muat" />
+        </div>
+        <TandaMotoris v-if="tandaUrl" class="ml-auto" :url="tandaUrl" :sales-id="id" :tanggal="tanggalDipilih" :saran="peringatan?.saran ?? null" @pilih-tanggal="tanggalDipilih = $event" />
     </div>
-    <Alert v-if="peringatan" :variant="peringatan.terdeteksi ? 'danger' : 'warning'" class="mb-2" role="alert">
-        <strong>{{ peringatan.judul }}.</strong> {{ peringatan.isi }}
-        <span v-if="peringatan.catatan" class="block text-xs mt-1">{{ peringatan.catatan }}</span>
-    </Alert>
-    <div class="rute-harian" :class="{ 'rute-harian-daftar': kunjungan !== null }">
-        <div v-if="kunjungan !== null" class="rute-harian-kolom">
-            <TandaMotoris v-if="tandaUrl" :url="tandaUrl" :sales-id="id" :tanggal="tanggalDipilih" :saran="peringatan?.saran ?? null" @pilih-tanggal="tanggalDipilih = $event" />
+    <RingkasanHariMotoris v-if="kunjungan?.length" :ringkasan="ringkasanHari" :kpi="kpi" class="mb-2 lg:shrink-0" />
+    <div class="rute-harian relative lg:min-h-0 lg:flex-1" :class="{ 'rute-harian-daftar': kunjungan !== null }">
+        <!-- Penutup pemuatan: opak pada pemuatan pertama (peta belum ada isinya), transparan saat ganti tanggal. -->
+        <div v-if="memuatData" class="peta-memuat" :class="{ 'peta-memuat-awal': !pernahMuat }" role="status" aria-live="polite">
+            <Spinner size="md" />Memuat data riwayat...
+        </div>
+        <div v-if="kunjungan !== null" ref="kolom" class="rute-harian-kolom">
+            <div class="sticky top-0 z-10 bg-white text-sm pb-1">
+                <span class="font-semibold">Kunjungan outlet ({{ kunjungan.length }})</span>
+                <span v-if="!kunjungan.length" class="text-gray-500"> · Tidak ada kunjungan outlet pada tanggal ini.</span>
+                <Tabs v-else v-model="filter" :tabs="tabFilter" rapat class="mt-1" />
+            </div>
+            <p v-if="kunjungan.length && !kunjunganTampil.length" class="mb-0 text-sm text-gray-500">Tidak ada kunjungan pada filter ini.</p>
             <section class="space-y-2" aria-label="Kunjungan outlet">
-                <h6 class="font-semibold text-sm">Kunjungan outlet ({{ kunjungan.length }})</h6>
-                <p v-if="kunjungan.length" class="rute-ringkasan-hari">{{ ringkasanHari.beli }} beli · {{ ringkasanHari.tidak }} tidak beli · {{ rupiah(ringkasanHari.total) }}</p>
-                <p v-if="!kunjungan.length" class="text-sm text-gray-500">Tidak ada kunjungan outlet pada tanggal ini.</p>
-                <template v-for="(k, i) in kunjungan" :key="k.id">
-                    <p v-if="k.perjalanan" class="rute-perjalanan">
+                <template v-for="k in kunjunganTampil" :key="k.id">
+                    <p v-if="k.perjalanan && filter === 'semua'" class="rute-perjalanan">
                         ↓ {{ durasiSingkat(k.perjalanan.menit) }} di jalan<template v-if="k.perjalanan.jarak_m !== null"> · {{ jarakSingkat(k.perjalanan.jarak_m) }}</template>
                     </p>
-                    <button
-                        type="button"
-                        class="rute-kunjungan"
-                        :class="{ 'rute-kunjungan-aktif': aktifId === k.id }"
-                        @click="fokus(k)"
-                    >
-                        <span class="rute-kunjungan-nomor" :class="k.beli ? 'rute-kunjungan-beli' : 'rute-kunjungan-tidak'">{{ i + 1 }}</span>
-                        <span class="min-w-0 flex-1">
-                            <span class="block font-semibold truncate">{{ k.outlet }}</span>
-                            <span v-if="k.kode_outlet" class="block kode-mono text-gray-500">{{ k.kode_outlet }}</span>
-                            <span class="block text-xs text-gray-500">
-                                {{ k.jam }}<template v-if="k.keluar"> – {{ k.keluar }}</template><template v-if="k.durasi_menit !== null"> · {{ k.durasi_menit }} menit</template>
+                    <div class="flex items-start gap-1" :data-kunjungan-id="k.id">
+                        <button
+                            type="button"
+                            class="rute-kunjungan min-w-0 flex-1"
+                            :class="[tingkatKunjungan(k, indikasiJarak) && `rute-kunjungan-${tingkatKunjungan(k, indikasiJarak)}`, { 'rute-kunjungan-aktif': aktifId === k.id, 'rute-kunjungan-sorot': sorotIds.includes(k.id) }]"
+                            @click="fokus(k)"
+                        >
+                            <span class="rute-kunjungan-nomor" :class="k.beli ? 'rute-kunjungan-beli' : 'rute-kunjungan-tidak'" :title="k.beli ? 'Beli' : 'Tidak beli'">{{ nomorAsli.get(k.id) }}</span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block font-semibold truncate">{{ k.outlet }}</span>
+                                <span class="block text-xs text-gray-500">
+                                    {{ k.jam }}<template v-if="k.keluar"> – {{ k.keluar }}</template><template v-if="k.durasi_menit !== null"> · {{ k.durasi_menit }} menit</template>
+                                </span>
+                                <span v-if="k.beli ? k.penjualan : k.keterangan" class="block text-xs text-gray-500">{{ k.beli ? ringkasanPenjualan(k.penjualan) : k.keterangan }}</span>
+                                <span v-if="tandaKunjungan(k, indikasiJarak).length" class="mt-1 flex flex-wrap gap-1">
+                                    <span v-for="t in tandaKunjungan(k, indikasiJarak)" :key="t.kunci" class="tanda-kunjungan" :class="`tanda-kunjungan-${t.tingkat}`">
+                                        <Icon name="flag" class="tanda-kunjungan-ikon" />{{ t.label }}
+                                    </span>
+                                </span>
                             </span>
-                            <span class="mt-1 flex flex-wrap gap-1">
-                                <Badge :variant="k.beli ? 'success' : 'warning'">{{ k.beli ? 'Beli' : 'Tidak beli' }}</Badge>
-                                <Badge v-if="k.di_luar_rute" variant="warning">Di luar rute</Badge>
-                                <Badge v-if="k.lokasi_palsu" variant="danger">Lokasi palsu</Badge>
-                                <Badge v-if="k.lat === null" variant="light">Tanpa koordinat</Badge>
-                            </span>
-                            <span v-if="k.penjualan" class="block text-xs text-gray-500">{{ ringkasanPenjualan(k.penjualan) }}</span>
-                            <span v-if="!k.beli && k.keterangan" class="block text-xs text-gray-500">{{ k.keterangan }}</span>
-                        </span>
-                    </button>
+                        </button>
+                        <Button
+                            v-if="k.outlet_id"
+                            :variant="k.outlet_ditandai ? 'outline-danger' : 'outline-secondary'"
+                            class="tombol-tanda-outlet shrink-0"
+                            :class="k.outlet_ditandai ? 'tombol-tanda-ditandai' : 'tombol-tanda-belum'"
+                            :title="k.outlet_ditandai ? 'Outlet sudah ditandai - lihat tanda' : 'Tandai outlet'"
+                            :aria-label="k.outlet_ditandai ? 'Lihat tanda outlet' : 'Tandai outlet'"
+                            @click="bukaTandaOutlet(k)"
+                        ><Icon name="flag" /></Button>
+                    </div>
                 </template>
             </section>
         </div>
-        <div ref="wadah" class="detail-depo-peta detail-depo-peta-drawer-bar"></div>
+        <div class="peta-rute-wadah">
+            <div ref="wadah" class="detail-depo-peta detail-depo-peta-drawer-bar"></div>
+            <div class="peta-legenda" aria-label="Legenda peta">
+                <template v-if="kunjungan !== null">
+                    <span class="peta-legenda-item"><span class="peta-legenda-titik rute-kunjungan-beli"></span>Beli</span>
+                    <span class="peta-legenda-item"><span class="peta-legenda-titik rute-kunjungan-tidak"></span>Tidak beli</span>
+                </template>
+                <span class="peta-legenda-item"><span class="peta-legenda-garis"></span>Rute GPS</span>
+                <span class="peta-legenda-item"><span class="peta-legenda-garis peta-legenda-lompatan"></span>Lompatan GPS</span>
+                <span class="peta-legenda-item"><span class="peta-legenda-cincin"></span>Titik menyimpang</span>
+            </div>
+        </div>
+    </div>
+    <!-- Dialog tengah (bukan drawer): tugas singkat yang bertumpuk di atas modal Riwayat yang hampir sepenuh layar. -->
+    <Modal :show="outletTerpilih !== null" :title="outletTerpilih ? `Tanda Outlet · ${outletTerpilih.nama}` : ''" @close="outletTerpilih = null">
+        <TandaOutlet v-if="outletTerpilih" :url="TANDA_OUTLET_URL" :outlet-id="outletTerpilih.id" :saran="outletTerpilih.saran" @berubah="muat" />
+    </Modal>
     </div>
 </template>

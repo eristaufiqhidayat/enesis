@@ -28,6 +28,15 @@ class OutletAllTest extends TestCase
             ['id' => 2, 'kode' => 'OT-2', 'nama' => 'Toko Dua', 'area_id' => null, 'area' => '-'],
             ['id' => 1, 'kode' => 'OT-1', 'nama' => 'Toko Satu', 'area_id' => 70, 'area' => 'nama lama'],
         ]);
+        DB::table('tanda_outlet')->insert([
+            'outlet_id' => 1, 'kategori' => 'outlet_fiktif', 'dibuat_oleh' => 1, 'dibuat_nama' => 'admin',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        // Tanda outlet 2 sudah dicabut: tidak ikut dihitung "ditandai".
+        DB::table('tanda_outlet')->insert([
+            'outlet_id' => 2, 'kategori' => 'outlet_fiktif', 'dibuat_oleh' => 1, 'dibuat_nama' => 'admin',
+            'dicabut_at' => now(), 'dicabut_oleh' => 1, 'created_at' => now(), 'updated_at' => now(),
+        ]);
         // Data laporan lama tidak ikut tampil di menu ini.
         DB::table('lap_outlet_all')->insert(['source_id' => 99, 'outlet_name' => 'Dari Laporan']);
 
@@ -47,6 +56,9 @@ class OutletAllTest extends TestCase
                     // Outlet tanpa area tetap tampil, area "-" seperti aplikasi lama.
                     ->where('tables.0.rows.data.1.area', '-')
                     ->where('tables.0.rows.data.1.depo', null)
+                    // Lencana "Ditandai": outlet 1 punya tanda aktif, outlet 2 tidak.
+                    ->where('tables.0.rows.data.0.ditandai', 1)
+                    ->where('tables.0.rows.data.1.ditandai', 0)
                 )
             );
     }

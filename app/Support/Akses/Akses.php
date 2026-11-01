@@ -157,7 +157,7 @@ class Akses
         // Sidebar hanya tampil setelah login; tanpa user (mis. render komponen di tes) tampil utuh.
         if (! $user) {
             return self::tandaiMotoris(array_map(
-                fn ($grup) => ['items' => self::satukanTab($grup['items'], null)] + $grup,
+                fn ($grup) => ['items' => self::satukanTab(self::denganHalaman($grup['items']), null)] + $grup,
                 config('marketama.menu')
             ));
         }
@@ -167,7 +167,7 @@ class Akses
         foreach (config('marketama.menu') as $grup) {
             $items = [];
 
-            foreach ($grup['items'] as $item) {
+            foreach (self::denganHalaman($grup['items']) as $item) {
                 if (isset($item['children'])) {
                     $anak = array_values(array_filter($item['children'], fn ($c) => self::bisa($user, $c['slug'])));
 
@@ -187,6 +187,12 @@ class Akses
         }
 
         return self::tandaiMotoris($hasil);
+    }
+
+    /** Buang item yang hanya berupa hak akses ('tanpa_halaman'): tetap ada di matriks hak role, tidak di sidebar. */
+    private static function denganHalaman(array $items): array
+    {
+        return array_values(array_filter($items, fn ($item) => ! ($item['tanpa_halaman'] ?? false)));
     }
 
     /**

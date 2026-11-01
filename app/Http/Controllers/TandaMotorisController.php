@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 // Tanda motoris: koordinator menandai motoris yang berpotensi curang (penjualan fiktif, lokasi palsu, dll.) dari drawer
 // Riwayat Lacak Motoris. Tanda melekat pada motoris + tanggal yang dilihat. Hak mengikuti menu tracking_sales:
@@ -67,6 +68,14 @@ class TandaMotorisController extends Controller
         $motoris = $this->motoris($request, (int) $data['sales_id']);
         $user = $request->user();
         $tanggal = substr($data['tanggal'], 0, 10);
+
+        // Satu motoris hanya punya satu koordinator, jadi tanda kembar (kategori sama, tanggal sama) bukan penegasan orang kedua.
+        $sudah = DB::table('tanda_motoris')->where('karyawan_id', $motoris->id)->where('tanggal', $tanggal)
+            ->where('kategori', $data['kategori'])->whereNull('dicabut_at')->first();
+
+        if ($sudah) {
+            throw ValidationException::withMessages(['kategori' => "Kategori ini sudah ditandai oleh {$sudah->dibuat_nama} pada ".JamLokal::format($sudah->created_at, 'Y-m-d H:i').'.']);
+        }
 
         $id = DB::table('tanda_motoris')->insertGetId([
             'karyawan_id' => $motoris->id,

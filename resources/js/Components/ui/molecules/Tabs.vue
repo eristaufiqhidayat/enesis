@@ -3,13 +3,15 @@
 defineProps({
     tabs: { type: Array, required: true },
     modelValue: { type: String, default: null },
+    // true = jarak bawah kecil (mb-1), untuk tab di dalam panel padat seperti daftar kunjungan.
+    rapat: { type: Boolean, default: false },
 });
 
 defineEmits(['update:modelValue']);
 </script>
 
 <template>
-    <div class="mb-3 overflow-x-auto overflow-y-hidden">
+    <div class="overflow-x-auto overflow-y-hidden" :class="rapat ? 'mb-1' : 'mb-3'">
         <nav class="flex gap-2 min-w-max" role="tablist">
             <button
                 v-for="tab in tabs"

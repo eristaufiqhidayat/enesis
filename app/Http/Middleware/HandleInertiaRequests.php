@@ -45,6 +45,8 @@ class HandleInertiaRequests extends Middleware
             'currentSlug' => $request->route('slug') ?? $request->path(),
             // Tab penghubung ke halaman sekelompok (mis. Last Seen ↔ Riwayat Lokasi), sudah disaring menurut hak.
             'tabHalaman' => fn () => Akses::tabHalaman($request->user(), $request->route('slug') ?? $request->path()),
+            // Slug riwayat yang boleh diakses akun: dasar tombol "Lihat riwayat" (modal Riwayat) di tabel Lacak Motoris.
+            'slugRiwayat' => fn () => array_values(array_filter(config('marketama.slug_riwayat', []), fn ($s) => Akses::bisa($request->user(), $s))),
             'appName' => config('app.name'),
             // Boleh menambah muatan canvassing: menampilkan modal Atur Muatan Motoris dan shortcut-nya di Topbar.
             'bisaTambahMuatan' => fn () => Akses::bisa($request->user(), 'barang_canvassing', 'tambah'),

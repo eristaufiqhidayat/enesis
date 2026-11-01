@@ -3,53 +3,27 @@
 namespace App\Http\Controllers;
 
 use App\Support\Akses\Akses;
+use App\Support\Mobile\Pengaturan;
 use App\Support\Tracking\AnomaliGps;
+use App\Support\Tracking\AnomaliJarakKunjungan;
 use App\Support\Tracking\KunjunganHarian;
 use App\Support\Tracking\TitikGps;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Inertia\Inertia;
 
 // Riwayat lokasi sales: data lama Marketama (tracking_sales_lokasi) digabung dengan
 // titik GPS dari aplikasi HP sales motoris (trx_tracking, karyawan_id = sales_id).
 class TrackingSalesController extends Controller
 {
-    public function index(Request $request)
-    {
-        $tanggal = substr((string) ($request->query('tanggal') ?? TitikGps::tanggalTerakhir('tracking_sales_lokasi', 'sales')), 0, 10);
-        $people = $this->daftarSales();
-
-        return Inertia::render('Tracking/History', [
-            'slug' => 'tracking_sales_history_location',
-            'title' => config('marketama.pages.tracking_sales_history_location.title'),
-            'label' => 'Sales',
-            'idParam' => 'sales_id',
-            'people' => $people->values()->all(),
-            'groups' => $people->whereNotNull('group_id')->sortBy('koordinator_nama')->pluck('koordinator_nama', 'group_id')->all(),
-            'locationsUrl' => route('tracking-sales.locations'),
-            'countsUrl' => route('tracking-sales.counts'),
-            'tanggal' => $tanggal,
-            'counts' => (object) $this->countsFor($tanggal),
-            'pilihId' => $request->integer('sales_id') ?: null,
-        ]);
-    }
-
-    /**
-     * Jumlah titik lokasi per sales pada satu tanggal, untuk menandai sales yang punya data.
-     */
-    public function counts(Request $request)
-    {
-        $data = $request->validate(['tanggal' => ['required', 'date']]);
-
-        return response()->json($this->countsFor($data['tanggal']));
-    }
-
     public function locations(Request $request)
     {
         $data = $request->validate([
             'sales_id' => ['required', 'integer'],
             'tanggal' => ['required', 'date'],
+            // Ambang deteksi jarak dekat dari pengaturan di browser pengguna (opsional; bawaan dari config).
+            'jarak_dekat_m' => ['nullable', 'integer', 'min:1', 'max:10000'],
+            'min_kunjungan' => ['nullable', 'integer', 'min:2', 'max:100'],
         ]);
 
         $id = (int) $data['sales_id'];
@@ -81,7 +55,36 @@ class TrackingSalesController extends Controller
             'kunjungan' => $kunjungan,
             // Indikasi GPS tidak wajar pada tanggal ini saja (null bila di bawah ambang).
             'anomali_gps' => AnomaliGps::analisis($locations, $kunjungan->where('lokasi_palsu', true)->count()),
+            // Indikasi kunjungan outlet berturutan berjarak dekat (spec 054): daftar runtun yang memenuhi ambang
+            // (bisa lebih dari satu per hari), urut dari yang terpanjang; array kosong bila tidak ada.
+            'indikasi_jarak_kunjungan' => AnomaliJarakKunjungan::analisis($kunjungan, $request->integer('jarak_dekat_m') ?: null, $request->integer('min_kunjungan') ?: null),
+            // Call dan Effective Call hari itu terhadap targetnya (pengaturan per depo, sama dengan KPI di aplikasi HP).
+            'kpi' => $dalamCakupan ? $this->kpiHari($id, $data['tanggal'], $kunjungan->count()) : null,
         ]);
+    }
+
+    /**
+     * Call (jumlah kunjungan), Effective Call (transaksi aktif yang ditandai effective), dan IPT (rata-rata jumlah SKU
+     * per transaksi aktif, satu desimal) satu motoris pada satu tanggal, beserta targetnya (Call/EC dari pengaturan depo
+     * motoris itu; bawaan config mobile.target_default bila depo tidak punya). Rumus sama dengan KPI di aplikasi HP.
+     *
+     * @return array{call: int, ec: int, ipt: float, target: array{call: int, ec: int, ipt: float}}
+     */
+    private function kpiHari(int $karyawanId, string $tanggal, int $call): array
+    {
+        $tanggal = substr($tanggal, 0, 10);
+        $depoId = DB::table('mk_karyawan')->where('id', $karyawanId)->value('depo_id');
+        $target = Pengaturan::depo($depoId ? (int) $depoId : null)['target'] ?? config('mobile.target_default');
+
+        $jual = DB::table('trx_penjualan')->where('karyawan_id', $karyawanId)->whereNull('dibatalkan_at')
+            ->where('tanggal', $tanggal)->get(['jumlah_sku', 'is_effective_call']);
+
+        return [
+            'call' => $call,
+            'ec' => $jual->filter(fn ($p) => (bool) $p->is_effective_call)->count(),
+            'ipt' => $jual->isEmpty() ? 0.0 : round((float) $jual->avg('jumlah_sku'), 1),
+            'target' => ['call' => (int) $target['call'], 'ec' => (int) $target['ec'], 'ipt' => (float) $target['ipt']],
+        ];
     }
 
     // ------------------------------------------------------------------
@@ -101,18 +104,5 @@ class TrackingSalesController extends Controller
             ->reject(fn ($k) => isset($ada[$k->id]));
 
         return $lama->concat($master)->sortBy('nama', SORT_NATURAL | SORT_FLAG_CASE)->values();
-    }
-
-    private function countsFor(string $tanggal): array
-    {
-        $lama = DB::table('tracking_sales_lokasi')
-            ->whereDate('tanggal', $tanggal)
-            ->groupBy('sales_id')
-            ->selectRaw('sales_id, count(*) as total')
-            ->pluck('total', 'sales_id')
-            ->map(fn ($total) => (int) $total)
-            ->all();
-
-        return TitikGps::tambahJumlah($lama, 'sales', $tanggal);
     }
 }

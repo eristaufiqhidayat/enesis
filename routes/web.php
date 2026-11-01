@@ -23,6 +23,7 @@ use App\Http\Controllers\MenuController;
 use App\Http\Controllers\OutletBaruController;
 use App\Http\Controllers\PetaSebaranSalesController;
 use App\Http\Controllers\TandaMotorisController;
+use App\Http\Controllers\TandaOutletController;
 use App\Http\Controllers\TrackingKoordinatorController;
 use App\Http\Controllers\TrackingSalesController;
 use App\Support\Master\MasterProduk;
@@ -53,12 +54,11 @@ Route::middleware(['auth', 'wajib-ganti-password'])->group(function () {
     Route::get('/tracking_koordinator_history_location/counts', [TrackingKoordinatorController::class, 'counts'])
         ->middleware('hak:tracking_koordinator_history_location')->name('tracking-koordinator.counts');
 
-    Route::get('/tracking_sales_history_location', [TrackingSalesController::class, 'index'])
-        ->middleware('hak:tracking_sales_history_location');
+    // Halaman Riwayat Lokasi sales sudah digantikan modal Riwayat di Lacak Motoris; tautan lama dialihkan ke sana.
+    // Slug ini kini hanya hak akses (lihat 'tanpa_halaman' di config) untuk endpoint `locations` yang dipakai modal.
+    Route::redirect('/tracking_sales_history_location', '/tracking_sales');
     Route::get('/tracking_sales_history_location/locations', [TrackingSalesController::class, 'locations'])
         ->middleware('hak:tracking_sales_history_location')->name('tracking-sales.locations');
-    Route::get('/tracking_sales_history_location/counts', [TrackingSalesController::class, 'counts'])
-        ->middleware('hak:tracking_sales_history_location')->name('tracking-sales.counts');
 
     // Peta sebaran sales se-Indonesia (ikon peta di kanan atas); data = Tracking Last Seen Sales.
     Route::get('/peta_sebaran_sales', [PetaSebaranSalesController::class, 'index'])
@@ -75,6 +75,14 @@ Route::middleware(['auth', 'wajib-ganti-password'])->group(function () {
         ->middleware('hak:tracking_sales,tambah')->name('tanda-motoris.store');
     Route::delete('/tracking_sales/tanda/{tanda}', [TandaMotorisController::class, 'cabut'])
         ->whereNumber('tanda')->middleware('hak:tracking_sales,tambah')->name('tanda-motoris.cabut');
+
+    // Tanda outlet (potensi kecurangan dll.), melekat ke outlet; hak mengikuti menu outlet_all.
+    Route::get('/outlet_all/tanda', [TandaOutletController::class, 'index'])
+        ->middleware('hak:outlet_all')->name('tanda-outlet.index');
+    Route::post('/outlet_all/tanda', [TandaOutletController::class, 'store'])
+        ->middleware('hak:outlet_all,tambah')->name('tanda-outlet.store');
+    Route::delete('/outlet_all/tanda/{tanda}', [TandaOutletController::class, 'cabut'])
+        ->whereNumber('tanda')->middleware('hak:outlet_all,tambah')->name('tanda-outlet.cabut');
 
     Route::prefix('master_area/design_area')->name('design-area.')->controller(DesignAreaController::class)->group(function () {
         Route::get('/', 'index')->middleware('hak:master_area')->name('index');
