@@ -13,6 +13,7 @@ class TabHalamanTrackingTest extends AdminTestCase
         $sales = [
             ['slug' => 'tracking_sales', 'label' => 'Lacak Motoris'],
             ['slug' => 'motoris_ditandai', 'label' => 'Ditandai'],
+            ['slug' => 'outlet_ditandai', 'label' => 'Lacak Outlet'],
         ];
         $koordinator = [
             ['slug' => 'tracking_koordinator', 'label' => 'Last Seen'],
@@ -67,7 +68,7 @@ class TabHalamanTrackingTest extends AdminTestCase
         $this->assertNotContains('tracking_sales_history_location', $slug);
         $this->assertNotContains('tracking_koordinator_history_location', $slug);
         $this->assertSame('Lacak Motoris', $item['title']);
-        $this->assertSame(['motoris_ditandai'], $item['serumpun']);
+        $this->assertSame(['motoris_ditandai', 'outlet_ditandai'], $item['serumpun']);
     }
 
     public function test_hak_riwayat_sales_tidak_punya_entri_sidebar_dan_tidak_membuka_halaman(): void

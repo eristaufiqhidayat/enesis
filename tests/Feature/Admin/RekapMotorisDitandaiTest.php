@@ -201,7 +201,7 @@ class RekapMotorisDitandaiTest extends AdminTestCase
     {
         $this->get('/motoris_ditandai')->assertOk()->assertInertia(fn (Assert $p) => $p
             ->where('tabHalaman.1', ['slug' => 'motoris_ditandai', 'label' => 'Ditandai'])
-            ->has('tabHalaman', 2)
+            ->has('tabHalaman', 3)
         );
 
         $sidebar = collect(Akses::menu($this->admin))->flatMap(fn ($g) => $g['items'])->pluck('slug')->all();
