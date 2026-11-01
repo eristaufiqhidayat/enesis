@@ -137,6 +137,24 @@ class KunjunganDrawerRiwayatTest extends AdminTestCase
         $this->assertSame([null, 'OT-11', 'OT-12'], array_column($k, 'kode_outlet'));
     }
 
+    public function test_outlet_ditandai_dari_tanda_outlet_aktif(): void
+    {
+        DB::table('tanda_outlet')->insert([
+            'outlet_id' => 11, 'kategori' => 'outlet_fiktif', 'dibuat_oleh' => $this->admin->id, 'dibuat_nama' => 'admin',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        // Tanda outlet 12 sudah dicabut: tidak dihitung ditandai.
+        DB::table('tanda_outlet')->insert([
+            'outlet_id' => 12, 'kategori' => 'outlet_fiktif', 'dibuat_oleh' => $this->admin->id, 'dibuat_nama' => 'admin',
+            'dicabut_at' => now(), 'dicabut_oleh' => $this->admin->id, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $k = $this->getJson(self::URL.'?sales_id=1&tanggal=2026-10-24')->assertOk()->json('kunjungan');
+
+        // Urutan jam: Kios Baru (outlet baru, tidak ditandai), Toko Makmur (OT-11, ditandai), Warung Bu Sri (OT-12, tanda dicabut).
+        $this->assertSame([false, true, false], array_column($k, 'outlet_ditandai'));
+    }
+
     public function test_tanggal_lain_tanpa_kunjungan(): void
     {
         $this->getJson(self::URL.'?sales_id=1&tanggal=2026-10-25')->assertOk()->assertJsonPath('kunjungan', []);

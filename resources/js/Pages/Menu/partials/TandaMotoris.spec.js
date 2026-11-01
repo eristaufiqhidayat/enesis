@@ -30,11 +30,15 @@ function pasangFetch() {
 const panggilan = (metode) => fetch.mock.calls.filter(([, opsi]) => (opsi?.method ?? 'GET') === metode);
 
 async function siapkan(lain = {}) {
-    const wrapper = mount(TandaMotoris, { props: { ...props, ...lain } });
+    const wrapper = mount(TandaMotoris, { props: { ...props, ...lain }, attachTo: document.body });
     await flushPromises();
 
     return wrapper;
 }
+
+// Badge merah (jumlah tanda tanggal ini) membuka panel daftar; badge kuning (jumlah tanggal lain) membuka panel lainnya.
+const bukaDaftar = (wrapper) => wrapper.findAll('button').find((b) => b.find('.badge-danger').exists())?.trigger('click');
+const bukaLainnya = (wrapper) => wrapper.findAll('button').find((b) => b.find('.badge-warning').exists())?.trigger('click');
 
 describe('TandaMotoris', () => {
     beforeEach(() => {
@@ -49,35 +53,53 @@ describe('TandaMotoris', () => {
 
     afterEach(() => {
         document.head.innerHTML = '';
+        document.body.innerHTML = '';
     });
 
-    it('memuat tanda motoris dan tanggal itu lalu menampilkannya', async () => {
+    it('menampilkan counter jumlah tanda tanggal ini, tapi daftar tersembunyi sampai diklik', async () => {
         const wrapper = await siapkan();
 
         expect(fetch.mock.calls[0][0]).toBe(`${URL}?sales_id=11&tanggal=2026-10-24`);
+        expect(wrapper.text()).toContain('Tanda motoris');
+        expect(wrapper.text()).toContain('2');
+        expect(wrapper.find('.tanda-motoris-item').exists()).toBe(false);
+
+        await bukaDaftar(wrapper);
         const item = wrapper.findAll('.tanda-motoris-item');
         expect(item).toHaveLength(2);
         expect(item[0].text()).toContain('Penjualan fiktif');
         expect(item[0].text()).toContain('koor · 2026-10-25 09:00');
-        expect(item[0].text()).toContain('Nota tidak wajar');
         expect(item[1].text()).toContain('Lokasi / GPS palsu');
     });
 
-    it('menampilkan pesan bila belum ada tanda', async () => {
-        daftar = [];
+    it('catatan hanya tampil setelah item diklik', async () => {
+        const wrapper = await siapkan();
+        await bukaDaftar(wrapper);
+        const item = wrapper.findAll('.tanda-motoris-item');
 
-        expect((await siapkan()).text()).toContain('Belum ada tanda pada tanggal ini.');
+        expect(item[0].text()).not.toContain('Nota tidak wajar');
+        await item[0].find('.flex').trigger('click');
+        expect(item[0].text()).toContain('Nota tidak wajar');
     });
 
-    it('tombol Tandai motoris hanya tampil bila akun punya hak Tambah', async () => {
-        expect((await siapkan()).text()).toContain('Tandai motoris');
+    it('counter tanda tidak tampil bila belum ada tanda aktif', async () => {
+        daftar = [];
+        const wrapper = await siapkan();
+
+        expect(wrapper.find('.badge-danger').exists()).toBe(false);
+    });
+
+    it('tombol Tandai hanya tampil bila akun punya hak Tambah', async () => {
+        expect((await siapkan()).text()).toContain('Tandai');
 
         bisaTambah = false;
-        expect((await siapkan()).text()).not.toContain('Tandai motoris');
+        expect((await siapkan()).text()).not.toContain('Tandai');
     });
 
     it('tombol Cabut hanya pada tanda yang boleh dicabut', async () => {
-        const item = (await siapkan()).findAll('.tanda-motoris-item');
+        const wrapper = await siapkan();
+        await bukaDaftar(wrapper);
+        const item = wrapper.findAll('.tanda-motoris-item');
 
         expect(item[0].text()).toContain('Cabut');
         expect(item[1].text()).not.toContain('Cabut');
@@ -157,6 +179,7 @@ describe('TandaMotoris', () => {
 
     it('mencabut tanda setelah konfirmasi lalu memuat ulang', async () => {
         const wrapper = await siapkan();
+        await bukaDaftar(wrapper);
         await wrapper.find('.tanda-motoris-item button').trigger('click');
         await flushPromises();
 
@@ -170,20 +193,23 @@ describe('TandaMotoris', () => {
     it('tidak mencabut bila konfirmasi dibatalkan', async () => {
         window.confirm = vi.fn(() => false);
         const wrapper = await siapkan();
+        await bukaDaftar(wrapper);
         await wrapper.find('.tanda-motoris-item button').trigger('click');
         await flushPromises();
 
         expect(panggilan('DELETE')).toHaveLength(0);
     });
 
-    it('memuat ulang tanda dan menutup form saat tanggal drawer diganti', async () => {
+    it('memuat ulang tanda, menutup form dan panel saat tanggal drawer diganti', async () => {
         const wrapper = await siapkan();
         await wrapper.find('button.btn-outline-danger').trigger('click');
+        await bukaDaftar(wrapper);
         await wrapper.setProps({ tanggal: '2026-10-25' });
         await flushPromises();
 
         expect(fetch.mock.calls.at(-1)[0]).toBe(`${URL}?sales_id=11&tanggal=2026-10-25`);
         expect(wrapper.find('form').exists()).toBe(false);
+        expect(wrapper.find('.tanda-motoris-panel').exists()).toBe(false);
     });
 
     describe('tanda di tanggal lain', () => {
@@ -192,20 +218,19 @@ describe('TandaMotoris', () => {
             { id: 8, tanggal: '2026-10-14', kategori_label: 'Penjualan fiktif', oleh: 'admin' },
         ];
 
-        it('tidak menampilkan apa pun bila tidak ada tanda di tanggal lain', async () => {
-            expect((await siapkan()).text()).not.toContain('tanda di tanggal lain');
+        it('tidak menampilkan counter bila tidak ada tanda di tanggal lain', async () => {
+            expect((await siapkan()).find('.badge-warning').exists()).toBe(false);
         });
 
         it('menampilkan jumlah dan menyembunyikan daftarnya sampai dibuka', async () => {
             lainnya = lain;
             const wrapper = await siapkan();
 
-            expect(wrapper.text()).toContain('Lihat tanda di tanggal lain (2)');
+            expect(wrapper.find('.badge-warning').text()).toBe('2');
             expect(wrapper.text()).not.toContain('14 Okt 2026');
 
-            await wrapper.findAll('button').find((b) => b.text().includes('tanda di tanggal lain')).trigger('click');
+            await bukaLainnya(wrapper);
 
-            expect(wrapper.text()).toContain('Sembunyikan tanda di tanggal lain (2)');
             const baris = wrapper.findAll('.tanda-motoris-lain').map((b) => b.text());
             expect(baris).toEqual(['22 Okt 2026 · Lokasi / GPS palsu · koor', '14 Okt 2026 · Penjualan fiktif · admin']);
         });
@@ -213,22 +238,33 @@ describe('TandaMotoris', () => {
         it('mengklik satu baris mengirim tanggalnya agar drawer berpindah', async () => {
             lainnya = lain;
             const wrapper = await siapkan();
-            await wrapper.findAll('button').find((b) => b.text().includes('tanda di tanggal lain')).trigger('click');
+            await bukaLainnya(wrapper);
             await wrapper.findAll('.tanda-motoris-lain')[1].trigger('click');
 
             expect(wrapper.emitted('pilih-tanggal')).toEqual([['2026-10-14']]);
         });
 
-        it('daftar ikut diperbarui saat tanggal drawer diganti', async () => {
+        it('membuka panel lainnya menutup panel daftar tanda, dan sebaliknya', async () => {
             lainnya = lain;
             const wrapper = await siapkan();
-            expect(wrapper.text()).toContain('(2)');
+            await bukaDaftar(wrapper);
+            expect(wrapper.find('.tanda-motoris-item').exists()).toBe(true);
 
-            lainnya = [lain[0]];
-            await wrapper.setProps({ tanggal: '2026-10-25' });
+            await bukaLainnya(wrapper);
+            expect(wrapper.find('.tanda-motoris-item').exists()).toBe(false);
+            expect(wrapper.find('.tanda-motoris-lain').exists()).toBe(true);
+        });
+
+        it('klik di luar menutup panel yang sedang terbuka', async () => {
+            lainnya = lain;
+            const wrapper = await siapkan();
+            await bukaLainnya(wrapper);
+            expect(wrapper.find('.tanda-motoris-lain').exists()).toBe(true);
+
+            document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }));
             await flushPromises();
 
-            expect(wrapper.text()).toContain('(1)');
+            expect(wrapper.find('.tanda-motoris-lain').exists()).toBe(false);
         });
     });
 

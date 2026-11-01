@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Support\Akses\Akses;
 use App\Support\Tracking\AnomaliGps;
+use App\Support\Tracking\AnomaliJarakKunjungan;
 use App\Support\Tracking\KunjunganHarian;
 use App\Support\Tracking\TitikGps;
 use Illuminate\Http\Request;
@@ -81,6 +82,8 @@ class TrackingSalesController extends Controller
             'kunjungan' => $kunjungan,
             // Indikasi GPS tidak wajar pada tanggal ini saja (null bila di bawah ambang).
             'anomali_gps' => AnomaliGps::analisis($locations, $kunjungan->where('lokasi_palsu', true)->count()),
+            // Indikasi kunjungan outlet berturutan berjarak dekat (spec 054), null bila di bawah ambang.
+            'indikasi_jarak_kunjungan' => AnomaliJarakKunjungan::analisis($kunjungan),
         ]);
     }
 

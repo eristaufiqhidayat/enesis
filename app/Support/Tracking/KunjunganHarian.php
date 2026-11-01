@@ -14,15 +14,19 @@ class KunjunganHarian
     /** @return Collection<int, object> urut jam checkin */
     public static function untuk(int $karyawanId, string $tanggal): Collection
     {
+        // Lencana "Ditandai" (tanda outlet, spec 053): outlet dengan tanda aktif, lepas dari motoris/tanggal kunjungan.
+        $ditandai = DB::table('tanda_outlet as t')->whereColumn('t.outlet_id', 'kj.outlet_id')->whereNull('t.dicabut_at')->selectRaw('COUNT(*)');
+
         $kunjungan = DB::table('trx_kunjungan as kj')
             ->leftJoin('mk_outlet as o', 'o.id', '=', 'kj.outlet_id')
             ->leftJoin('trx_outlet_baru as ob', 'ob.id', '=', 'kj.outlet_baru_id')
             ->where('kj.karyawan_id', $karyawanId)->where('kj.tanggal', substr($tanggal, 0, 10))
             ->orderBy('kj.checkin_at')->orderBy('kj.id')
-            ->select(['kj.id', 'kj.checkin_at', 'kj.checkout_at', 'kj.durasi_detik', 'kj.lat', 'kj.lng', 'kj.jarak_m',
+            ->select(['kj.id', 'kj.outlet_id', 'kj.checkin_at', 'kj.checkout_at', 'kj.durasi_detik', 'kj.lat', 'kj.lng', 'kj.jarak_m',
                 'kj.di_luar_rute', 'kj.mock_location', 'kj.tidak_beli_kategori', 'kj.tidak_beli_keterangan', 'kj.keterangan_lama'])
             ->selectRaw('COALESCE(o.nama, ob.nama) as outlet')
             ->addSelect('o.kode as kode_outlet')
+            ->selectSub($ditandai, 'outlet_ditandai')
             ->get();
 
         // Penjualan aktif (tidak dibatalkan) per kunjungan, dijumlahkan bila satu kunjungan punya beberapa transaksi.
@@ -33,9 +37,12 @@ class KunjunganHarian
 
         return $kunjungan->map(fn ($k, $i) => (object) [
             'id' => (int) $k->id,
+            // Null untuk outlet baru dari HP yang belum disetujui (belum ada baris mk_outlet, belum bisa ditandai).
+            'outlet_id' => $k->outlet_id !== null ? (int) $k->outlet_id : null,
             'outlet' => $k->outlet ?? 'Outlet tidak diketahui',
             // Kode master outlet; null untuk outlet baru dari HP yang belum disetujui.
             'kode_outlet' => $k->kode_outlet ?: null,
+            'outlet_ditandai' => (bool) $k->outlet_ditandai,
             'jam' => JamLokal::format($k->checkin_at, 'H:i'),
             'keluar' => JamLokal::format($k->checkout_at, 'H:i'),
             'durasi_menit' => $k->durasi_detik !== null ? (int) round($k->durasi_detik / 60) : null,

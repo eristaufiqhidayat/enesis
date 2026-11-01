@@ -23,6 +23,7 @@ import DetailLapLoadingBarang from './partials/DetailLapLoadingBarang.vue';
 import DetailLoadingBarang from './partials/DetailLoadingBarang.vue';
 import DetailMuatanCanvassing from './partials/DetailMuatanCanvassing.vue';
 import RiwayatDistributor from './partials/RiwayatDistributor.vue';
+import TandaOutlet from './partials/TandaOutlet.vue';
 import Tabs from '@/Components/ui/molecules/Tabs.vue';
 import TabsHalaman from '@/Components/ui/molecules/TabsHalaman.vue';
 import DataTable from '@/Components/ui/organisms/DataTable.vue';
@@ -51,6 +52,8 @@ const search = ref(props.search);
 const depoTerpilih = ref(null);
 // Baris area yang kode atau namanya diklik di tabel master_area; null = drawer tertutup.
 const areaTerpilih = ref(null);
+// Baris outlet yang namanya diklik di tabel mk_outlet (menu All Outlet); null = drawer Tanda Outlet tertutup.
+const outletTerpilih = ref(null);
 // Modal Edit depo terbuka di atas drawer detail depo.
 const depoDiedit = ref(false);
 // Baris depo yang petanya dibuka di drawer dari tombol Peta.
@@ -386,6 +389,12 @@ function filterTabel(table, { nilai, operator }) {
                                 <Badge v-else variant="danger" :title="`Tanda terakhir: ${tanggalSingkat(row.ditandai_tanggal)}`">{{ row.ditandai }} tanda</Badge>
                             </template>
                         </template>
+                        <template v-if="table.name === 'mk_outlet'" #cell-ditandai="{ row }">
+                            <button type="button" class="tautan-depo" @click="outletTerpilih = row">
+                                <Badge v-if="row.ditandai > 0" variant="danger">{{ row.ditandai }} tanda</Badge>
+                                <template v-else>Tandai</template>
+                            </button>
+                        </template>
                         <template v-if="tabelLastSeen.includes(table.name)" #cell-lokasi="{ row }">
                             <button v-if="row.latitude !== null && row.longitude !== null" type="button" class="tautan-depo" @click="posisiTerpilih = row">Lihat peta</button>
                         </template>
@@ -486,6 +495,10 @@ function filterTabel(table, { nilai, operator }) {
         <!-- Drawer detail area, dibuka dari tautan Kode atau Nama di tabel master_area. -->
         <Modal :show="areaTerpilih !== null" :title="areaTerpilih?.nama ?? ''" placement="kanan" @close="areaTerpilih = null">
             <DetailArea v-if="areaTerpilih" :area="areaTerpilih" />
+        </Modal>
+        <!-- Drawer Tanda Outlet, dibuka dari kolom Ditandai di tabel mk_outlet (menu All Outlet). -->
+        <Modal :show="outletTerpilih !== null" :title="`Tanda Outlet · ${outletTerpilih?.nama ?? ''}`" placement="kanan" @close="outletTerpilih = null">
+            <TandaOutlet v-if="outletTerpilih" :url="'/outlet_all/tanda'" :outlet-id="outletTerpilih.id" @berubah="muatTabelUlang" />
         </Modal>
         <!-- Drawer peta posisi terakhir motoris, dibuka dari tautan Lihat peta di tabel Tracking Last Seen. -->
         <Modal :show="posisiTerpilih !== null" :title="posisiTerpilih ? `Posisi ${posisiTerpilih.nama}` : ''" placement="kanan" @close="posisiTerpilih = null">

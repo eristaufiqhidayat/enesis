@@ -77,6 +77,11 @@ describe('gambarKunjungan', () => {
             expect(html).toContain('Dari kunjungan sebelumnya: 1 j 5 mnt · 3,4 km');
             expect(html).toContain('Jarak ke toko saat checkin: 850 m');
             expect(html).not.toContain('Lat:');
+            expect(html).not.toContain('Ditandai');
+        });
+
+        it('menampilkan lencana Ditandai bila outlet_ditandai true (tanda outlet, spec 053)', () => {
+            expect(popup({ ...lengkap, outlet_ditandai: true })).toContain('Ditandai');
         });
 
         it('menampilkan nomor sebagai lingkaran berwarna sama dengan penanda di peta', () => {

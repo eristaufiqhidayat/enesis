@@ -100,11 +100,28 @@ return [
     // Jendela (hari, termasuk hari ini) tanda aktif yang dihitung di lencana "Ditandai" Lacak Motoris dan daftar "Tanda di tanggal lain".
     'tanda_motoris_hari' => 30,
 
+    // Ambang indikasi kunjungan berturutan berjarak dekat (spec 054): dipakai AnomaliJarakKunjungan sebagai
+    // fallback bila kuncinya belum pernah disimpan di pengaturan_admin; nilai yang berlaku sehari-hari diatur dari
+    // halaman Pengaturan Deteksi Kunjungan (database), bukan di sini.
+    'deteksi_jarak_kunjungan' => [
+        'jarak_dekat_meter' => 5,
+        'min_kunjungan_berturutan' => 4,
+    ],
+
     // Kategori tanda motoris (kode => label) yang diberikan koordinator dari drawer Riwayat Lacak Motoris (TandaMotorisController).
     'tanda_motoris' => [
         'penjualan_fiktif' => 'Penjualan fiktif',
         'lokasi_palsu' => 'Lokasi / GPS palsu',
         'kunjungan_tidak_wajar' => 'Kunjungan tidak wajar',
+        'potensi_kecurangan' => 'Potensi kecurangan lainnya',
+    ],
+
+    // Kategori tanda outlet (kode => label), melekat ke outlet (mk_outlet) dari drawer Riwayat Lacak Motoris atau menu
+    // All Outlet (TandaOutletController).
+    'tanda_outlet' => [
+        'outlet_fiktif' => 'Outlet fiktif',
+        'alamat_tidak_sesuai' => 'Alamat/lokasi tidak sesuai',
+        'pola_kunjungan_tidak_wajar' => 'Pola kunjungan tidak wajar',
         'potensi_kecurangan' => 'Potensi kecurangan lainnya',
     ],
 
@@ -759,6 +776,11 @@ return [
                             'slug' => 'waktu_aktif_app',
                             'title' => 'Hari Kerja Aktif',
                             'icon' => 'clock',
+                        ],
+                        [
+                            'slug' => 'deteksi_kunjungan',
+                            'title' => 'Pengaturan Deteksi Kunjungan',
+                            'icon' => 'flag',
                         ],
                         [
                             'slug' => 'target_setting',
@@ -3170,6 +3192,7 @@ return [
                 'longitude' => 'Longitude',
                 'verifikasi' => 'Verifikasi',
                 'status_fiktif' => 'Status Fiktif',
+                'ditandai' => 'Ditandai',
                 'dibuat_oleh' => 'Dibuat Oleh',
                 'dibuat_pada' => 'Dibuat Pada',
             ],

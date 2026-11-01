@@ -21,8 +21,10 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\LapLoadingBarangController;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\OutletBaruController;
+use App\Http\Controllers\PengaturanDeteksiKunjunganController;
 use App\Http\Controllers\PetaSebaranSalesController;
 use App\Http\Controllers\TandaMotorisController;
+use App\Http\Controllers\TandaOutletController;
 use App\Http\Controllers\TrackingKoordinatorController;
 use App\Http\Controllers\TrackingSalesController;
 use App\Support\Master\MasterProduk;
@@ -75,6 +77,20 @@ Route::middleware(['auth', 'wajib-ganti-password'])->group(function () {
         ->middleware('hak:tracking_sales,tambah')->name('tanda-motoris.store');
     Route::delete('/tracking_sales/tanda/{tanda}', [TandaMotorisController::class, 'cabut'])
         ->whereNumber('tanda')->middleware('hak:tracking_sales,tambah')->name('tanda-motoris.cabut');
+
+    // Pengaturan ambang deteksi "kunjungan berturutan berjarak dekat" (spec 054).
+    Route::get('/deteksi_kunjungan', [PengaturanDeteksiKunjunganController::class, 'index'])
+        ->middleware('hak:deteksi_kunjungan')->name('deteksi-kunjungan.index');
+    Route::post('/deteksi_kunjungan', [PengaturanDeteksiKunjunganController::class, 'update'])
+        ->middleware('hak:deteksi_kunjungan,ubah')->name('deteksi-kunjungan.update');
+
+    // Tanda outlet (potensi kecurangan dll.), melekat ke outlet; hak mengikuti menu outlet_all.
+    Route::get('/outlet_all/tanda', [TandaOutletController::class, 'index'])
+        ->middleware('hak:outlet_all')->name('tanda-outlet.index');
+    Route::post('/outlet_all/tanda', [TandaOutletController::class, 'store'])
+        ->middleware('hak:outlet_all,tambah')->name('tanda-outlet.store');
+    Route::delete('/outlet_all/tanda/{tanda}', [TandaOutletController::class, 'cabut'])
+        ->whereNumber('tanda')->middleware('hak:outlet_all,tambah')->name('tanda-outlet.cabut');
 
     Route::prefix('master_area/design_area')->name('design-area.')->controller(DesignAreaController::class)->group(function () {
         Route::get('/', 'index')->middleware('hak:master_area')->name('index');
