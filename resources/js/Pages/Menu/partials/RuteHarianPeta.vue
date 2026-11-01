@@ -39,6 +39,8 @@ const tanggalDipilih = ref(props.tanggal);
 const info = ref('');
 // true selama titik lokasi tanggal yang dipilih diambil (spinner di samping tanggal).
 const memuatData = ref(true);
+// false sampai pemuatan pertama selesai (berhasil atau gagal): selama itu peta ditutup penuh oleh spinner, bukan dibiarkan kosong.
+const pernahMuat = ref(false);
 // Kunjungan outlet pada tanggal itu; null = endpoint tanpa data kunjungan (kolom daftar disembunyikan).
 const kunjungan = ref(null);
 const aktifId = ref(null);
@@ -49,6 +51,8 @@ const anomali = ref(null);
 // Indikasi kunjungan outlet berturutan berjarak dekat (AnomaliJarakKunjungan, spec 054): daftar runtun yang
 // memenuhi ambang pada tanggal itu (bisa lebih dari satu per hari); kosong = tidak ada peringatan.
 const indikasiJarak = ref([]);
+// Call dan Effective Call hari itu beserta target depo ({ call, ec, target: { call, ec } }); null bila endpoint tidak mengirim.
+const kpi = ref(null);
 // true setelah data tanggal yang dipilih selesai dimuat (tombol Temuan baru tampil, supaya tidak berkedip "Tidak ada temuan").
 const sudahMuat = ref(false);
 // Penyaring daftar kunjungan (semua | beli | tidak | bermasalah) dan id kunjungan yang disorot dari klik temuan.
@@ -105,6 +109,7 @@ const tabFilter = computed(() => {
         { key: 'beli', label: `Beli (${ringkasanHari.value.beli})` },
         { key: 'tidak', label: `Tidak beli (${ringkasanHari.value.tidak})` },
         { key: 'bermasalah', label: `Bermasalah (${saringKunjungan(daftar, 'bermasalah', indikasiJarak.value).length})` },
+        { key: 'ditandai', label: `Ditandai (${saringKunjungan(daftar, 'ditandai').length})` },
     ];
 });
 
@@ -143,8 +148,10 @@ function muat() {
             kunjungan.value = data.kunjungan ?? null;
             anomali.value = data.anomali_gps ?? null;
             indikasiJarak.value = data.indikasi_jarak_kunjungan ?? [];
+            kpi.value = data.kpi ?? null;
             sudahMuat.value = true;
             memuatData.value = false;
+            pernahMuat.value = true;
             info.value = data.total ? `${data.total} titik lokasi` : 'Tidak ada data lokasi pada tanggal ini';
             // Lebar peta berubah saat kolom daftar muncul atau hilang.
             await nextTick();
@@ -156,7 +163,7 @@ function muat() {
             gambarLompatan(L, lapisanLompatan, data.anomali_gps?.segmen ?? [], data.anomali_gps?.titik_menyimpang ?? []);
             sesuaikanBatas(L, map, data);
         })
-        .catch(() => { memuatData.value = false; info.value = 'Gagal memuat data'; });
+        .catch(() => { memuatData.value = false; pernahMuat.value = true; info.value = 'Gagal memuat data'; });
 }
 
 // Peta mencakup rute dan semua penanda kunjungan.
@@ -219,10 +226,14 @@ watch(tanggalDipilih, muat);
             <span class="flex items-center gap-1.5 text-sm text-gray-500" :aria-busy="memuatData"><Spinner v-if="memuatData" />{{ memuatData ? 'Memuat titik lokasi...' : info }}</span>
             <TemuanMotoris :temuan="temuan" :siap="sudahMuat" @fokus="fokusTemuan" />
         </div>
-        <TandaMotoris v-if="tandaUrl" class="ml-auto w-full sm:w-80" :url="tandaUrl" :sales-id="id" :tanggal="tanggalDipilih" :saran="peringatan?.saran ?? null" @pilih-tanggal="tanggalDipilih = $event" />
+        <TandaMotoris v-if="tandaUrl" class="ml-auto" :url="tandaUrl" :sales-id="id" :tanggal="tanggalDipilih" :saran="peringatan?.saran ?? null" @pilih-tanggal="tanggalDipilih = $event" />
     </div>
-    <RingkasanHariMotoris v-if="kunjungan?.length" :ringkasan="ringkasanHari" class="mb-2 lg:shrink-0" />
-    <div class="rute-harian lg:min-h-0 lg:flex-1" :class="{ 'rute-harian-daftar': kunjungan !== null }">
+    <RingkasanHariMotoris v-if="kunjungan?.length" :ringkasan="ringkasanHari" :kpi="kpi" class="mb-2 lg:shrink-0" />
+    <div class="rute-harian relative lg:min-h-0 lg:flex-1" :class="{ 'rute-harian-daftar': kunjungan !== null }">
+        <!-- Penutup pemuatan: opak pada pemuatan pertama (peta belum ada isinya), transparan saat ganti tanggal. -->
+        <div v-if="memuatData" class="peta-memuat" :class="{ 'peta-memuat-awal': !pernahMuat }" role="status" aria-live="polite">
+            <Spinner size="md" />Memuat data riwayat...
+        </div>
         <div v-if="kunjungan !== null" ref="kolom" class="rute-harian-kolom">
             <div class="sticky top-0 z-10 bg-white text-sm pb-1">
                 <span class="font-semibold">Kunjungan outlet ({{ kunjungan.length }})</span>

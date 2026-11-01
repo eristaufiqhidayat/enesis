@@ -45,11 +45,15 @@ export function ringkasanKunjungan(kunjungan) {
     };
 }
 
+// Persentase realisasi terhadap target (dibulatkan); null bila target kosong atau nol.
+export const persenTarget = (nilai, target) => (target > 0 ? Math.round((nilai / target) * 100) : null);
+
 export const dalamRuntun = (k, indikasiJarak) => indikasiJarak.some((r) => r.kunjungan_id.includes(k.id));
 
-// Kunjungan yang perlu dilihat lebih teliti oleh koordinator.
+// Kunjungan yang ditandai SISTEM (hasil deteksi otomatis) dan perlu dilihat lebih teliti oleh koordinator.
+// Tanda yang diberikan pengguna pada outlet (outlet_ditandai) sengaja terpisah: lihat filter "Ditandai".
 export const kunjunganBermasalah = (k, indikasiJarak = []) => Boolean(
-    k.di_luar_rute || k.lokasi_palsu || k.outlet_ditandai || k.lat === null || dalamRuntun(k, indikasiJarak),
+    k.di_luar_rute || k.lokasi_palsu || k.lat === null || dalamRuntun(k, indikasiJarak),
 );
 
 // Peringatan pada satu kunjungan (bukan hasilnya: beli / tidak beli; status ditandai ditunjukkan tombol bendera outlet), dengan tingkat yang sama dengan panel Temuan.
@@ -70,12 +74,13 @@ export function tingkatKunjungan(k, indikasiJarak = []) {
     return ['bahaya', 'waspada'].find((tingkat) => tanda.some((t) => t.tingkat === tingkat)) ?? null;
 }
 
-export const FILTER_KUNJUNGAN = ['semua', 'beli', 'tidak', 'bermasalah'];
+export const FILTER_KUNJUNGAN = ['semua', 'beli', 'tidak', 'bermasalah', 'ditandai'];
 
 export function saringKunjungan(kunjungan, filter, indikasiJarak = []) {
     if (filter === 'beli') return kunjungan.filter((k) => k.beli);
     if (filter === 'tidak') return kunjungan.filter((k) => !k.beli);
     if (filter === 'bermasalah') return kunjungan.filter((k) => kunjunganBermasalah(k, indikasiJarak));
+    if (filter === 'ditandai') return kunjungan.filter((k) => k.outlet_ditandai);
 
     return kunjungan;
 }
@@ -86,7 +91,8 @@ export const tingkatTertinggi = (temuan) => temuan.reduce((tinggi, t) => (BOBOT_
 
 const titikKunjungan = (daftar) => daftar.filter((k) => k.lat !== null && k.lng !== null).map((k) => [k.lat, k.lng]);
 
-// Satu daftar temuan dari anomali GPS, runtun jarak dekat, dan tanda pada kunjungan, urut dari tingkat tertinggi.
+// Satu daftar temuan SISTEM dari anomali GPS, runtun jarak dekat, dan tanda deteksi pada kunjungan, urut dari tingkat
+// tertinggi. Tanda yang diberikan koordinator/admin (tanda motoris dan tanda outlet) bukan temuan dan tidak masuk sini.
 // Tiap temuan: { kunci, tingkat: 'bahaya' | 'waspada' | 'info', judul, rincian, titik: [[lat, lng]], kunjunganId: [] }.
 export function susunTemuan({ anomali = null, indikasiJarak = [], kunjungan = [] }) {
     const temuan = [];
@@ -140,18 +146,6 @@ export function susunTemuan({ anomali = null, indikasiJarak = [], kunjungan = []
             kunjunganId: runtun.kunjungan_id,
         });
     });
-
-    const ditandai = kunjungan.filter((k) => k.outlet_ditandai);
-    if (ditandai.length) {
-        temuan.push({
-            kunci: 'outlet-ditandai',
-            tingkat: 'bahaya',
-            judul: `${angka(ditandai.length)} kunjungan ke outlet yang ditandai`,
-            rincian: ditandai.map((k) => k.outlet).join(', '),
-            titik: titikKunjungan(ditandai),
-            kunjunganId: ditandai.map((k) => k.id),
-        });
-    }
 
     const diLuarRute = kunjungan.filter((k) => k.di_luar_rute);
     if (diLuarRute.length) {

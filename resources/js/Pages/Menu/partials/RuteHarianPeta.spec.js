@@ -73,6 +73,24 @@ describe('RuteHarianPeta', () => {
         expect(wrapper.text()).toContain('2 titik lokasi');
     });
 
+    it('menutup area peta dengan spinner opak pada pemuatan pertama, lalu transparan saat ganti tanggal', async () => {
+        jawab({ total: 0, locations: [], depo: null });
+        const wrapper = mount(RuteHarianPeta, { props });
+
+        expect(wrapper.find('.peta-memuat').text()).toContain('Memuat data riwayat');
+        expect(wrapper.find('.peta-memuat').classes()).toContain('peta-memuat-awal');
+
+        useLeafletMap.mock.calls.at(-1)[1].onSiap(map, L);
+        await flushPromises();
+        expect(wrapper.find('.peta-memuat').exists()).toBe(false);
+
+        await wrapper.find('[aria-label="Hari sebelumnya"]').trigger('click');
+        expect(wrapper.find('.peta-memuat').exists()).toBe(true);
+        expect(wrapper.find('.peta-memuat').classes()).not.toContain('peta-memuat-awal');
+        await flushPromises();
+        expect(wrapper.find('.peta-memuat').exists()).toBe(false);
+    });
+
     it('menghentikan spinner dan menampilkan pesan bila pengambilan gagal', async () => {
         global.fetch = vi.fn(() => Promise.reject(new Error('jaringan')));
         const wrapper = await siapkan();
@@ -138,12 +156,58 @@ describe('RuteHarianPeta', () => {
 
         // Kunjungan 1 dan 3 beli (Rp 35.500 + Rp 3.500), kunjungan 2 tidak; jam kerja dari 09:00 sampai 12:00.
         expect(wrapper.text()).toContain('Kunjungan outlet (3)');
-        expect(teks).toContain('Kunjungan3');
+        expect(teks).toContain('Call (Kunjungan)3');
+        // Tanpa KPI dari server, Beli tampil sebagai cadangan; dengan KPI, Effective Call menggantikannya.
         expect(teks).toContain('Beli2 67%');
         expect(teks).toContain('Tidak beli1');
         expect(teks).toContain('Rp 39.000');
         expect(teks).toContain('09:00–12:00');
         expect(teks).toContain('3 j');
+    });
+
+    it('menampilkan Call dan Effective Call beserta persen realisasi terhadap target depo', async () => {
+        jawab({ total: 0, locations: [], depo: null, kunjungan, kpi: { call: 37, ec: 12, ipt: 2.4, target: { call: 45, ec: 25, ipt: 3 } } });
+        const wrapper = await siapkan();
+        const teks = (kunci) => wrapper.find(`[data-kpi="${kunci}"]`).text().replace(/\u00a0/g, ' ');
+
+        expect(teks('call')).toContain('Call (Kunjungan)');
+        expect(teks('call')).toContain('37');
+        expect(teks('call')).toContain('/ 45');
+        expect(teks('call')).toContain('82%');
+        expect(teks('ec')).toContain('Effective Call');
+        expect(teks('ec')).toContain('12');
+        expect(teks('ec')).toContain('/ 25');
+        expect(teks('ec')).toContain('48%');
+        // IPT = rata-rata jenis SKU per transaksi, satu desimal berkoma; 2,4 dari target 3,0 = 80%.
+        expect(teks('ipt')).toContain('IPT (SKU/transaksi)');
+        expect(teks('ipt')).toContain('2,4');
+        expect(teks('ipt')).toContain('/ 3,0');
+        expect(teks('ipt')).toContain('80%');
+        expect(wrapper.find('[data-kpi="call"] .kpi-bar-isi').attributes('style')).toContain('width: 82%');
+        expect(wrapper.find('[data-kpi="call"] .kpi-bar-isi-capai').exists()).toBe(false);
+        // Beli sama dengan Effective Call, jadi tidak ditampilkan dua kali.
+        expect(wrapper.find('.kpi-hari').text()).not.toMatch(/Beli\s*\d/);
+        expect(wrapper.find('.kpi-hari').text()).toContain('Tidak beli');
+    });
+
+    it('menandai target tercapai dan membatasi batang di 100%', async () => {
+        jawab({ total: 0, locations: [], depo: null, kunjungan, kpi: { call: 50, ec: 25, ipt: 3, target: { call: 45, ec: 25, ipt: 3 } } });
+        const wrapper = await siapkan();
+
+        expect(wrapper.find('[data-kpi="call"]').text()).toContain('111%');
+        expect(wrapper.find('[data-kpi="call"] .kpi-bar-isi').attributes('style')).toContain('width: 100%');
+        expect(wrapper.find('[data-kpi="call"] .kpi-bar-isi-capai').exists()).toBe(true);
+        expect(wrapper.find('[data-kpi="ec"] .kpi-bar-isi-capai').exists()).toBe(true);
+    });
+
+    it('tanpa data KPI dari server, Call tampil dari jumlah kunjungan tanpa target dan tanpa Effective Call', async () => {
+        jawab({ total: 0, locations: [], depo: null, kunjungan });
+        const wrapper = await siapkan();
+
+        expect(wrapper.find('[data-kpi="call"]').text()).toContain('3');
+        expect(wrapper.find('[data-kpi="call"] .kpi-bar').exists()).toBe(false);
+        expect(wrapper.find('[data-kpi="ec"]').exists()).toBe(false);
+        expect(wrapper.find('[data-kpi="ipt"]').exists()).toBe(false);
     });
 
     it('tidak menampilkan strip KPI bila tidak ada kunjungan', async () => {
@@ -159,6 +223,8 @@ describe('RuteHarianPeta', () => {
 
         expect(tab('Semua').text()).toBe('Semua (3)');
         expect(tab('Bermasalah').text()).toBe('Bermasalah (2)');
+        // Tanda dari pengguna (outlet ditandai) punya filter sendiri, terpisah dari deteksi sistem.
+        expect(tab('Ditandai').text()).toBe('Ditandai (1)');
 
         await tab('Tidak beli').trigger('click');
         expect(wrapper.findAll('.rute-kunjungan')).toHaveLength(1);
@@ -328,8 +394,8 @@ describe('RuteHarianPeta', () => {
         it('merangkum semua indikasi di tombol Temuan, panelnya tertutup secara bawaan', async () => {
             const wrapper = await dengan([runtun1]);
 
-            // Jarak dekat + kunjungan ke outlet ditandai + di luar rute + tanpa koordinat dari fixture.
-            expect(wrapper.find('.temuan-tombol').text()).toContain('4 temuan');
+            // Jarak dekat + di luar rute + tanpa koordinat dari fixture; outlet ditandai pengguna bukan temuan sistem.
+            expect(wrapper.find('.temuan-tombol').text()).toContain('3 temuan');
             expect(wrapper.find('.temuan-tombol').classes()).toContain('temuan-tombol-bahaya');
             expect(wrapper.find('.temuan-panel').exists()).toBe(false);
         });
@@ -339,7 +405,9 @@ describe('RuteHarianPeta', () => {
 
             expect(panel.text()).toContain('Kunjungan berturutan berjarak dekat');
             expect(panel.text()).toContain('2 kunjungan outlet berturutan berjarak kurang dari 5 m');
-            expect(panel.text()).toContain('Ini indikasi dari pola data, bukan bukti kecurangan.');
+            expect(panel.text()).toContain('Temuan sistem');
+            expect(panel.text()).toContain('Terdeteksi otomatis dari pola data, bukan bukti kecurangan.');
+            expect(panel.text()).not.toContain('outlet yang ditandai');
         });
 
         it('menampilkan "Tidak ada temuan" setelah data dimuat bila bersih', async () => {

@@ -56,6 +56,42 @@ class KunjunganDrawerRiwayatTest extends AdminTestCase
             ->assertJsonPath('kunjungan.2.lat', null);
     }
 
+    public function test_kpi_call_dan_effective_call_dengan_target_depo(): void
+    {
+        DB::table('mk_depo')->where('id', 46)->update(['data' => json_encode(['target_call' => '45', 'target_ec' => '30'])]);
+        DB::table('mk_karyawan')->where('id', 1)->update(['depo_id' => 46]);
+
+        // 3 kunjungan hari itu (termasuk outlet baru); 1 transaksi effective (J-1), J-2 dibatalkan.
+        $this->getJson(self::URL.'?sales_id=1&tanggal=2026-10-24')->assertOk()
+            ->assertJsonPath('kpi.call', 3)
+            ->assertJsonPath('kpi.ec', 1)
+            ->assertJsonPath('kpi.target.call', 45)
+            ->assertJsonPath('kpi.target.ec', 30)
+            ->assertJsonPath('kpi.ipt', 1)
+            ->assertJsonPath('kpi.target.ipt', config('mobile.target_default.ipt'));
+    }
+
+    public function test_kpi_ipt_rata_rata_sku_per_transaksi_aktif_satu_desimal(): void
+    {
+        // Sudah ada J-1 (1 SKU, aktif) dan J-2 (dibatalkan, tidak dihitung); tambah 2 transaksi aktif: 2 dan 4 SKU.
+        DB::table('trx_penjualan')->insert([
+            ['kode' => 'J-3', 'kunjungan_id' => 1, 'karyawan_id' => 1, 'tanggal' => '2026-10-24', 'jumlah_sku' => 2, 'total_qty' => 2, 'total' => 100, 'total_diskon' => 0, 'is_effective_call' => false],
+            ['kode' => 'J-4', 'kunjungan_id' => 1, 'karyawan_id' => 1, 'tanggal' => '2026-10-24', 'jumlah_sku' => 4, 'total_qty' => 4, 'total' => 100, 'total_diskon' => 0, 'is_effective_call' => false],
+        ]);
+
+        // (1 + 2 + 4) / 3 = 2,3
+        $this->getJson(self::URL.'?sales_id=1&tanggal=2026-10-24')->assertOk()->assertJsonPath('kpi.ipt', 2.3);
+        // Tanpa transaksi pada tanggal itu: 0.
+        $this->getJson(self::URL.'?sales_id=1&tanggal=2026-10-23')->assertOk()->assertJsonPath('kpi.ipt', 0);
+    }
+
+    public function test_kpi_memakai_target_bawaan_bila_depo_tidak_punya_pengaturan(): void
+    {
+        $this->getJson(self::URL.'?sales_id=1&tanggal=2026-10-24')->assertOk()
+            ->assertJsonPath('kpi.target.call', config('mobile.target_default.call'))
+            ->assertJsonPath('kpi.target.ec', config('mobile.target_default.ec'));
+    }
+
     public function test_perjalanan_antar_kunjungan_dari_checkout_ke_checkin_berikutnya(): void
     {
         $k = $this->getJson(self::URL.'?sales_id=1&tanggal=2026-10-24')->assertOk()->json('kunjungan');

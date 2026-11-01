@@ -406,17 +406,20 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     .rute-harian-kolom { @apply max-h-64 space-y-2 overflow-y-auto lg:max-h-none; }
     /* Tanda motoris (potensi kecurangan dll.) di kolom kiri drawer Riwayat: form, daftar, dan satu tanda per kartu. */
     .tanda-motoris { @apply relative space-y-2 rounded-md border border-gray-200 bg-white p-2; }
+    /* Tombol penghitung tanda motoris (Tanda tanggal ini / tanggal lain): lencana jumlah + teks, sorot saat panelnya terbuka. */
+    .tanda-chip { @apply inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50; }
+    .tanda-chip[aria-expanded="true"] { @apply border-blue-400 bg-blue-50; }
     /* Tanda motoris di baris header modal Riwayat: tanpa kotak, sejajar dengan tanggal, status, dan Temuan di kirinya. */
     .tanda-motoris.tanda-motoris-datar { @apply rounded-none border-0 bg-transparent p-0; }
     /* space-y-2 memberi margin bawah pada baris header begitu ada saudara sesudahnya (form/panel melayang), menambah tinggi dan mendorong konten di bawah header; di varian datar tidak ada jarak antarelemen. */
     .tanda-motoris.tanda-motoris-datar > * { @apply mb-0; }
     .tanda-motoris-form { @apply space-y-2 rounded-md bg-gray-50 p-2; }
     /* Form Tandai motoris melayang (absolute) di bawah header, sama seperti panel daftar tanda, supaya tidak mendorong peta dan daftar kunjungan. */
-    .tanda-motoris-form.tanda-motoris-form-melayang { @apply absolute left-0 right-0 top-full z-30 mt-1 rounded-md border border-gray-200 bg-white p-3 shadow-lg; }
+    .tanda-motoris-form.tanda-motoris-form-melayang { @apply absolute right-0 top-full z-30 mt-1 w-80 max-w-[90vw] rounded-md border border-gray-200 bg-white p-3 shadow-lg; }
     .tanda-motoris-daftar { @apply m-0 space-y-1 p-0; }
     .tanda-motoris-item { @apply rounded-md border border-red-200 bg-red-50/40 px-2 py-1.5; }
     /* Daftar tanda melayang di atas konten saat counter "Tanda motoris" diklik, supaya tidak mendorong tata letak. */
-    .tanda-motoris-panel { @apply absolute left-0 right-0 top-full z-20 mt-1 max-h-72 overflow-y-auto rounded-md border border-gray-200 bg-white p-2 shadow-lg; }
+    .tanda-motoris-panel { @apply absolute right-0 top-full z-20 mt-1 max-h-72 w-80 max-w-[90vw] overflow-y-auto rounded-md border border-gray-200 bg-white p-2 shadow-lg; }
     /* Satu baris "tanda di tanggal lain": klik memindahkan tanggal drawer. */
     .tanda-motoris-lain { @apply w-full rounded-md border border-gray-200 bg-white px-2 py-1 text-left text-xs hover:bg-blue-50; }
     /* Ringkasan hari itu di bawah judul daftar kunjungan. */
@@ -587,13 +590,19 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     .temuan-tingkat-waspada { @apply bg-amber-100 text-amber-800; }
     .temuan-tingkat-info { @apply bg-sky-100 text-sky-800; }
     /* Strip KPI hari itu (RingkasanHariMotoris.vue). */
-    .kpi-hari { @apply m-0 grid grid-cols-2 gap-2 sm:grid-cols-5; }
+    .kpi-hari { @apply m-0 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6; }
     .kpi-item { @apply rounded-md border border-gray-200 bg-white px-3 py-1.5; }
     .kpi-label { @apply text-[11px] font-semibold uppercase tracking-wide text-gray-500; }
     .kpi-nilai { @apply m-0 text-base font-semibold text-gray-800; }
     .kpi-nilai-baik { @apply text-green-700; }
     .kpi-nilai-waspada { @apply text-orange-600; }
     .kpi-catatan { @apply ml-1 text-xs font-normal text-gray-500; }
+    /* Realisasi terhadap target (Call, Effective Call): persen di samping angka dan batang progress tipis. */
+    .kpi-persen { @apply ml-1.5 text-xs font-semibold text-amber-600; }
+    .kpi-persen.kpi-persen-capai { @apply text-green-700; }
+    .kpi-bar { @apply mt-1 h-1 overflow-hidden rounded-full bg-gray-200; }
+    .kpi-bar-isi { @apply h-full rounded-full bg-amber-500; }
+    .kpi-bar-isi.kpi-bar-isi-capai { @apply bg-green-600; }
     /* Kunjungan yang disorot dari klik temuan, dan legenda peta rute harian. */
     /* Peringatan pada kartu kunjungan: chip outline berikon, warna sama dengan tingkat di panel Temuan (hasil beli/tidak beli ditunjukkan warna nomor). */
     /* Tombol bendera di samping kartu: abu-abu berbingkai = belum ditandai; bendera merah terisi di atas latar putih = outlet sudah ditandai. */
@@ -608,6 +617,8 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     .rute-kunjungan.rute-kunjungan-bahaya { @apply border-l-4 border-l-red-500; }
     .rute-kunjungan.rute-kunjungan-waspada { @apply border-l-4 border-l-amber-400; }
     .rute-kunjungan.rute-kunjungan-sorot { @apply border-amber-400 bg-amber-50 ring-1 ring-amber-300; }
+    .peta-memuat { @apply absolute inset-0 z-20 flex items-center justify-center gap-2 rounded-lg bg-white/70 text-sm text-gray-500; }
+    .peta-memuat.peta-memuat-awal { @apply bg-white; }
     .peta-rute-wadah { @apply relative lg:h-full lg:min-h-0; }
     .peta-legenda { @apply absolute bottom-2 left-2 z-10 flex max-w-[18rem] flex-wrap gap-x-3 gap-y-1 rounded-md bg-white/95 px-2 py-1.5 text-[11px] text-gray-700 shadow; }
     .peta-legenda-item { @apply inline-flex items-center gap-1; }

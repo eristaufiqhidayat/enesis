@@ -35,6 +35,8 @@ const bisaTambah = ref(false);
 const memuat = ref(true);
 const formBuka = ref(false);
 const kategoriDipilih = ref('');
+// true bila isian form berasal dari saran peringatan GPS (untuk keterangan di atas form).
+const terisiSaran = ref(false);
 const catatan = ref('');
 const menyimpan = ref(false);
 // Galat validasi per kolom ({ kategori: ['...'] }) dan pesan umum untuk galat lain.
@@ -83,9 +85,12 @@ async function muat() {
 
 function bukaForm() {
     // Draf yang disembunyikan lewat klik di luar dipakai lagi; isian otomatis dari saran hanya untuk form yang masih kosong.
+    // Saran untuk kategori yang sudah punya tanda aktif tidak dipakai: server menolak tanda kembar.
     if (!kategoriDipilih.value && !catatan.value) {
-        kategoriDipilih.value = props.saran?.kategori ?? '';
-        catatan.value = props.saran?.catatan ?? '';
+        const sudahDitandai = tanda.value.some((t) => t.kategori === props.saran?.kategori);
+        terisiSaran.value = Boolean(props.saran) && !sudahDitandai;
+        kategoriDipilih.value = terisiSaran.value ? props.saran.kategori : '';
+        catatan.value = terisiSaran.value ? props.saran.catatan : '';
     }
     formBuka.value = true;
 }
@@ -94,6 +99,7 @@ function batal() {
     formBuka.value = false;
     kategoriDipilih.value = '';
     catatan.value = '';
+    terisiSaran.value = false;
     galat.value = {};
 }
 
@@ -156,22 +162,22 @@ watch(() => props.tanggal, () => {
 <template>
     <section ref="wadah" class="tanda-motoris tanda-motoris-datar" aria-label="Tanda motoris">
         <div class="flex flex-wrap items-center gap-2">
-            <h6 class="font-semibold text-sm mb-0">Tanda motoris</h6>
-            <button v-if="tanda.length" type="button" class="cursor-pointer" :aria-expanded="daftarBuka" title="Tanda pada tanggal ini" @click="lainBuka = false; daftarBuka = !daftarBuka">
-                <Badge variant="danger">{{ tanda.length }}</Badge>
+            <!-- Tombol yang menjelaskan dirinya sendiri, jadi tidak perlu judul "Tanda motoris" di atasnya. -->
+            <button v-if="tanda.length" type="button" class="tanda-chip" :aria-expanded="daftarBuka" @click="lainBuka = false; daftarBuka = !daftarBuka">
+                <Badge variant="danger">{{ tanda.length }}</Badge>Tanda tanggal ini
             </button>
-            <button v-if="lainnya.length" type="button" class="cursor-pointer" :aria-expanded="lainBuka" title="Tanda di tanggal lain" @click="daftarBuka = false; lainBuka = !lainBuka">
-                <Badge variant="warning">{{ lainnya.length }}</Badge>
+            <button v-if="lainnya.length" type="button" class="tanda-chip" :aria-expanded="lainBuka" @click="daftarBuka = false; lainBuka = !lainBuka">
+                <Badge variant="warning">{{ lainnya.length }}</Badge>Tanda tanggal lain
             </button>
             <!-- Tombol tetap di tempatnya saat form terbuka (hanya berubah merah penuh) supaya baris header tidak bergeser; klik lagi menutup form. -->
-            <Button v-if="bisaTambah" variant="outline-danger" class="ml-auto" :class="{ 'tombol-tanda-aktif': formBuka }" :aria-expanded="formBuka" @click="formBuka ? batal() : bukaForm()"><Icon name="flag" class="me-1" />{{ tanda.length ? 'Tambah tanda' : 'Tandai' }}</Button>
+            <Button v-if="bisaTambah" variant="outline-danger" class="ml-auto" :class="{ 'tombol-tanda-aktif': formBuka }" :aria-expanded="formBuka" @click="formBuka ? batal() : bukaForm()"><Icon name="flag" class="me-1" />{{ tanda.length ? 'Tambah tanda' : 'Tandai motoris' }}</Button>
         </div>
 
         <p v-if="pesan" class="mb-0 text-xs text-red-600">{{ pesan }}</p>
 
         <Transition name="flyover">
             <form v-if="formBuka" class="tanda-motoris-form tanda-motoris-form-melayang" @submit.prevent="simpan">
-                <p v-if="saran" class="mb-0 text-xs text-gray-500">Terisi dari peringatan GPS tanggal ini; ubah bila perlu.</p>
+                <p v-if="terisiSaran" class="mb-0 text-xs text-gray-500">Terisi dari peringatan GPS tanggal ini; ubah bila perlu.</p>
                 <div>
                     <Label>Kategori</Label>
                     <Select v-model="kategoriDipilih" :options="pilihanKategori" placeholder="Pilih kategori" aria-label="Kategori tanda" />

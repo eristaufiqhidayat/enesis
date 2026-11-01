@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { geserTanggal, kunjunganBermasalah, ringkasanKunjungan, saringKunjungan, susunTemuan, tandaKunjungan, tingkatKunjungan, tingkatTertinggi } from './pusatKendali.js';
+import { geserTanggal, kunjunganBermasalah, persenTarget, ringkasanKunjungan, saringKunjungan, susunTemuan, tandaKunjungan, tingkatKunjungan, tingkatTertinggi } from './pusatKendali.js';
 
 const dasar = { di_luar_rute: false, lokasi_palsu: false, outlet_ditandai: false, lat: -7.4, lng: 112.7, penjualan: null };
 const kunjungan = [
@@ -17,6 +17,19 @@ describe('geserTanggal', () => {
     });
 });
 
+describe('persenTarget', () => {
+    it('membulatkan realisasi terhadap target dan tidak membatasi di atas 100', () => {
+        expect(persenTarget(37, 45)).toBe(82);
+        expect(persenTarget(50, 45)).toBe(111);
+        expect(persenTarget(0, 45)).toBe(0);
+    });
+
+    it('null bila target kosong atau nol', () => {
+        expect(persenTarget(10, 0)).toBeNull();
+        expect(persenTarget(10, null)).toBeNull();
+    });
+});
+
 describe('ringkasanKunjungan', () => {
     it('menghitung beli, tidak beli, persen, penjualan, dan jam kerja', () => {
         expect(ringkasanKunjungan(kunjungan)).toEqual({
@@ -31,8 +44,8 @@ describe('ringkasanKunjungan', () => {
 });
 
 describe('penyaringan kunjungan', () => {
-    it('mengenali kunjungan bermasalah: di luar rute, ditandai, tanpa koordinat, atau dalam runtun', () => {
-        expect(kunjungan.map((k) => kunjunganBermasalah(k))).toEqual([true, true, true]);
+    it('mengenali kunjungan bermasalah (deteksi sistem): di luar rute, tanpa koordinat, atau dalam runtun; outlet ditandai pengguna tidak dihitung', () => {
+        expect(kunjungan.map((k) => kunjunganBermasalah(k))).toEqual([true, true, false]);
         expect(kunjunganBermasalah(dasar)).toBe(false);
         expect(kunjunganBermasalah({ ...dasar, id: 9 }, [{ ...runtun, kunjungan_id: [9] }])).toBe(true);
     });
@@ -41,7 +54,8 @@ describe('penyaringan kunjungan', () => {
         expect(saringKunjungan(kunjungan, 'semua')).toHaveLength(3);
         expect(saringKunjungan(kunjungan, 'beli').map((k) => k.id)).toEqual([1, 3]);
         expect(saringKunjungan(kunjungan, 'tidak').map((k) => k.id)).toEqual([2]);
-        expect(saringKunjungan([dasar, ...kunjungan], 'bermasalah')).toHaveLength(3);
+        expect(saringKunjungan([dasar, ...kunjungan], 'bermasalah')).toHaveLength(2);
+        expect(saringKunjungan(kunjungan, 'ditandai').map((k) => k.id)).toEqual([3]);
     });
 });
 
@@ -74,13 +88,14 @@ describe('susunTemuan', () => {
         expect(tingkatTertinggi(temuan)).toBe('bahaya');
     });
 
-    it('memuat runtun jarak dekat, outlet ditandai, di luar rute, dan tanpa koordinat dengan kunjungan terkait', () => {
+    it('memuat runtun jarak dekat, di luar rute, dan tanpa koordinat dengan kunjungan terkait, tanpa tanda pengguna', () => {
         const temuan = susunTemuan({ indikasiJarak: [runtun], kunjungan });
         const per = Object.fromEntries(temuan.map((t) => [t.kunci, t]));
 
-        expect(temuan.map((t) => t.tingkat)).toEqual(['bahaya', 'bahaya', 'waspada', 'info']);
+        expect(temuan.map((t) => t.kunci)).toEqual(['di-luar-rute', 'jarak-dekat-0', 'tanpa-koordinat']);
+        expect(temuan.map((t) => t.tingkat)).toEqual(['bahaya', 'waspada', 'info']);
         expect(per['jarak-dekat-0']).toMatchObject({ rincian: runtun.saran.catatan, kunjunganId: [1, 3], titik: [[-7.4, 112.7], [-7.4, 112.7]] });
-        expect(per['outlet-ditandai']).toMatchObject({ judul: '1 kunjungan ke outlet yang ditandai', rincian: 'Toko C' });
+        expect(per['outlet-ditandai']).toBeUndefined();
         expect(per['di-luar-rute'].kunjunganId).toEqual([1]);
         expect(per['tanpa-koordinat']).toMatchObject({ kunjunganId: [2], titik: [] });
     });

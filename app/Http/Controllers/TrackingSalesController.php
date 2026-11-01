@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\Akses\Akses;
+use App\Support\Mobile\Pengaturan;
 use App\Support\Tracking\AnomaliGps;
 use App\Support\Tracking\AnomaliJarakKunjungan;
 use App\Support\Tracking\KunjunganHarian;
@@ -54,7 +55,33 @@ class TrackingSalesController extends Controller
             // Indikasi kunjungan outlet berturutan berjarak dekat (spec 054): daftar runtun yang memenuhi ambang
             // (bisa lebih dari satu per hari), urut dari yang terpanjang; array kosong bila tidak ada.
             'indikasi_jarak_kunjungan' => AnomaliJarakKunjungan::analisis($kunjungan),
+            // Call dan Effective Call hari itu terhadap targetnya (pengaturan per depo, sama dengan KPI di aplikasi HP).
+            'kpi' => $dalamCakupan ? $this->kpiHari($id, $data['tanggal'], $kunjungan->count()) : null,
         ]);
+    }
+
+    /**
+     * Call (jumlah kunjungan), Effective Call (transaksi aktif yang ditandai effective), dan IPT (rata-rata jumlah SKU
+     * per transaksi aktif, satu desimal) satu motoris pada satu tanggal, beserta targetnya (Call/EC dari pengaturan depo
+     * motoris itu; bawaan config mobile.target_default bila depo tidak punya). Rumus sama dengan KPI di aplikasi HP.
+     *
+     * @return array{call: int, ec: int, ipt: float, target: array{call: int, ec: int, ipt: float}}
+     */
+    private function kpiHari(int $karyawanId, string $tanggal, int $call): array
+    {
+        $tanggal = substr($tanggal, 0, 10);
+        $depoId = DB::table('mk_karyawan')->where('id', $karyawanId)->value('depo_id');
+        $target = Pengaturan::depo($depoId ? (int) $depoId : null)['target'] ?? config('mobile.target_default');
+
+        $jual = DB::table('trx_penjualan')->where('karyawan_id', $karyawanId)->whereNull('dibatalkan_at')
+            ->where('tanggal', $tanggal)->get(['jumlah_sku', 'is_effective_call']);
+
+        return [
+            'call' => $call,
+            'ec' => $jual->filter(fn ($p) => (bool) $p->is_effective_call)->count(),
+            'ipt' => $jual->isEmpty() ? 0.0 : round((float) $jual->avg('jumlah_sku'), 1),
+            'target' => ['call' => (int) $target['call'], 'ec' => (int) $target['ec'], 'ipt' => (float) $target['ipt']],
+        ];
     }
 
     // ------------------------------------------------------------------

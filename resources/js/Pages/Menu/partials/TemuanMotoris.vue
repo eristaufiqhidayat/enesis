@@ -50,7 +50,8 @@ watch(() => props.temuan, () => { buka.value = false; });
             <template v-else>Tidak ada temuan</template>
         </button>
         <Transition name="flyover">
-            <div v-if="buka" class="temuan-panel" role="region" aria-label="Daftar temuan">
+            <div v-if="buka" class="temuan-panel" role="region" aria-label="Daftar temuan sistem">
+                <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">Temuan sistem</p>
                 <ul class="m-0 space-y-1 p-0">
                     <li v-for="t in temuan" :key="t.kunci">
                         <button type="button" class="temuan-item" :class="`temuan-item-${t.tingkat}`" @click="pilih(t)">
@@ -63,7 +64,7 @@ watch(() => props.temuan, () => { buka.value = false; });
                         </button>
                     </li>
                 </ul>
-                <p class="mb-0 mt-2 text-xs text-gray-500">Ini indikasi dari pola data, bukan bukti kecurangan.</p>
+                <p class="mb-0 mt-2 text-xs text-gray-500">Terdeteksi otomatis dari pola data, bukan bukti kecurangan. Tanda dari koordinator ada di Tanda motoris dan bendera outlet.</p>
             </div>
         </Transition>
     </div>

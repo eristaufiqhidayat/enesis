@@ -60,7 +60,8 @@ describe('TandaMotoris', () => {
         const wrapper = await siapkan();
 
         expect(fetch.mock.calls[0][0]).toBe(`${URL}?sales_id=11&tanggal=2026-10-24`);
-        expect(wrapper.text()).toContain('Tanda motoris');
+        expect(wrapper.text()).toContain('Tanda tanggal ini');
+        expect(wrapper.text()).not.toContain('Tanda motoris');
         expect(wrapper.text()).toContain('2');
         expect(wrapper.find('.tanda-motoris-item').exists()).toBe(false);
 
@@ -144,6 +145,7 @@ describe('TandaMotoris', () => {
     });
 
     it('mengisi kategori dan catatan dari saran peringatan GPS saat form dibuka, lalu mengirimnya', async () => {
+        daftar = [tanda[0]];
         const wrapper = await siapkan({ saran: { kategori: 'lokasi_palsu', catatan: 'Indikasi GPS tidak wajar. 20 lompatan.' } });
         await wrapper.find('button.btn-outline-danger').trigger('click');
 
@@ -167,7 +169,7 @@ describe('TandaMotoris', () => {
 
     it('tombol Tandai tetap ada saat form terbuka dan menutup form bila diklik lagi', async () => {
         const wrapper = await siapkan();
-        const tombol = () => wrapper.findAll('button').find((b) => /^(Tandai|Tambah tanda)$/.test(b.text()));
+        const tombol = () => wrapper.findAll('button').find((b) => /^(Tandai motoris|Tambah tanda)$/.test(b.text()));
 
         await tombol().trigger('click');
         expect(wrapper.find('form').exists()).toBe(true);
@@ -284,7 +286,7 @@ describe('TandaMotoris', () => {
 
     it('klik di luar menyembunyikan form tetapi isian yang sudah diketik tetap ada saat dibuka lagi', async () => {
         const wrapper = await siapkan();
-        const tombol = () => wrapper.findAll('button').find((b) => /^(Tandai|Tambah tanda)$/.test(b.text()));
+        const tombol = () => wrapper.findAll('button').find((b) => /^(Tandai motoris|Tambah tanda)$/.test(b.text()));
 
         await tombol().trigger('click');
         await wrapper.find('textarea').setValue('Catatan saya');
@@ -318,6 +320,26 @@ describe('TandaMotoris', () => {
         const opsi = wrapper.findAll('option').map((o) => o.text());
         expect(opsi).toContain('Penjualan fiktif (sudah ditandai)');
         expect(opsi).toContain('Lokasi / GPS palsu');
+    });
+
+    it('tidak mengisi otomatis kategori saran yang sudah punya tanda aktif', async () => {
+        // Default fixture sudah memuat tanda lokasi_palsu; saran GPS dengan kategori sama tidak dipakai.
+        const wrapper = await siapkan({ saran: { kategori: 'lokasi_palsu', catatan: 'Indikasi GPS tidak wajar.' } });
+        await wrapper.find('button.btn-outline-danger').trigger('click');
+
+        expect(wrapper.find('select').element.value).toBe('');
+        expect(wrapper.find('textarea').element.value).toBe('');
+        expect(wrapper.find('form').text()).not.toContain('Terisi dari peringatan GPS');
+    });
+
+    it('mengisi otomatis saran bila kategorinya belum ditandai', async () => {
+        daftar = [tanda[0]];
+        const wrapper = await siapkan({ saran: { kategori: 'lokasi_palsu', catatan: 'Indikasi GPS tidak wajar.' } });
+        await wrapper.find('button.btn-outline-danger').trigger('click');
+
+        expect(wrapper.find('select').element.value).toBe('lokasi_palsu');
+        expect(wrapper.find('textarea').element.value).toBe('Indikasi GPS tidak wajar.');
+        expect(wrapper.find('form').text()).toContain('Terisi dari peringatan GPS');
     });
 
     it('menampilkan pesan penolakan server di bawah kategori', async () => {
