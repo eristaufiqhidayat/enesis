@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Support\Akses\Akses;
 use App\Support\Menu\JamLokal;
+use App\Support\Mobile\Lokasi;
 use App\Support\Mobile\Pengaturan;
+use App\Support\Tracking\TandaOutletMotoris;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -44,12 +46,90 @@ class TandaMotorisController extends Controller
             ->orderByDesc('tanggal')->orderByDesc('id')->limit(50)->get()
             ->map(fn ($t) => [...$this->bentuk($t, $request->user()), 'tanggal' => substr((string) $t->tanggal, 0, 10)]);
 
+        // Tanda outlet pada outlet yang didaftarkan motoris ini (ikut terhitung di kolom Ditandai). Dikelola di menu
+        // All Outlet (hak outlet_all), jadi di sini hanya untuk ditinjau.
+        $outlet = TandaOutletMotoris::aktif(false, $motoris->id, $motoris->nama)
+            ->orderByDesc('tout.created_at')->orderByDesc('tout.id')->limit(50)
+            ->select(['tout.id', 'tout.outlet_id', 'o.nama as outlet', 'o.latitude', 'o.longitude', 'tout.kategori', 'tout.catatan', 'o.dibuat_pada', 'tout.dibuat_nama', 'tout.created_at'])
+            ->selectSub(DB::table('trx_outlet_baru as nb')->whereColumn('nb.outlet_id', 'o.id')->selectRaw('MIN(COALESCE(nb.recorded_at, nb.received_at))'), 'daftar_hp')
+            ->get()
+            ->map(fn ($t) => [
+                'id' => (int) $t->id,
+                'outlet_id' => (int) $t->outlet_id,
+                'outlet' => $t->outlet,
+                'latitude' => $t->latitude !== null ? (float) $t->latitude : null,
+                'longitude' => $t->longitude !== null ? (float) $t->longitude : null,
+                'kategori_label' => config("marketama.tanda_outlet.{$t->kategori}", $t->kategori),
+                // Kapan outlet didaftarkan sebagai NOO: dari HP (UTC -> lokal) bila ada, selain itu data Marketama apa adanya.
+                'didaftarkan' => JamLokal::format($t->daftar_hp, 'Y-m-d H:i') ?? $t->dibuat_pada,
+                'catatan' => $t->catatan,
+                'oleh' => $t->dibuat_nama,
+                'waktu' => JamLokal::format($t->created_at, 'Y-m-d H:i'),
+                'tanggal' => JamLokal::format($t->created_at, 'Y-m-d'),
+            ]);
+
         return response()->json([
             'tanda' => $tanda->values(),
             'lainnya' => $lainnya->values(),
+            'outlet' => $outlet->values(),
             'bisa_tambah' => Akses::bisa($request->user(), self::MENU, 'tambah'),
             'kategori' => config('marketama.tanda_motoris'),
         ]);
+    }
+
+    /** Batas jumlah outlet bertanda di sekitar yang ditampilkan. */
+    public const MAKS_SEKITAR = 20;
+
+    /**
+     * Outlet lain yang punya tanda outlet aktif di sekitar satu outlet (terdekat dulu), untuk konteks di peta.
+     * Radius = ambang "jarak dekat" yang diatur pengguna di browser-nya (localStorage), dikirim sebagai radius_m;
+     * tanpa itu memakai bawaan config('marketama.deteksi_jarak_kunjungan.jarak_dekat_meter').
+     */
+    public function outletTerdekat(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'outlet_id' => ['required', 'integer'],
+            'radius_m' => ['nullable', 'integer', 'min:1', 'max:10000'],
+        ]);
+        $radius = (int) ($data['radius_m'] ?? config('marketama.deteksi_jarak_kunjungan.jarak_dekat_meter'));
+
+        $acuan = DB::table('mk_outlet')->where('id', $data['outlet_id'])->first(['id', 'latitude', 'longitude']);
+
+        abort_unless($acuan, 404);
+
+        if (! Lokasi::sah($acuan->latitude, $acuan->longitude)) {
+            return response()->json(['sekitar' => [], 'radius_m' => $radius]);
+        }
+
+        $lat = (float) $acuan->latitude;
+        $lng = (float) $acuan->longitude;
+        [$latMin, $latMax, $lngMin, $lngMax] = Lokasi::kotak($lat, $lng, $radius);
+
+        $sekitar = DB::table('tanda_outlet as tout')
+            ->join('mk_outlet as o', 'o.id', '=', 'tout.outlet_id')
+            ->whereNull('tout.dicabut_at')->where('o.id', '<>', $acuan->id)
+            ->whereBetween('o.latitude', [$latMin, $latMax])->whereBetween('o.longitude', [$lngMin, $lngMax])
+            ->orderBy('tout.id')
+            ->get(['o.id as outlet_id', 'o.nama as outlet', 'o.latitude', 'o.longitude', 'tout.kategori', 'tout.catatan', 'tout.created_at'])
+            ->groupBy('outlet_id')
+            ->map(function ($tanda) use ($lat, $lng) {
+                $o = $tanda->first();
+
+                return [
+                    'outlet_id' => (int) $o->outlet_id,
+                    'outlet' => $o->outlet,
+                    'latitude' => (float) $o->latitude,
+                    'longitude' => (float) $o->longitude,
+                    'jarak_m' => Lokasi::jarak($lat, $lng, (float) $o->latitude, (float) $o->longitude),
+                    'jumlah_tanda' => $tanda->count(),
+                    'kategori_label' => $tanda->map(fn ($t) => config("marketama.tanda_outlet.{$t->kategori}", $t->kategori))->unique()->implode(', '),
+                    'ditandai_pada' => JamLokal::format($tanda->max('created_at'), 'Y-m-d'),
+                ];
+            })
+            ->filter(fn ($o) => $o['jarak_m'] <= $radius)
+            ->sortBy('jarak_m')->take(self::MAKS_SEKITAR)->values();
+
+        return response()->json(['sekitar' => $sekitar, 'radius_m' => $radius]);
     }
 
     public function store(Request $request): JsonResponse

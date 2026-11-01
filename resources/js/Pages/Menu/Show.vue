@@ -18,6 +18,7 @@ import DetailArea from './partials/DetailArea.vue';
 import DetailDepo from './partials/DetailDepo.vue';
 import DetailDepoEdit from './partials/DetailDepoEdit.vue';
 import DetailDepoPeta from './partials/DetailDepoPeta.vue';
+import PetaOutletBertanda from './partials/PetaOutletBertanda.vue';
 import RuteHarianPeta from './partials/RuteHarianPeta.vue';
 import DetailLapLoadingBarang from './partials/DetailLapLoadingBarang.vue';
 import DetailLoadingBarang from './partials/DetailLoadingBarang.vue';
@@ -90,6 +91,8 @@ const infoRiwayat = (table, row, tanggalPilih = null) => infoRiwayatBaris(table.
 
 // Baris Tracking Last Seen Sales yang tandanya dibuka di drawer dari kolom Ditandai: { id, nama, tanggal }; null = tertutup.
 const tandaTerpilih = ref(null);
+// Outlet bertanda yang petanya dibuka dari tab Tanda outlet di drawer tanda: { id, nama, latitude, longitude }; null = tertutup.
+const outletPeta = ref(null);
 
 function tutupDetailDepo() {
     depoTerpilih.value = null;
@@ -519,7 +522,12 @@ function filterTabel(table, { nilai, operator }) {
                 :sales-id="tandaTerpilih.id"
                 :tanggal="tandaTerpilih.tanggal"
                 @berubah="muatTabelUlang"
+                @lihat-peta="outletPeta = $event"
             />
+        </Modal>
+        <!-- Drawer peta outlet bertanda, dibuka di atas drawer tanda motoris. -->
+        <Modal :show="outletPeta !== null" :title="outletPeta ? `Peta ${outletPeta.nama}` : ''" placement="kanan" @close="outletPeta = null">
+            <PetaOutletBertanda v-if="outletPeta" url="/tracking_sales/tanda/outlet-terdekat" :outlet="outletPeta" />
         </Modal>
         <!-- Modal rute harian, dibuka dari tombol Lihat riwayat di tabel Tracking Last Seen: hampir sepenuh layar (butuh ruang lebih untuk peta + daftar kunjungan). -->
         <Modal :show="riwayatTerpilih !== null" :title="riwayatTerpilih ? `Riwayat ${riwayatTerpilih.orang.nama}` : ''" size="full" @close="riwayatTerpilih = null">

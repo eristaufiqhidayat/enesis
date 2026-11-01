@@ -8,6 +8,7 @@ import Label from '@/Components/ui/atoms/Label.vue';
 import Select from '@/Components/ui/atoms/Select.vue';
 import Skeleton from '@/Components/ui/atoms/Skeleton.vue';
 import Textarea from '@/Components/ui/atoms/Textarea.vue';
+import Tabs from '@/Components/ui/molecules/Tabs.vue';
 import { tanggalSingkat, tanggalWaktuPendek } from '@/Support/format.js';
 
 // Tanda motoris: koordinator menandai motoris yang berpotensi curang (penjualan fiktif, lokasi palsu, dll.) pada
@@ -27,11 +28,13 @@ const props = defineProps({
     drawer: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(['pilih-tanggal', 'berubah']);
+const emit = defineEmits(['pilih-tanggal', 'berubah', 'lihat-peta']);
 
 const tanda = ref([]);
 // Tanda aktif motoris yang sama pada tanggal lain (jendela hari terakhir), dan apakah daftarnya sedang dibuka.
 const lainnya = ref([]);
+// Tanda outlet pada outlet yang didaftarkan motoris ini; hanya untuk ditinjau di drawer (dikelola di menu All Outlet).
+const outletTanda = ref([]);
 const lainBuka = ref(false);
 const kategori = ref({});
 // Pilihan kategori; yang sudah punya tanda aktif diberi keterangan (server menolak tanda kembar).
@@ -68,6 +71,16 @@ const semuaTanda = computed(() => [
     ...lainnya.value,
 ].sort((a, b) => (a.tanggal === b.tanggal ? b.id - a.id : b.tanggal.localeCompare(a.tanggal))));
 
+// Drawer: tanda outlet (pada outlet yang didaftarkan motoris ini) dipisah dari tanda motoris; terbaru di atas.
+const daftarTandaOutlet = computed(() => [...outletTanda.value].sort((a, b) => (a.tanggal === b.tanggal ? b.id - a.id : b.tanggal.localeCompare(a.tanggal))));
+
+// Drawer: tab 'motoris' | 'outlet'. Tab outlet dibuka otomatis bila hanya itu yang punya isi (lihat muat()).
+const tabAktif = ref('motoris');
+const tabDrawer = computed(() => [
+    { key: 'motoris', label: `Tanda motoris (${semuaTanda.value.length})` },
+    { key: 'outlet', label: `Tanda outlet (${daftarTandaOutlet.value.length})` },
+]);
+
 // "25 Okt 2026 · 09:00" dari "Y-m-d H:i" (waktu tanda itu DIBUAT, beda dari tanggal kejadian/tanggal baris).
 function waktuDibuat(nilai) {
     const waktu = tanggalWaktuPendek(nilai);
@@ -101,6 +114,8 @@ async function muat() {
         if (tanggal !== props.tanggal) return;
         tanda.value = data.tanda;
         lainnya.value = data.lainnya ?? [];
+        outletTanda.value = data.outlet ?? [];
+        if (props.drawer && !tanda.value.length && !lainnya.value.length && outletTanda.value.length) tabAktif.value = 'outlet';
         kategori.value = data.kategori;
         bisaTambah.value = data.bisa_tambah;
     } catch {
@@ -233,41 +248,61 @@ watch(() => props.tanggal, () => {
 
 <template>
     <section v-if="drawer" class="tanda-motoris" aria-label="Tanda motoris">
-        <div class="flex flex-wrap items-center gap-2">
-            <h6 class="font-semibold text-sm mb-0">Tanda motoris</h6>
-            <Badge v-if="semuaTanda.length" variant="danger">{{ semuaTanda.length }}</Badge>
-        </div>
+        <Tabs v-model="tabAktif" :tabs="tabDrawer" rapat />
 
-        <div v-if="memuat && !semuaTanda.length" class="animate-pulse space-y-2" role="status" aria-busy="true" aria-label="Memuat tanda motoris">
+        <div v-if="memuat && !semuaTanda.length && !daftarTandaOutlet.length" class="animate-pulse space-y-2" role="status" aria-busy="true" aria-label="Memuat tanda motoris">
             <Skeleton class="h-12 w-full" />
         </div>
 
         <p v-if="pesan" class="mb-0 text-xs text-red-600">{{ pesan }}</p>
 
-        <ul v-if="semuaTanda.length" class="tanda-motoris-daftar">
-            <li v-for="item in semuaTanda" :key="item.id" class="tanda-motoris-item">
-                <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <Badge variant="danger">{{ item.kategori_label }}</Badge>
-                    <span class="text-xs font-medium text-gray-700">Tanggal kejadian: {{ tanggalSingkat(item.tanggal) }}</span>
-                    <span class="text-xs text-gray-500">Dibuat {{ waktuDibuat(item.waktu) }} oleh {{ item.oleh }}</span>
-                    <div v-if="item.bisa_cabut && editId !== item.id" class="flex items-center gap-2 ml-auto">
-                        <button type="button" class="tautan-depo text-xs" @click="mulaiEdit(item)">Ubah catatan</button>
-                        <button type="button" class="tautan-bahaya text-xs" @click="cabut(item)">Cabut</button>
+        <template v-if="tabAktif === 'motoris'">
+            <ul v-if="semuaTanda.length" class="tanda-motoris-daftar">
+                <li v-for="item in semuaTanda" :key="item.id" class="tanda-motoris-item">
+                    <div class="tanda-item-kepala">
+                        <Badge variant="danger">{{ item.kategori_label }}</Badge>
+                        <span class="tanda-item-judul">{{ tanggalSingkat(item.tanggal) }}</span>
+                        <span class="tanda-item-meta">Dibuat {{ waktuDibuat(item.waktu) }} oleh {{ item.oleh }}</span>
+                        <div v-if="item.bisa_cabut && editId !== item.id" class="tanda-item-aksi">
+                            <button type="button" class="tautan-depo text-xs" @click="mulaiEdit(item)"><Icon name="file-text" class="me-1" />Ubah catatan</button>
+                            <button type="button" class="tautan-bahaya text-xs" @click="cabut(item)"><Icon name="trash" class="me-1" />Cabut</button>
+                        </div>
                     </div>
-                </div>
 
-                <form v-if="editId === item.id" class="mt-1 space-y-1" @submit.prevent="simpanEdit(item)">
-                    <Textarea v-model="editCatatan" maxlength="500" rows="2" aria-label="Catatan tanda" />
-                    <FieldError v-if="editGalat.catatan">{{ editGalat.catatan[0] }}</FieldError>
-                    <div class="flex gap-2">
-                        <Button type="submit" variant="primary" :loading="editMenyimpan">Simpan catatan</Button>
-                        <Button type="button" variant="light" @click="batalEdit">Batal</Button>
+                    <form v-if="editId === item.id" class="mt-1 space-y-1" @submit.prevent="simpanEdit(item)">
+                        <Textarea v-model="editCatatan" maxlength="500" rows="2" aria-label="Catatan tanda" />
+                        <FieldError v-if="editGalat.catatan">{{ editGalat.catatan[0] }}</FieldError>
+                        <div class="flex gap-2">
+                            <Button type="submit" variant="primary" :loading="editMenyimpan">Simpan</Button>
+                            <Button type="button" variant="light" @click="batalEdit">Batal</Button>
+                        </div>
+                    </form>
+                    <p v-else-if="item.catatan" class="tanda-item-catatan">{{ item.catatan }}</p>
+                </li>
+            </ul>
+            <p v-else-if="!memuat && !pesan" class="tanda-kosong">Belum ada data.</p>
+        </template>
+
+        <!-- Tanda outlet yang didaftarkan motoris ini: dikelola di menu All Outlet, di sini hanya untuk ditinjau. -->
+        <template v-else>
+            <ul v-if="daftarTandaOutlet.length" class="tanda-motoris-daftar">
+                <li v-for="item in daftarTandaOutlet" :key="item.id" class="tanda-motoris-item">
+                    <div class="tanda-item-kepala">
+                        <Badge variant="danger">{{ item.kategori_label }}</Badge>
+                        <span class="tanda-item-judul">{{ item.outlet }}</span>
+                        <div v-if="item.latitude != null && item.longitude != null" class="tanda-item-aksi">
+                            <button type="button" class="tautan-depo text-xs" @click="$emit('lihat-peta', { id: item.outlet_id, nama: item.outlet, latitude: item.latitude, longitude: item.longitude })"><Icon name="map-pin" class="me-1" />Lihat peta</button>
+                        </div>
                     </div>
-                </form>
-                <p v-else-if="item.catatan" class="mb-0 mt-1 text-sm">{{ item.catatan }}</p>
-            </li>
-        </ul>
-        <p v-else-if="!memuat && !pesan" class="mb-0 text-xs text-gray-500">Belum ada tanda.</p>
+                    <p class="tanda-item-meta mb-0 mt-1">
+                        Ditandai {{ tanggalSingkat(item.tanggal) }} oleh {{ item.oleh }}
+                        <template v-if="item.didaftarkan"> · Didaftarkan (NOO) {{ waktuDibuat(item.didaftarkan) }}</template>
+                    </p>
+                    <p v-if="item.catatan" class="tanda-item-catatan">{{ item.catatan }}</p>
+                </li>
+            </ul>
+            <p v-else-if="!memuat && !pesan" class="tanda-kosong">Belum ada data.</p>
+        </template>
     </section>
 
     <section v-else ref="wadah" class="tanda-motoris tanda-motoris-datar" aria-label="Tanda motoris">

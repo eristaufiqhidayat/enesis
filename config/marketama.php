@@ -80,7 +80,7 @@ return [
     // Di sidebar, slug pertama tiap kelompok (induk) mewakili seluruh kelompok dengan 'judul_sidebar'; slug lainnya
     // disembunyikan selama induknya bisa dibuka akun (lihat Akses::satukanTab). Matriks hak role tetap per slug.
     'tab_halaman' => [
-        ['tracking_sales' => 'Last Seen', 'motoris_ditandai' => 'Ditandai'],
+        ['tracking_sales' => 'Lacak Motoris', 'motoris_ditandai' => 'Ditandai'],
         ['tracking_koordinator' => 'Last Seen', 'tracking_koordinator_history_location' => 'Riwayat Lokasi'],
     ],
 

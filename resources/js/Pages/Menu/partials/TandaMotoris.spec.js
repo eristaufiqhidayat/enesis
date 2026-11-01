@@ -372,14 +372,54 @@ describe('TandaMotoris', () => {
 
             expect(wrapper.text()).not.toContain('Tanda tanggal ini');
             expect(wrapper.text()).not.toContain('Tanda tanggal lain');
-            expect(wrapper.find('.badge-danger').text()).toBe('4');
+            expect(wrapper.find('[role="tab"]').text()).toBe('Tanda motoris (4)');
 
             const item = wrapper.findAll('.tanda-motoris-item');
             expect(item).toHaveLength(4);
             // Tanda tanggal yang dilihat (24 Okt, props.tanggal) lebih baru dari tanggal lain (22 lalu 14 Okt).
-            expect(item.map((i) => i.text().match(/Tanggal kejadian: (\d+ \w+ \d+)/)[1])).toEqual([
+            expect(item.map((i) => i.text().match(/(\d+ [A-Z][a-z]+ 20\d\d)/)[1])).toEqual([
                 '24 Okt 2026', '24 Okt 2026', '22 Okt 2026', '14 Okt 2026',
             ]);
+        });
+
+        it('memisahkan tanda outlet dari tanda motoris dalam tab, tanpa tombol ubah/cabut, terbaru dulu', async () => {
+            const outlet = [
+                { id: 1, outlet_id: 70, outlet: 'Toko Lama', kategori_label: 'Outlet fiktif', catatan: null, oleh: 'admin', waktu: '2026-10-20 08:00', tanggal: '2026-10-20' },
+                { id: 2, outlet_id: 71, outlet: 'Toko Baru', didaftarkan: '2026-10-01 08:15', latitude: -7.45, longitude: 112.71, kategori_label: 'Alamat tidak sesuai', catatan: 'Alamat kosong', oleh: 'koor', waktu: '2026-10-26 09:30', tanggal: '2026-10-26' },
+            ];
+            global.fetch = vi.fn(() => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ tanda: [tanda[0]], lainnya: [], outlet, bisa_tambah: false, kategori }) }));
+            const wrapper = await siapkan({ drawer: true });
+            const tab = () => wrapper.findAll('[role="tab"]');
+
+            expect(tab().map((t) => t.text())).toEqual(['Tanda motoris (1)', 'Tanda outlet (2)']);
+            expect(wrapper.findAll('.tanda-motoris-item')).toHaveLength(1);
+            expect(wrapper.text()).toContain('Penjualan fiktif');
+            expect(wrapper.text()).not.toContain('Toko');
+
+            await tab()[1].trigger('click');
+            const item = wrapper.findAll('.tanda-motoris-item');
+            expect(item).toHaveLength(2);
+            expect(item[0].text()).toContain('Toko Baru');
+            expect(item[1].text()).toContain('Toko Lama');
+            expect(item[0].text()).toContain('Ditandai 26 Okt 2026 oleh koor');
+            expect(item[0].text()).toContain('Didaftarkan (NOO) 1 Okt 2026 · 08:15');
+            expect(item[0].text()).toContain('Alamat kosong');
+            expect(item.every((i) => !i.text().includes('Cabut') && !i.text().includes('Ubah catatan'))).toBe(true);
+            expect(wrapper.text()).not.toContain('Penjualan fiktif');
+
+            // Tombol Lihat peta hanya untuk outlet yang punya koordinat, dan mengirim titiknya.
+            const peta = wrapper.findAll('button').filter((b) => b.text() === 'Lihat peta');
+            expect(peta).toHaveLength(1);
+            await peta[0].trigger('click');
+            expect(wrapper.emitted('lihat-peta')).toEqual([[{ id: 71, nama: 'Toko Baru', latitude: -7.45, longitude: 112.71 }]]);
+        });
+
+        it('membuka tab outlet bila motoris tidak punya tanda motoris tapi punya tanda outlet', async () => {
+            const outlet = [{ id: 1, outlet_id: 70, outlet: 'Toko X', kategori_label: 'Outlet fiktif', catatan: null, oleh: 'admin', waktu: '2026-10-20 08:00', tanggal: '2026-10-20' }];
+            global.fetch = vi.fn(() => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ tanda: [], lainnya: [], outlet, bisa_tambah: false, kategori }) }));
+            const wrapper = await siapkan({ drawer: true });
+
+            expect(wrapper.find('.tanda-motoris-item').text()).toContain('Toko X');
         });
 
         it('memformat tanggal kejadian dan waktu dibuat', async () => {
@@ -387,7 +427,7 @@ describe('TandaMotoris', () => {
             const wrapper = await siapkan({ drawer: true });
             const teks = wrapper.find('.tanda-motoris-item').text();
 
-            expect(teks).toContain('Tanggal kejadian: 24 Okt 2026');
+            expect(teks).toContain('24 Okt 2026');
             expect(teks).toContain('Dibuat 25 Okt 2026 · 09:00 oleh koor');
         });
 
