@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import Button from '@/Components/ui/atoms/Button.vue';
 import FieldError from '@/Components/ui/atoms/FieldError.vue';
@@ -11,6 +11,7 @@ import Textarea from '@/Components/ui/atoms/Textarea.vue';
 import Alert from '@/Components/ui/molecules/Alert.vue';
 import Card from '@/Components/ui/molecules/Card.vue';
 import Combobox from '@/Components/ui/molecules/Combobox.vue';
+import Tabs from '@/Components/ui/molecules/Tabs.vue';
 
 // Isi form tambah/edit karyawan (Sales, Koordinator, Supervisor, Lainnya), dipakai di halaman Form dan modal Index.
 // Field per kategori mengikuti Marketama. Pilihan koordinator/area (sales) dan wilayah depo (koordinator) dimuat
@@ -62,6 +63,63 @@ function pilihFotoKtp(e) {
     pratinjauKtp.value = file ? URL.createObjectURL(file) : null;
     statusScan.value = null;
 }
+
+// Ambil foto KTP lewat kamera komputer, sebagai alternatif unggah file. Hasil jepretan dipakai
+// persis seperti file yang diunggah (dikirim ke endpoint baca-ktp yang sama), bukan jalur terpisah.
+const sumberFotoKtp = ref('unggah'); // 'unggah' | 'kamera'
+const videoKtp = ref(null);
+const kameraAktif = ref(false);
+const kameraError = ref('');
+let streamKtp = null;
+
+function matikanKamera() {
+    streamKtp?.getTracks().forEach((track) => track.stop());
+    streamKtp = null;
+    kameraAktif.value = false;
+}
+
+async function aktifkanKamera() {
+    kameraError.value = '';
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+        kameraError.value = 'Kamera tidak didukung di browser ini, atau halaman tidak diakses lewat HTTPS.';
+        return;
+    }
+
+    try {
+        streamKtp = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        kameraAktif.value = true;
+        await nextTick();
+        if (videoKtp.value) videoKtp.value.srcObject = streamKtp;
+    } catch {
+        kameraError.value = 'Tidak bisa mengakses kamera. Pastikan izin kamera diizinkan di browser.';
+    }
+}
+
+function jepretKtp() {
+    const video = videoKtp.value;
+    if (!video) return;
+
+    const kanvas = document.createElement('canvas');
+    kanvas.width = video.videoWidth;
+    kanvas.height = video.videoHeight;
+    kanvas.getContext('2d').drawImage(video, 0, 0);
+
+    kanvas.toBlob((blob) => {
+        if (!blob) return;
+        const file = new File([blob], 'ktp-kamera.jpg', { type: 'image/jpeg' });
+        fotoKtp.value = file;
+        pratinjauKtp.value = URL.createObjectURL(blob);
+        statusScan.value = null;
+        matikanKamera();
+    }, 'image/jpeg', 0.92);
+}
+
+watch(sumberFotoKtp, (sumber, sebelum) => {
+    if (sebelum === 'kamera') matikanKamera();
+});
+
+onBeforeUnmount(matikanKamera);
 
 async function bacaKtp() {
     if (!fotoKtp.value) return;
@@ -165,9 +223,32 @@ function simpan() {
                                 <template v-else>Belum ada foto</template>
                             </span>
                             <div class="min-w-0 flex-1">
-                                <Label for="foto_ktp">Foto KTP</Label>
-                                <Input id="foto_ktp" type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" @change="pilihFotoKtp" />
-                                <small class="block text-gray-500 mt-1">.jpg, .jpeg, .png, maksimal 5 MB. Pastikan terang, rata, dan tidak terpotong.</small>
+                                <Tabs
+                                    :tabs="[{ key: 'unggah', label: 'Unggah file' }, { key: 'kamera', label: 'Pakai kamera' }]"
+                                    v-model="sumberFotoKtp"
+                                />
+
+                                <template v-if="sumberFotoKtp === 'unggah'">
+                                    <Label for="foto_ktp">Foto KTP</Label>
+                                    <Input id="foto_ktp" type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" @change="pilihFotoKtp" />
+                                    <small class="block text-gray-500 mt-1">.jpg, .jpeg, .png, maksimal 5 MB. Pastikan terang, rata, dan tidak terpotong.</small>
+                                </template>
+
+                                <template v-else>
+                                    <template v-if="kameraAktif">
+                                        <video ref="videoKtp" autoplay playsinline class="w-full max-w-xs rounded border border-gray-300"></video>
+                                        <div class="flex gap-2 mt-2">
+                                            <Button type="button" @click="jepretKtp">Ambil foto</Button>
+                                            <Button type="button" variant="light" @click="matikanKamera">Batal</Button>
+                                        </div>
+                                    </template>
+                                    <template v-else>
+                                        <Button type="button" @click="aktifkanKamera">Aktifkan kamera</Button>
+                                        <small class="block text-gray-500 mt-1">Posisikan KTP rata dan terang di depan kamera, lalu klik Ambil foto.</small>
+                                        <Alert v-if="kameraError" variant="danger" class="mt-2">{{ kameraError }}</Alert>
+                                    </template>
+                                </template>
+
                                 <Button type="button" class="mt-2" :loading="memindaiKtp" :disabled="!fotoKtp || memindaiKtp" @click="bacaKtp">
                                     Baca KTP otomatis
                                 </Button>
