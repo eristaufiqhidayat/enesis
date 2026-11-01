@@ -4,30 +4,35 @@ namespace App\Support\Karyawan;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Str;
 use RuntimeException;
 
-// Baca NIK, nama, tempat/tanggal lahir, dan alamat dari foto KTP lewat OCR (Google Cloud Vision API,
-// "services.google_vision.key" / env GOOGLE_VISION_API_KEY), dipakai KaryawanController::bacaKtp() saat
-// admin menambah karyawan sales (motoris) baru. Dikirim lewat HTTP ke Google, bukan binary lokal, supaya
-// tetap jalan di shared hosting yang tidak bisa pasang paket sistem seperti Tesseract. Foto cuma dipakai
-// sebentar (pra-proses lalu OCR) dan tidak pernah disimpan. Hasil OCR tidak 100% akurat (tergantung kualitas
-// foto): field yang gagal terbaca dikembalikan null supaya admin mengisinya manual, bukan ditebak.
+// Baca NIK, nama, tempat/tanggal lahir, dan alamat dari foto KTP lewat OCR, dipakai KaryawanController::bacaKtp()
+// saat admin menambah karyawan sales (motoris) baru. Dua mesin OCR, dipilih otomatis sesuai yang tersedia di
+// server: Tesseract (binary lokal, gratis, tapi butuh paket sistem -- tidak bisa dipasang di shared hosting
+// tanpa akses root) dipakai kalau ada; kalau tidak, jatuh ke Google Cloud Vision API (HTTP, butuh
+// GOOGLE_VISION_API_KEY di .env, tapi jalan di hosting manapun). Foto cuma dipakai sebentar untuk dibaca dan
+// tidak pernah disimpan. Hasil OCR tidak 100% akurat (tergantung kualitas foto): field yang gagal terbaca
+// dikembalikan null supaya admin mengisinya manual, bukan ditebak.
 class BacaKtp
 {
     /** @return array{nik: ?string, nama: ?string, tempat_lahir: ?string, tanggal_lahir: ?string, alamat: ?string, teks_mentah: string} */
     public static function baca(UploadedFile $file): array
     {
-        $gambarBase64 = self::praProses($file->getRealPath());
-        $teks = self::jalankanOcr($gambarBase64);
+        $gambar = self::praProses($file->getRealPath());
+
+        try {
+            $teks = self::tesseractTersedia() ? self::ocrTesseract($gambar) : self::ocrGoogleVision($gambar);
+        } finally {
+            imagedestroy($gambar);
+        }
 
         return self::parseTeks($teks) + ['teks_mentah' => $teks];
     }
 
-    /**
-     * Perbesar gambar kecil, ubah ke abu-abu, pertajam kontras -- supaya karakter lebih mudah dibaca OCR.
-     * Dikembalikan sebagai base64 PNG (format yang diminta Google Vision), bukan file di disk.
-     */
-    private static function praProses(string $sumber): string
+    /** Perbesar gambar kecil, ubah ke abu-abu, pertajam kontras -- supaya karakter lebih mudah dibaca OCR. */
+    private static function praProses(string $sumber): \GdImage
     {
         $info = @getimagesize($sumber);
         $gambar = match ($info[2] ?? null) {
@@ -57,21 +62,56 @@ class BacaKtp
         imagefilter($gambar, IMG_FILTER_GRAYSCALE);
         imagefilter($gambar, IMG_FILTER_CONTRAST, -15);
 
-        ob_start();
-        imagepng($gambar);
-        $isi = (string) ob_get_clean();
-        imagedestroy($gambar);
-
-        return base64_encode($isi);
+        return $gambar;
     }
 
-    private static function jalankanOcr(string $gambarBase64): string
+    /**
+     * Dicek ulang tiap panggilan (bukan di-cache) -- murah (cuma "which") dan server bisa berubah antar deploy.
+     * Sengaja pakai command string (bukan array): Process::fake() di test hanya cocok dengan pola pada command
+     * string, command array selalu lolos ke proses sungguhan walau sudah di-fake.
+     */
+    private static function tesseractTersedia(): bool
+    {
+        return Process::run('which tesseract')->successful();
+    }
+
+    private static function ocrTesseract(\GdImage $gambar): string
+    {
+        $folder = storage_path('app/tmp');
+
+        if (! is_dir($folder)) {
+            mkdir($folder, 0775, true);
+        }
+
+        $path = $folder.'/ktp-'.Str::random(16).'.png';
+        imagepng($gambar, $path);
+
+        try {
+            $proses = Process::timeout(30)->run('tesseract '.escapeshellarg($path).' stdout -l ind --psm 6');
+
+            if (! $proses->successful()) {
+                throw new RuntimeException('Tesseract gagal: '.$proses->errorOutput());
+            }
+
+            return $proses->output();
+        } finally {
+            if (file_exists($path)) {
+                unlink($path);
+            }
+        }
+    }
+
+    private static function ocrGoogleVision(\GdImage $gambar): string
     {
         $kunci = config('services.google_vision.key');
 
         if (! $kunci) {
-            throw new RuntimeException('GOOGLE_VISION_API_KEY belum diatur di .env.');
+            throw new RuntimeException('Tesseract tidak terpasang di server ini dan GOOGLE_VISION_API_KEY belum diatur di .env.');
         }
+
+        ob_start();
+        imagepng($gambar);
+        $gambarBase64 = base64_encode((string) ob_get_clean());
 
         $respons = Http::timeout(20)->post('https://vision.googleapis.com/v1/images:annotate?key='.$kunci, [
             'requests' => [[
