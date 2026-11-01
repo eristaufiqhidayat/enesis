@@ -11,7 +11,7 @@ class TabHalamanTrackingTest extends AdminTestCase
     public function test_sales_punya_dua_tab_tanpa_riwayat_dan_koordinator_dua_tab_di_semua_halamannya(): void
     {
         $sales = [
-            ['slug' => 'tracking_sales', 'label' => 'Last Seen'],
+            ['slug' => 'tracking_sales', 'label' => 'Lacak Motoris'],
             ['slug' => 'motoris_ditandai', 'label' => 'Ditandai'],
         ];
         $koordinator = [

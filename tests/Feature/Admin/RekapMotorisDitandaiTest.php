@@ -68,6 +68,40 @@ class RekapMotorisDitandaiTest extends AdminTestCase
         $this->assertNull($per['Tegar Mahendra']['ditandai_tanggal']);
     }
 
+    public function test_tanda_outlet_yang_didaftarkan_motoris_ikut_dihitung_di_kolom_ditandai(): void
+    {
+        // Rudi (1): outlet didaftarkan lewat nama di master dan lewat HP; outlet orang lain, tanda dicabut, dan tanda
+        // di luar jendela tidak dihitung. Tegar (3) tidak punya tanda motoris sama sekali: tanggalnya dari tanda outlet.
+        DB::table('mk_outlet')->insert([
+            ['id' => 9001, 'nama' => 'Toko Rudi', 'dibuat_oleh' => 'Rudi Hartono'],
+            ['id' => 9002, 'nama' => 'Toko HP', 'dibuat_oleh' => 'Orang Lain'],
+            ['id' => 9003, 'nama' => 'Toko Sinta Lama', 'dibuat_oleh' => 'Rudi Hartono'],
+            ['id' => 9004, 'nama' => 'Toko Dicabut', 'dibuat_oleh' => 'Rudi Hartono'],
+            ['id' => 9005, 'nama' => 'Toko Orang', 'dibuat_oleh' => 'Orang Lain'],
+            ['id' => 9006, 'nama' => 'Toko Tegar', 'dibuat_oleh' => 'Tegar Mahendra'],
+        ]);
+        DB::table('trx_outlet_baru')->insert(['karyawan_id' => 1, 'outlet_id' => 9002, 'nama' => 'Toko HP', 'lat' => -7.4, 'lng' => 112.7, 'status' => 'disetujui']);
+        $tanda = fn (int $outlet, array $lain = []) => DB::table('tanda_outlet')->insert($lain + [
+            'outlet_id' => $outlet, 'kategori' => array_key_first(config('marketama.tanda_outlet')), 'dibuat_oleh' => 1,
+            'dibuat_nama' => 'admin', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $tanda(9001);
+        $tanda(9002);
+        $tanda(9003, ['created_at' => now()->subDays(40)]);
+        $tanda(9004, ['dicabut_at' => now()]);
+        $tanda(9005);
+        $tanda(9006);
+
+        $per = collect($this->baris('/tracking_sales'))->keyBy('nama');
+
+        // Rudi: 2 tanda motoris + 2 tanda outlet; tanggal terakhir tetap tanda motoris (hari-2) atau hari ini bila outlet lebih baru.
+        $this->assertSame(4, $per['Rudi Hartono']['ditandai']);
+        $this->assertSame(Pengaturan::sekarang()->toDateString(), $per['Rudi Hartono']['ditandai_tanggal']);
+        $this->assertSame(1, $per['Tegar Mahendra']['ditandai']);
+        $this->assertSame(Pengaturan::sekarang()->toDateString(), $per['Tegar Mahendra']['ditandai_tanggal']);
+        $this->assertSame(1, $per['Sinta Wulandari']['ditandai']);
+    }
+
     public function test_kolom_ditandai_ada_di_tabel_sales_dan_tidak_di_koordinator(): void
     {
         $this->assertArrayHasKey('ditandai', config('marketama.tables.tracking_last_seen_sales.columns'));

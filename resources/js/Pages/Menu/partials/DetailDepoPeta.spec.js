@@ -35,4 +35,25 @@ describe('DetailDepoPeta', () => {
         expect(penanda.openPopup).toHaveBeenCalled();
         delete window.L;
     });
+
+    it('menambah penanda outlet sekitar dan menyesuaikan batas peta', () => {
+        const penanda = { addTo: vi.fn(() => penanda), bindPopup: vi.fn(() => penanda), openPopup: vi.fn() };
+        const L = { marker: vi.fn(() => penanda), divIcon: vi.fn(() => ({})), latLngBounds: vi.fn((titik) => titik) };
+        window.L = L;
+        const map = { invalidateSize: vi.fn(), fitBounds: vi.fn() };
+        mount(DetailDepoPeta, {
+            props: {
+                depo: { nama: 'Toko A', latitude: -7.4, longitude: 112.7 },
+                ikon: 'outlet',
+                sekitar: [{ outlet: 'Toko <B>', latitude: -7.402, longitude: 112.7, jarak_m: 222, kategori_label: 'Outlet fiktif' }],
+            },
+        });
+        useLeafletMap.mock.calls.at(-1)[1].onSiap(map, L);
+
+        expect(L.marker).toHaveBeenCalledTimes(2);
+        expect(L.marker.mock.calls[1][0]).toEqual([-7.402, 112.7]);
+        expect(penanda.bindPopup.mock.calls[1][0]).toContain('Toko &lt;B&gt;');
+        expect(penanda.bindPopup.mock.calls[1][0]).toContain('222 m');
+        expect(map.fitBounds).toHaveBeenCalledOnce();
+    });
 });

@@ -18,11 +18,13 @@ import DetailArea from './partials/DetailArea.vue';
 import DetailDepo from './partials/DetailDepo.vue';
 import DetailDepoEdit from './partials/DetailDepoEdit.vue';
 import DetailDepoPeta from './partials/DetailDepoPeta.vue';
+import PetaOutletBertanda from './partials/PetaOutletBertanda.vue';
 import RuteHarianPeta from './partials/RuteHarianPeta.vue';
 import DetailLapLoadingBarang from './partials/DetailLapLoadingBarang.vue';
 import DetailLoadingBarang from './partials/DetailLoadingBarang.vue';
 import DetailMuatanCanvassing from './partials/DetailMuatanCanvassing.vue';
 import RiwayatDistributor from './partials/RiwayatDistributor.vue';
+import TandaMotoris from './partials/TandaMotoris.vue';
 import TandaOutlet from './partials/TandaOutlet.vue';
 import Tabs from '@/Components/ui/molecules/Tabs.vue';
 import TabsHalaman from '@/Components/ui/molecules/TabsHalaman.vue';
@@ -86,6 +88,11 @@ const kolomLoadingBarang = computed(() => visibleTables.value.find((table) => ta
 // { orang, slug, idParam, tanggal }. Tujuan dan izinnya ditentukan Support/riwayat.js dari prop bersama slugRiwayat.
 const riwayatTerpilih = ref(null);
 const infoRiwayat = (table, row, tanggalPilih = null) => infoRiwayatBaris(table.name, row, usePage().props.slugRiwayat, tanggalPilih);
+
+// Baris Tracking Last Seen Sales yang tandanya dibuka di drawer dari kolom Ditandai: { id, nama, tanggal }; null = tertutup.
+const tandaTerpilih = ref(null);
+// Outlet bertanda yang petanya dibuka dari tab Tanda outlet di drawer tanda: { id, nama, latitude, longitude }; null = tertutup.
+const outletPeta = ref(null);
 
 function tutupDetailDepo() {
     depoTerpilih.value = null;
@@ -376,23 +383,19 @@ function filterTabel(table, { nilai, operator }) {
                             <button v-if="infoRiwayat(table, row)" type="button" class="tautan-depo" @click="riwayatTerpilih = infoRiwayat(table, row)">Lihat riwayat</button>
                         </template>
                         <template v-if="table.name === 'tracking_last_seen_sales'" #cell-ditandai="{ row }">
-                            <template v-if="row.ditandai > 0">
-                                <button
-                                    v-if="infoRiwayat(table, row, row.ditandai_tanggal)"
-                                    type="button"
-                                    class="tautan-depo"
-                                    :title="`Tanda terakhir: ${tanggalSingkat(row.ditandai_tanggal)}`"
-                                    @click="riwayatTerpilih = infoRiwayat(table, row, row.ditandai_tanggal)"
-                                >
-                                    <Badge variant="danger">{{ row.ditandai }} tanda</Badge>
-                                </button>
-                                <Badge v-else variant="danger" :title="`Tanda terakhir: ${tanggalSingkat(row.ditandai_tanggal)}`">{{ row.ditandai }} tanda</Badge>
-                            </template>
+                            <button
+                                v-if="row.ditandai > 0"
+                                type="button"
+                                class="tautan-bahaya"
+                                :title="`Tanda terakhir: ${tanggalSingkat(row.ditandai_tanggal)}`"
+                                @click="tandaTerpilih = { id: row.id, nama: row.nama, tanggal: row.ditandai_tanggal }"
+                            >
+                                {{ row.ditandai }} tanda
+                            </button>
                         </template>
                         <template v-if="table.name === 'mk_outlet'" #cell-ditandai="{ row }">
-                            <button type="button" class="tautan-depo" @click="outletTerpilih = row">
-                                <Badge v-if="row.ditandai > 0" variant="danger">{{ row.ditandai }} tanda</Badge>
-                                <template v-else>Tandai</template>
+                            <button type="button" :class="row.ditandai > 0 ? 'tautan-bahaya' : 'tautan-depo'" @click="outletTerpilih = row">
+                                {{ row.ditandai > 0 ? `${row.ditandai} tanda` : 'Tandai' }}
                             </button>
                         </template>
                         <template v-if="tabelLastSeen.includes(table.name)" #cell-lokasi="{ row }">
@@ -509,6 +512,22 @@ function filterTabel(table, { nilai, operator }) {
                 :rincian="`Terakhir terlihat ${posisiTerpilih.terakhir_terlihat}${posisiTerpilih.sejak ? ` (${posisiTerpilih.sejak})` : ''}`"
                 drawer
             />
+        </Modal>
+        <!-- Drawer Tanda Motoris, dibuka dari kolom Ditandai di tabel Tracking Last Seen Sales. -->
+        <Modal :show="tandaTerpilih !== null" :title="tandaTerpilih ? `Tanda Motoris · ${tandaTerpilih.nama}` : ''" placement="kanan" @close="tandaTerpilih = null">
+            <TandaMotoris
+                v-if="tandaTerpilih"
+                drawer
+                url="/tracking_sales/tanda"
+                :sales-id="tandaTerpilih.id"
+                :tanggal="tandaTerpilih.tanggal"
+                @berubah="muatTabelUlang"
+                @lihat-peta="outletPeta = $event"
+            />
+        </Modal>
+        <!-- Drawer peta outlet bertanda, dibuka di atas drawer tanda motoris. -->
+        <Modal :show="outletPeta !== null" :title="outletPeta ? `Peta ${outletPeta.nama}` : ''" placement="kanan" @close="outletPeta = null">
+            <PetaOutletBertanda v-if="outletPeta" url="/tracking_sales/tanda/outlet-terdekat" :outlet="outletPeta" />
         </Modal>
         <!-- Modal rute harian, dibuka dari tombol Lihat riwayat di tabel Tracking Last Seen: hampir sepenuh layar (butuh ruang lebih untuk peta + daftar kunjungan). -->
         <Modal :show="riwayatTerpilih !== null" :title="riwayatTerpilih ? `Riwayat ${riwayatTerpilih.orang.nama}` : ''" size="full" @close="riwayatTerpilih = null">

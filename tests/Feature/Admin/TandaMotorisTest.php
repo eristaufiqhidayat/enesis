@@ -173,6 +173,152 @@ class TandaMotorisTest extends AdminTestCase
         $this->actingAs($koor)->getJson(self::URL.'?sales_id=1&tanggal='.$this->kemarin)->assertJsonCount(0, 'tanda');
     }
 
+    public function test_tanda_outlet_yang_didaftarkan_motoris_ikut_dalam_daftar_drawer(): void
+    {
+        $koor = $this->koordinator();
+        $this->tandai($koor);
+
+        // Outlet didaftarkan Rudi (nama di mk_outlet), outlet lain lewat HP (trx_outlet_baru), outlet milik orang lain, dan tanda dicabut.
+        DB::table('mk_outlet')->insert([
+            ['id' => 9001, 'nama' => 'Toko Rudi', 'dibuat_oleh' => 'Rudi Hartono', 'dibuat_pada' => '02 Mar 2026 09:23'],
+            ['id' => 9002, 'nama' => 'Toko HP', 'dibuat_oleh' => 'Orang Lain', 'dibuat_pada' => null],
+            ['id' => 9003, 'nama' => 'Toko Sinta', 'dibuat_oleh' => 'Sinta Wulandari', 'dibuat_pada' => null],
+            ['id' => 9004, 'nama' => 'Toko Rudi Dicabut', 'dibuat_oleh' => 'Rudi Hartono', 'dibuat_pada' => null],
+        ]);
+        DB::table('trx_outlet_baru')->insert(['karyawan_id' => 1, 'outlet_id' => 9002, 'nama' => 'Toko HP', 'lat' => -7.4, 'lng' => 112.7, 'status' => 'disetujui', 'recorded_at' => '2026-10-01 01:15:00']);
+        $tanda = fn (int $outlet, array $lain = []) => DB::table('tanda_outlet')->insert($lain + [
+            'outlet_id' => $outlet, 'kategori' => array_key_first(config('marketama.tanda_outlet')), 'catatan' => 'Alamat tidak ada',
+            'dibuat_oleh' => $this->admin->id, 'dibuat_nama' => 'admin', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $tanda(9001);
+        $tanda(9002);
+        $tanda(9003);
+        $tanda(9004, ['dicabut_at' => now()]);
+
+        $res = $this->actingAs($koor)->getJson(self::URL.'?sales_id=1&tanggal='.$this->kemarin)->assertOk();
+        $this->assertEqualsCanonicalizing(['Toko Rudi', 'Toko HP'], array_column($res->json('outlet'), 'outlet'));
+        $res->assertJsonPath('outlet.0.oleh', 'admin');
+        // Waktu daftar NOO: outlet lewat HP memakai recorded_at (UTC -> lokal), outlet Marketama memakai dibuat_pada apa adanya.
+        $didaftarkan = collect($res->json('outlet'))->pluck('didaftarkan', 'outlet');
+        $this->assertSame('02 Mar 2026 09:23', $didaftarkan['Toko Rudi']);
+        $this->assertNotNull($didaftarkan['Toko HP']);
+    }
+
+    public function test_outlet_terdekat_menampilkan_outlet_bertanda_di_sekitar_terurut_jarak(): void
+    {
+        DB::table('mk_outlet')->insert([
+            ['id' => 9101, 'nama' => 'Acuan', 'dibuat_oleh' => 'x', 'latitude' => -7.4000, 'longitude' => 112.7000],
+            ['id' => 9102, 'nama' => 'Dekat', 'dibuat_oleh' => 'x', 'latitude' => -7.4020, 'longitude' => 112.7000],
+            ['id' => 9103, 'nama' => 'Agak Jauh', 'dibuat_oleh' => 'x', 'latitude' => -7.4100, 'longitude' => 112.7000],
+            ['id' => 9104, 'nama' => 'Terlalu Jauh', 'dibuat_oleh' => 'x', 'latitude' => -7.5000, 'longitude' => 112.7000],
+            ['id' => 9105, 'nama' => 'Tanpa Tanda', 'dibuat_oleh' => 'x', 'latitude' => -7.4010, 'longitude' => 112.7000],
+            ['id' => 9106, 'nama' => 'Tanda Dicabut', 'dibuat_oleh' => 'x', 'latitude' => -7.4015, 'longitude' => 112.7000],
+        ]);
+        $kategori = array_key_first(config('marketama.tanda_outlet'));
+        $tanda = fn (int $outlet, array $lain = []) => DB::table('tanda_outlet')->insert($lain + [
+            'outlet_id' => $outlet, 'kategori' => $kategori, 'dibuat_oleh' => $this->admin->id, 'dibuat_nama' => 'admin', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $tanda(9101); // acuan sendiri tidak ikut
+        $tanda(9103);
+        $tanda(9102);
+        $tanda(9102);
+        $tanda(9104);
+        $tanda(9106, ['dicabut_at' => now()]);
+
+        $koor = $this->koordinator();
+        $res = $this->actingAs($koor)->getJson(self::URL.'/outlet-terdekat?outlet_id=9101&radius_m=2000')->assertOk();
+
+        $this->assertSame(['Dekat', 'Agak Jauh'], array_column($res->json('sekitar'), 'outlet'));
+        $res->assertJsonPath('sekitar.0.jumlah_tanda', 2)->assertJsonPath('radius_m', 2000);
+        $this->assertGreaterThan(150, $res->json('sekitar.0.jarak_m'));
+        $this->assertLessThan(300, $res->json('sekitar.0.jarak_m'));
+
+        // Radius lebih kecil menyaring yang lebih jauh; tanpa radius_m dipakai bawaan config (ambang jarak dekat).
+        $this->actingAs($koor)->getJson(self::URL.'/outlet-terdekat?outlet_id=9101&radius_m=500')
+            ->assertOk()->assertJsonCount(1, 'sekitar')->assertJsonPath('sekitar.0.outlet', 'Dekat')->assertJsonPath('radius_m', 500);
+        $this->actingAs($koor)->getJson(self::URL.'/outlet-terdekat?outlet_id=9101')
+            ->assertOk()->assertJsonCount(0, 'sekitar')->assertJsonPath('radius_m', config('marketama.deteksi_jarak_kunjungan.jarak_dekat_meter'));
+        $this->actingAs($koor)->getJson(self::URL.'/outlet-terdekat?outlet_id=9101&radius_m=0')->assertUnprocessable();
+        $this->actingAs($koor)->getJson(self::URL.'/outlet-terdekat?outlet_id=9101&radius_m=10001')->assertUnprocessable();
+    }
+
+    public function test_outlet_terdekat_kosong_bila_acuan_tanpa_koordinat_dan_404_bila_tidak_ada(): void
+    {
+        DB::table('mk_outlet')->insert(['id' => 9201, 'nama' => 'Tanpa Koordinat', 'dibuat_oleh' => 'x']);
+        $koor = $this->koordinator();
+
+        $this->actingAs($koor)->getJson(self::URL.'/outlet-terdekat?outlet_id=9201')->assertOk()->assertJsonCount(0, 'sekitar');
+        $this->actingAs($koor)->getJson(self::URL.'/outlet-terdekat?outlet_id=99999')->assertNotFound();
+        $this->actingAs($koor)->getJson(self::URL.'/outlet-terdekat')->assertUnprocessable();
+    }
+
+    public function test_pemberi_mengubah_catatan_dan_tercatat(): void
+    {
+        $koor = $this->koordinator();
+        $id = $this->tandai($koor)->json('id');
+
+        $this->actingAs($koor)->patchJson(self::URL.'/'.$id, ['catatan' => 'Catatan baru'])
+            ->assertOk()->assertJsonPath('catatan', 'Catatan baru')->assertJsonPath('kategori', 'penjualan_fiktif');
+
+        $this->assertSame('Catatan baru', DB::table('tanda_motoris')->find($id)->catatan);
+        $this->assertSame(['tambah', 'ubah'], DB::table('riwayat_admin')->where('objek', 'tanda_motoris')->orderBy('id')->pluck('aksi')->all());
+    }
+
+    public function test_catatan_boleh_dikosongkan_saat_ubah(): void
+    {
+        $koor = $this->koordinator();
+        $id = $this->tandai($koor)->json('id');
+
+        $this->actingAs($koor)->patchJson(self::URL.'/'.$id, ['catatan' => null])->assertOk()->assertJsonPath('catatan', null);
+        $this->assertNull(DB::table('tanda_motoris')->find($id)->catatan);
+    }
+
+    public function test_validasi_catatan_saat_ubah(): void
+    {
+        $koor = $this->koordinator();
+        $id = $this->tandai($koor)->json('id');
+
+        $this->actingAs($koor)->patchJson(self::URL.'/'.$id, ['catatan' => str_repeat('a', 501)])
+            ->assertUnprocessable()->assertJsonValidationErrors('catatan');
+    }
+
+    public function test_catatan_orang_lain_hanya_bisa_diubah_dengan_hak_hapus(): void
+    {
+        $id = $this->tandai($this->koordinator())->json('id');
+        $rekan = $this->akunDenganHak('rekan', ['lihat', 'tambah']);
+        $penghapus = $this->akunDenganHak('penghapus', ['lihat', 'tambah', 'hapus']);
+
+        $this->actingAs($rekan)->patchJson(self::URL.'/'.$id, ['catatan' => 'Dicoba rekan'])->assertForbidden();
+        $this->assertSame('Nota tidak wajar', DB::table('tanda_motoris')->find($id)->catatan);
+
+        $this->actingAs($penghapus)->patchJson(self::URL.'/'.$id, ['catatan' => 'Diubah penghapus'])->assertOk();
+        $this->assertSame('Diubah penghapus', DB::table('tanda_motoris')->find($id)->catatan);
+    }
+
+    public function test_ubah_tanda_yang_sudah_dicabut_atau_di_luar_cakupan_ditolak(): void
+    {
+        $koor = $this->koordinator();
+        $id = $this->tandai($koor)->json('id');
+        $this->actingAs($koor)->deleteJson(self::URL.'/'.$id)->assertOk();
+        $this->actingAs($koor)->patchJson(self::URL.'/'.$id, ['catatan' => 'Tetap dicoba'])->assertNotFound();
+
+        $luar = $this->tandai($this->admin, 2)->assertCreated()->json('id');
+        $this->actingAs($koor)->patchJson(self::URL.'/'.$luar, ['catatan' => 'Tetap dicoba'])->assertNotFound();
+    }
+
+    public function test_tanda_tanggal_lain_memuat_catatan_dan_bisa_cabut_untuk_review_langsung(): void
+    {
+        $koor = $this->koordinator();
+        $idHariLain = $this->tandai($koor, 1, ['tanggal' => now()->subDays(2)->toDateString(), 'catatan' => 'Catatan hari lain'])->json('id');
+
+        $res = $this->actingAs($koor)->getJson(self::URL.'?sales_id=1&tanggal='.$this->kemarin)->assertOk();
+
+        $res->assertJsonCount(1, 'lainnya')
+            ->assertJsonPath('lainnya.0.id', $idHariLain)
+            ->assertJsonPath('lainnya.0.catatan', 'Catatan hari lain')
+            ->assertJsonPath('lainnya.0.bisa_cabut', true);
+    }
+
     public function test_tanda_orang_lain_hanya_bisa_dicabut_dengan_hak_hapus(): void
     {
         $id = $this->tandai($this->koordinator())->json('id');

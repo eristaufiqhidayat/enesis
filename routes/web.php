@@ -71,8 +71,12 @@ Route::middleware(['auth', 'wajib-ganti-password'])->group(function () {
     // Tanda motoris (potensi kecurangan dll.) dari drawer Riwayat Lacak Motoris; hak mengikuti menu tracking_sales.
     Route::get('/tracking_sales/tanda', [TandaMotorisController::class, 'index'])
         ->middleware('hak:tracking_sales')->name('tanda-motoris.index');
+    Route::get('/tracking_sales/tanda/outlet-terdekat', [TandaMotorisController::class, 'outletTerdekat'])
+        ->middleware('hak:tracking_sales')->name('tanda-motoris.outlet-terdekat');
     Route::post('/tracking_sales/tanda', [TandaMotorisController::class, 'store'])
         ->middleware('hak:tracking_sales,tambah')->name('tanda-motoris.store');
+    Route::patch('/tracking_sales/tanda/{tanda}', [TandaMotorisController::class, 'update'])
+        ->whereNumber('tanda')->middleware('hak:tracking_sales,tambah')->name('tanda-motoris.update');
     Route::delete('/tracking_sales/tanda/{tanda}', [TandaMotorisController::class, 'cabut'])
         ->whereNumber('tanda')->middleware('hak:tracking_sales,tambah')->name('tanda-motoris.cabut');
 

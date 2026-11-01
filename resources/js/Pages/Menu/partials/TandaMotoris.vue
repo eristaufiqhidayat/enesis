@@ -6,25 +6,35 @@ import FieldError from '@/Components/ui/atoms/FieldError.vue';
 import Icon from '@/Components/ui/atoms/Icon.vue';
 import Label from '@/Components/ui/atoms/Label.vue';
 import Select from '@/Components/ui/atoms/Select.vue';
+import Skeleton from '@/Components/ui/atoms/Skeleton.vue';
 import Textarea from '@/Components/ui/atoms/Textarea.vue';
-import { tanggalSingkat } from '@/Support/format.js';
+import Tabs from '@/Components/ui/molecules/Tabs.vue';
+import { tanggalSingkat, tanggalWaktuPendek } from '@/Support/format.js';
 
-// Tanda motoris di drawer Riwayat Lacak Motoris (TandaMotorisController): koordinator menandai motoris yang berpotensi
-// curang (penjualan fiktif, lokasi palsu, dll.) pada tanggal yang sedang dilihat. Daftar memuat tanda aktif pada tanggal
-// itu; tombol Tandai hanya tampil bila akun punya hak Tambah, dan Cabut hanya pada tanda yang boleh dicabutnya.
+// Tanda motoris: koordinator menandai motoris yang berpotensi curang (penjualan fiktif, lokasi palsu, dll.) pada
+// tanggal yang sedang dilihat. Daftar memuat tanda aktif pada tanggal itu; tombol Tandai hanya tampil bila akun
+// punya hak Tambah, dan Cabut hanya pada tanda yang boleh dicabutnya.
+// Dua tampilan: bawaan (dipasang di header RuteHarianPeta, daftar tanda sebagai panel melayang supaya tidak
+// mendorong konten di bawahnya, dipisah "tanggal ini" / "tanggal lain" karena konteksnya satu tanggal rute yang
+// sedang dilihat, dan satu-satunya tempat menambah tanda baru) dan `drawer` (dipasang sendirian di drawer dari
+// kolom Ditandai: alat review koordinator saja — semua tanda aktif dalam jendela hari terakhir digabung satu
+// daftar, dan tiap tanda bisa diubah catatannya atau dicabut; tidak ada form tambah tanda di sini).
 const props = defineProps({
     url: { type: String, required: true },
     salesId: { type: Number, required: true },
     tanggal: { type: String, required: true },
     // Isian otomatis form dari peringatan GPS tanggal ini ({ kategori, catatan }); null = form kosong.
     saran: { type: Object, default: null },
+    drawer: { type: Boolean, default: false },
 });
 
-defineEmits(['pilih-tanggal']);
+const emit = defineEmits(['pilih-tanggal', 'berubah', 'lihat-peta']);
 
 const tanda = ref([]);
 // Tanda aktif motoris yang sama pada tanggal lain (jendela hari terakhir), dan apakah daftarnya sedang dibuka.
 const lainnya = ref([]);
+// Tanda outlet pada outlet yang didaftarkan motoris ini; hanya untuk ditinjau di drawer (dikelola di menu All Outlet).
+const outletTanda = ref([]);
 const lainBuka = ref(false);
 const kategori = ref({});
 // Pilihan kategori; yang sudah punya tanda aktif diberi keterangan (server menolak tanda kembar).
@@ -47,6 +57,36 @@ const terbukaId = ref(null);
 // Daftar tanda ditampilkan sebagai panel melayang (absolute) saat counter diklik, supaya tidak mendorong konten di bawahnya.
 const daftarBuka = ref(false);
 const wadah = ref(null);
+
+// Drawer: id tanda yang catatannya sedang diedit, dan draf catatannya; null = tidak ada yang diedit.
+const editId = ref(null);
+const editCatatan = ref('');
+const editGalat = ref({});
+const editMenyimpan = ref(false);
+
+// Drawer: semua tanda aktif dalam jendela (tanggal yang dilihat + tanggal lain) satu daftar, diurutkan berdasarkan
+// tanggal kejadian (terbaru di atas) — alat review, jadi tidak perlu dipisah per tanggal seperti mode bawaan.
+const semuaTanda = computed(() => [
+    ...tanda.value.map((t) => ({ ...t, tanggal: props.tanggal })),
+    ...lainnya.value,
+].sort((a, b) => (a.tanggal === b.tanggal ? b.id - a.id : b.tanggal.localeCompare(a.tanggal))));
+
+// Drawer: tanda outlet (pada outlet yang didaftarkan motoris ini) dipisah dari tanda motoris; terbaru di atas.
+const daftarTandaOutlet = computed(() => [...outletTanda.value].sort((a, b) => (a.tanggal === b.tanggal ? b.id - a.id : b.tanggal.localeCompare(a.tanggal))));
+
+// Drawer: tab 'motoris' | 'outlet'. Tab outlet dibuka otomatis bila hanya itu yang punya isi (lihat muat()).
+const tabAktif = ref('motoris');
+const tabDrawer = computed(() => [
+    { key: 'motoris', label: `Tanda motoris (${semuaTanda.value.length})` },
+    { key: 'outlet', label: `Tanda outlet (${daftarTandaOutlet.value.length})` },
+]);
+
+// "25 Okt 2026 · 09:00" dari "Y-m-d H:i" (waktu tanda itu DIBUAT, beda dari tanggal kejadian/tanggal baris).
+function waktuDibuat(nilai) {
+    const waktu = tanggalWaktuPendek(nilai);
+
+    return waktu ? `${waktu.tanggal} · ${waktu.jam}` : nilai;
+}
 
 // Klik di luar menyembunyikan semua panel melayang, termasuk form (isian yang sudah diketik dipertahankan sampai Simpan
 // atau Batal). Didengar di fase capture: klik di peta (Leaflet) atau elemen lain yang menghentikan propagasi tetap terhitung.
@@ -74,6 +114,8 @@ async function muat() {
         if (tanggal !== props.tanggal) return;
         tanda.value = data.tanda;
         lainnya.value = data.lainnya ?? [];
+        outletTanda.value = data.outlet ?? [];
+        if (props.drawer && !tanda.value.length && !lainnya.value.length && outletTanda.value.length) tabAktif.value = 'outlet';
         kategori.value = data.kategori;
         bisaTambah.value = data.bisa_tambah;
     } catch {
@@ -124,6 +166,7 @@ async function simpan() {
 
         batal();
         await muat();
+        emit('berubah', tanda.value.length);
     } catch {
         pesan.value = 'Gagal menyimpan tanda.';
     } finally {
@@ -141,26 +184,128 @@ async function cabut(item) {
         if (!respon.ok) throw new Error(`HTTP ${respon.status}`);
 
         await muat();
+        emit('berubah', tanda.value.length);
     } catch {
         pesan.value = 'Gagal mencabut tanda.';
+    }
+}
+
+// Drawer: ubah catatan satu tanda (kategori dan tanggalnya tetap), terlepas dari tanggal mana tanda itu.
+function mulaiEdit(item) {
+    editId.value = item.id;
+    editCatatan.value = item.catatan ?? '';
+    editGalat.value = {};
+}
+
+function batalEdit() {
+    editId.value = null;
+    editCatatan.value = '';
+    editGalat.value = {};
+}
+
+async function simpanEdit(item) {
+    editMenyimpan.value = true;
+    editGalat.value = {};
+    pesan.value = null;
+
+    try {
+        const respon = await fetch(`${props.url}/${item.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrf() },
+            body: JSON.stringify({ catatan: editCatatan.value }),
+        });
+
+        if (respon.status === 422) {
+            editGalat.value = (await respon.json()).errors ?? {};
+
+            return;
+        }
+        if (!respon.ok) throw new Error(`HTTP ${respon.status}`);
+
+        batalEdit();
+        await muat();
+        emit('berubah', tanda.value.length);
+    } catch {
+        pesan.value = 'Gagal menyimpan catatan.';
+    } finally {
+        editMenyimpan.value = false;
     }
 }
 
 onMounted(muat);
 onMounted(() => document.addEventListener('click', tutupDiLuar, true));
 onBeforeUnmount(() => document.removeEventListener('click', tutupDiLuar, true));
-// Tanggal drawer diganti: muat tanda tanggal itu, tutup form & daftar yang belum disimpan.
+// Tanggal drawer diganti (mode bawaan): muat tanda tanggal itu, tutup form & daftar yang belum disimpan.
 watch(() => props.tanggal, () => {
     batal();
     daftarBuka.value = false;
     lainBuka.value = false;
+    batalEdit();
     muat();
 });
 
 </script>
 
 <template>
-    <section ref="wadah" class="tanda-motoris tanda-motoris-datar" aria-label="Tanda motoris">
+    <section v-if="drawer" class="tanda-motoris" aria-label="Tanda motoris">
+        <Tabs v-model="tabAktif" :tabs="tabDrawer" rapat />
+
+        <div v-if="memuat && !semuaTanda.length && !daftarTandaOutlet.length" class="animate-pulse space-y-2" role="status" aria-busy="true" aria-label="Memuat tanda motoris">
+            <Skeleton class="h-12 w-full" />
+        </div>
+
+        <p v-if="pesan" class="mb-0 text-xs text-red-600">{{ pesan }}</p>
+
+        <template v-if="tabAktif === 'motoris'">
+            <ul v-if="semuaTanda.length" class="tanda-motoris-daftar">
+                <li v-for="item in semuaTanda" :key="item.id" class="tanda-motoris-item">
+                    <div class="tanda-item-kepala">
+                        <Badge variant="danger">{{ item.kategori_label }}</Badge>
+                        <span class="tanda-item-judul">{{ tanggalSingkat(item.tanggal) }}</span>
+                        <span class="tanda-item-meta">Dibuat {{ waktuDibuat(item.waktu) }} oleh {{ item.oleh }}</span>
+                        <div v-if="item.bisa_cabut && editId !== item.id" class="tanda-item-aksi">
+                            <button type="button" class="tautan-depo text-xs" @click="mulaiEdit(item)"><Icon name="file-text" class="me-1" />Ubah catatan</button>
+                            <button type="button" class="tautan-bahaya text-xs" @click="cabut(item)"><Icon name="trash" class="me-1" />Cabut</button>
+                        </div>
+                    </div>
+
+                    <form v-if="editId === item.id" class="mt-1 space-y-1" @submit.prevent="simpanEdit(item)">
+                        <Textarea v-model="editCatatan" maxlength="500" rows="2" aria-label="Catatan tanda" />
+                        <FieldError v-if="editGalat.catatan">{{ editGalat.catatan[0] }}</FieldError>
+                        <div class="flex gap-2">
+                            <Button type="submit" variant="primary" :loading="editMenyimpan">Simpan</Button>
+                            <Button type="button" variant="light" @click="batalEdit">Batal</Button>
+                        </div>
+                    </form>
+                    <p v-else-if="item.catatan" class="tanda-item-catatan">{{ item.catatan }}</p>
+                </li>
+            </ul>
+            <p v-else-if="!memuat && !pesan" class="tanda-kosong">Belum ada data.</p>
+        </template>
+
+        <!-- Tanda outlet yang didaftarkan motoris ini: dikelola di menu All Outlet, di sini hanya untuk ditinjau. -->
+        <template v-else>
+            <ul v-if="daftarTandaOutlet.length" class="tanda-motoris-daftar">
+                <li v-for="item in daftarTandaOutlet" :key="item.id" class="tanda-motoris-item">
+                    <div class="tanda-item-kepala">
+                        <Badge variant="danger">{{ item.kategori_label }}</Badge>
+                        <span class="tanda-item-judul">{{ item.outlet }}</span>
+                        <div v-if="item.latitude != null && item.longitude != null" class="tanda-item-aksi">
+                            <button type="button" class="tautan-depo text-xs" @click="$emit('lihat-peta', { id: item.outlet_id, nama: item.outlet, latitude: item.latitude, longitude: item.longitude })"><Icon name="map-pin" class="me-1" />Lihat peta</button>
+                        </div>
+                    </div>
+                    <p class="tanda-item-meta mb-0 mt-1">
+                        Ditandai {{ tanggalSingkat(item.tanggal) }} oleh {{ item.oleh }}
+                        <template v-if="item.didaftarkan"> · Didaftarkan (NOO) {{ waktuDibuat(item.didaftarkan) }}</template>
+                    </p>
+                    <p v-if="item.catatan" class="tanda-item-catatan">{{ item.catatan }}</p>
+                </li>
+            </ul>
+            <p v-else-if="!memuat && !pesan" class="tanda-kosong">Belum ada data.</p>
+        </template>
+    </section>
+
+    <section v-else ref="wadah" class="tanda-motoris tanda-motoris-datar" aria-label="Tanda motoris">
         <div class="flex flex-wrap items-center gap-2">
             <!-- Tombol yang menjelaskan dirinya sendiri, jadi tidak perlu judul "Tanda motoris" di atasnya. -->
             <button v-if="tanda.length" type="button" class="tanda-chip" :aria-expanded="daftarBuka" @click="lainBuka = false; daftarBuka = !daftarBuka">

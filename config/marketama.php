@@ -80,7 +80,7 @@ return [
     // Di sidebar, slug pertama tiap kelompok (induk) mewakili seluruh kelompok dengan 'judul_sidebar'; slug lainnya
     // disembunyikan selama induknya bisa dibuka akun (lihat Akses::satukanTab). Matriks hak role tetap per slug.
     'tab_halaman' => [
-        ['tracking_sales' => 'Last Seen', 'motoris_ditandai' => 'Ditandai'],
+        ['tracking_sales' => 'Lacak Motoris', 'motoris_ditandai' => 'Ditandai'],
         ['tracking_koordinator' => 'Last Seen', 'tracking_koordinator_history_location' => 'Riwayat Lokasi'],
     ],
 
@@ -1000,11 +1000,13 @@ return [
             'same_as' => 'lap_pengembalian_barang',
         ],
         'tracking_sales' => [
-            'title' => 'Tracking Last Seen Sales',
+            'title' => 'Lacak Motoris',
             'tables' => [
                 'tracking_last_seen_sales',
             ],
             'same_as' => null,
+            // Tabel mengisi sisa tinggi layar dan header kolom tetap terlihat saat di-scroll (lihat DataTable.vue).
+            'tinggi_penuh' => true,
         ],
         'motoris_ditandai' => [
             'title' => 'Motoris Ditandai',
@@ -1786,7 +1788,6 @@ return [
                 'lokasi' => 'Lokasi',
                 'riwayat' => 'Riwayat',
                 'ditandai' => 'Ditandai',
-                'lokasi_palsu' => 'Lokasi Palsu',
             ],
         ],
         'tracking_last_seen_koordinator' => [
@@ -1799,7 +1800,6 @@ return [
                 'terakhir_terlihat' => 'Terakhir Terlihat',
                 'lokasi' => 'Lokasi',
                 'riwayat' => 'Riwayat',
-                'lokasi_palsu' => 'Lokasi Palsu',
             ],
         ],
         'tanda_motoris_rekap' => [

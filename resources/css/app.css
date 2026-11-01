@@ -290,7 +290,7 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     .badge-primary { @apply bg-blue-600 text-white; }
     .badge-secondary { @apply bg-gray-200 text-gray-700; }
     .badge-light { @apply bg-gray-100 text-gray-500; }
-    .badge-danger { @apply bg-red-600 text-white; }
+    .badge-danger { @apply border border-red-300 bg-red-50 text-red-700; }
     .badge-success { @apply bg-green-100 text-green-800; }
     .badge-warning { @apply bg-amber-100 text-amber-800; }
     .badge-info { @apply bg-sky-100 text-sky-800; }
@@ -388,6 +388,9 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     /* Baris tabel yang bisa diklik (DataTable prop barisBisaDiklik). */
     .data-table tbody tr.baris-klik { @apply cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500; }
     .tautan-depo { @apply cursor-pointer text-left font-semibold text-blue-600 hover:underline rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500; }
+    .tautan-bahaya { @apply cursor-pointer text-left font-semibold text-red-600 hover:underline rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500; }
+    /* Ikon di depan teks tautan (me-1), seukuran teks kecil. */
+    .tautan-depo svg, .tautan-bahaya svg { @apply -mt-0.5 inline h-3.5 w-3.5; }
 
     /* Infografis detail depo (drawer): kartu angka, batang progress kuota, dan baris detail per bagian. */
     .detail-depo-judul { @apply flex items-center gap-2 text-sm font-semibold text-gray-700; }
@@ -418,6 +421,13 @@ main { margin-left: 260px; padding: calc(3.5rem + 1rem) 1.5rem 1.5rem; }
     .tanda-motoris-form.tanda-motoris-form-melayang { @apply absolute right-0 top-full z-30 mt-1 w-80 max-w-[90vw] rounded-md border border-gray-200 bg-white p-3 shadow-lg; }
     .tanda-motoris-daftar { @apply m-0 space-y-1 p-0; }
     .tanda-motoris-item { @apply rounded-md border border-red-200 bg-red-50/40 px-2 py-1.5; }
+    /* Isi satu kartu tanda di drawer (tab Tanda motoris / Tanda outlet): kepala berisi badge kategori + meta + aksi, lalu catatan. */
+    .tanda-item-kepala { @apply flex flex-wrap items-center gap-x-2 gap-y-1; }
+    .tanda-item-judul { @apply text-xs font-semibold text-gray-700; }
+    .tanda-item-meta { @apply text-xs text-gray-500; }
+    .tanda-item-aksi { @apply ml-auto flex items-center gap-2; }
+    .tanda-item-catatan { @apply mb-0 mt-1 text-xs text-gray-700; }
+    .tanda-kosong { @apply mb-0 text-xs text-gray-500; }
     /* Daftar tanda melayang di atas konten saat counter "Tanda motoris" diklik, supaya tidak mendorong tata letak. */
     .tanda-motoris-panel { @apply absolute right-0 top-full z-20 mt-1 max-h-72 w-80 max-w-[90vw] overflow-y-auto rounded-md border border-gray-200 bg-white p-2 shadow-lg; }
     /* Satu baris "tanda di tanggal lain": klik memindahkan tanggal drawer. */

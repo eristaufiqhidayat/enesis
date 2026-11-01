@@ -4,8 +4,10 @@ namespace App\Support\Menu\Motoris;
 
 use App\Models\User;
 use App\Support\Akses\Akses;
+use App\Support\Menu\JamLokal;
 use App\Support\Menu\SumberBerstatus;
 use App\Support\Mobile\Pengaturan;
+use App\Support\Tracking\TandaOutletMotoris;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
@@ -57,6 +59,10 @@ abstract class SumberLastSeen implements SumberBerstatus
             $tanda = fn (string $agregat) => DB::table('tanda_motoris as tm')->whereColumn('tm.karyawan_id', 'k.id')
                 ->whereNull('tm.dicabut_at')->where('tm.tanggal', '>=', $awal)->selectRaw($agregat);
             $q->selectSub($tanda('COUNT(*)'), 'ditandai')->selectSub($tanda('MAX(tm.tanggal)'), 'ditandai_tanggal');
+
+            // Tanda outlet yang didaftarkan motoris ini ikut dihitung ke "Ditandai" (digabung di ubahBaris).
+            $outlet = fn (string $agregat) => TandaOutletMotoris::aktif(true, 'k.id', 'k.nama')->selectRaw($agregat);
+            $q->selectSub($outlet('COUNT(*)'), 'ditandai_outlet')->selectSub($outlet('MAX(tout.created_at)'), 'ditandai_outlet_waktu');
         }
 
         return Akses::batasiKaryawan($q, $user);
@@ -81,8 +87,13 @@ abstract class SumberLastSeen implements SumberBerstatus
         $baris->status = self::STATUS[$this->statusKunci($waktu)];
 
         if (property_exists($baris, 'ditandai')) {
-            $baris->ditandai = (int) $baris->ditandai;
-            $baris->ditandai_tanggal = $baris->ditandai_tanggal ? substr((string) $baris->ditandai_tanggal, 0, 10) : null;
+            // Tanggal tanda terakhir: yang terbaru antara tanda motoris dan tanda outlet (tanggal lokal dibuatnya).
+            $tanggalOutlet = JamLokal::format($baris->ditandai_outlet_waktu, 'Y-m-d');
+            $tanggalMotoris = $baris->ditandai_tanggal ? substr((string) $baris->ditandai_tanggal, 0, 10) : null;
+
+            $baris->ditandai = (int) $baris->ditandai + (int) $baris->ditandai_outlet;
+            $baris->ditandai_tanggal = max($tanggalMotoris ?? '', $tanggalOutlet ?? '') ?: null;
+            unset($baris->ditandai_outlet, $baris->ditandai_outlet_waktu);
         }
 
         unset($baris->hp_waktu, $baris->hp_lat, $baris->hp_lng, $baris->lama_waktu, $baris->lama_lat, $baris->lama_lng, $baris->mock);
