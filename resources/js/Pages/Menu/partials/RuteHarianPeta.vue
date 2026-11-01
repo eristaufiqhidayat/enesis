@@ -39,8 +39,9 @@ const aktifId = ref(null);
 const outletTerpilih = ref(null);
 // Indikasi GPS tidak wajar pada tanggal itu (AnomaliGps di endpoint locations); null = tidak ada peringatan.
 const anomali = ref(null);
-// Indikasi kunjungan outlet berturutan berjarak dekat (AnomaliJarakKunjungan, spec 054); null = tidak ada peringatan.
-const indikasiJarak = ref(null);
+// Indikasi kunjungan outlet berturutan berjarak dekat (AnomaliJarakKunjungan, spec 054): daftar runtun yang
+// memenuhi ambang pada tanggal itu (bisa lebih dari satu per hari); kosong = tidak ada peringatan.
+const indikasiJarak = ref([]);
 
 // Isi banner: "terdeteksi" = HP menandai mock location (bukti dari perangkat); "indikasi" = hanya pola lompatan posisi.
 const peringatan = computed(() => {
@@ -114,7 +115,7 @@ function muat() {
             const L = window.L;
             kunjungan.value = data.kunjungan ?? null;
             anomali.value = data.anomali_gps ?? null;
-            indikasiJarak.value = data.indikasi_jarak_kunjungan ?? null;
+            indikasiJarak.value = data.indikasi_jarak_kunjungan ?? [];
             info.value = data.total ? `${data.total} titik lokasi` : 'Tidak ada data lokasi pada tanggal ini';
             // Lebar peta berubah saat kolom daftar muncul atau hilang.
             await nextTick();
@@ -138,10 +139,10 @@ function sesuaikanBatas(L, map, data) {
     if (titik.length) map.fitBounds(L.latLngBounds(titik), { padding: [30, 30] });
 }
 
-// Outlet dalam runtun jarak dekat (spec 054) membuka drawer Tanda Outlet dengan saran kategori & catatan terisi.
+// Outlet dalam salah satu runtun jarak dekat (spec 054) membuka drawer Tanda Outlet dengan saran kategori & catatan terisi.
 function bukaTandaOutlet(k) {
-    const dalamRuntun = indikasiJarak.value?.outlet_id?.includes(k.outlet_id);
-    outletTerpilih.value = { id: k.outlet_id, nama: k.outlet, saran: dalamRuntun ? indikasiJarak.value.saran : null };
+    const runtun = indikasiJarak.value.find((r) => r.outlet_id.includes(k.outlet_id));
+    outletTerpilih.value = { id: k.outlet_id, nama: k.outlet, saran: runtun?.saran ?? null };
 }
 
 function fokus(k) {
@@ -164,8 +165,8 @@ watch(tanggalDipilih, muat);
         <span class="text-sm text-gray-500 mt-1.5">{{ info }}</span>
         <TandaMotoris v-if="tandaUrl" class="ml-auto w-full sm:w-80" :url="tandaUrl" :sales-id="id" :tanggal="tanggalDipilih" :saran="peringatan?.saran ?? null" @pilih-tanggal="tanggalDipilih = $event" />
     </div>
-    <Alert v-if="indikasiJarak" variant="warning" class="mb-1 lg:shrink-0" role="alert">
-        <strong>Indikasi kunjungan berturutan berjarak dekat.</strong> {{ indikasiJarak.saran.catatan }}
+    <Alert v-for="(runtun, i) in indikasiJarak" :key="i" variant="warning" class="mb-1 lg:shrink-0" role="alert">
+        <strong>Indikasi kunjungan berturutan berjarak dekat.</strong> {{ runtun.saran.catatan }}
         <span class="block text-xs mt-1">Ini indikasi dari pola data, bukan bukti kecurangan.</span>
     </Alert>
     <div class="rute-harian lg:min-h-0 lg:flex-1" :class="{ 'rute-harian-daftar': kunjungan !== null }">
@@ -199,7 +200,7 @@ watch(tanggalDipilih, muat);
                                     <Badge v-if="k.lokasi_palsu" variant="danger">Lokasi palsu</Badge>
                                     <Badge v-if="k.lat === null" variant="light">Tanpa koordinat</Badge>
                                     <Badge v-if="k.outlet_ditandai" variant="danger">Ditandai</Badge>
-                                    <Badge v-if="indikasiJarak?.kunjungan_id?.includes(k.id)" variant="warning">Jarak dekat</Badge>
+                                    <Badge v-if="indikasiJarak.some((r) => r.kunjungan_id.includes(k.id))" variant="warning">Jarak dekat</Badge>
                                 </span>
                                 <span v-if="k.penjualan" class="block text-xs text-gray-500">{{ ringkasanPenjualan(k.penjualan) }}</span>
                                 <span v-if="!k.beli && k.keterangan" class="block text-xs text-gray-500">{{ k.keterangan }}</span>

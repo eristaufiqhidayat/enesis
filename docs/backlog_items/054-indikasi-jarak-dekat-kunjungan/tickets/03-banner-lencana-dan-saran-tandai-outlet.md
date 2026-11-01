@@ -10,15 +10,15 @@ Banner indikasi di `RuteHarianPeta.vue` (mirip pola `AnomaliGps`), lencana pada 
 
 ## Acceptance criteria
 
-- [x] Banner (variant warning) tampil saat `indikasi_jarak_kunjungan` ada, berisi ringkasan jumlah dan rentang jam, dan catatan "indikasi dari pola data, bukan bukti".
-- [x] Tidak ada banner saat `indikasi_jarak_kunjungan` null.
-- [x] Baris kunjungan dengan id dalam `kunjungan_id` hasil analisis menampilkan lencana/penanda runtun ("Jarak dekat").
-- [x] Tombol Tandai outlet pada outlet dalam runtun terbuka dengan kategori "Pola kunjungan tidak wajar" dan catatan ringkasan terisi otomatis (lewat `saran`, bisa diubah di form sebelum disimpan — perilaku ubah form sudah dites di `TandaOutlet.spec.js`); outlet di luar runtun membuka form kosong.
+- [x] Banner (variant warning) tampil **satu per runtun** saat `indikasi_jarak_kunjungan` berisi item, masing-masing berisi ringkasan jumlah dan rentang jam, dan catatan "indikasi dari pola data, bukan bukti" — diperbaiki dari rencana awal (satu banner/objek) setelah `indikasi_jarak_kunjungan` berubah jadi daftar (ticket 02), supaya semua runtun dalam sehari terlihat, bukan hanya satu.
+- [x] Tidak ada banner saat `indikasi_jarak_kunjungan` kosong.
+- [x] Baris kunjungan dengan id termasuk `kunjungan_id` runtun MANA PUN menampilkan lencana/penanda runtun ("Jarak dekat").
+- [x] Tombol Tandai outlet pada outlet dalam salah satu runtun terbuka dengan kategori "Pola kunjungan tidak wajar" dan catatan ringkasan runtun yang bersangkutan terisi otomatis (lewat `saran`, bisa diubah di form sebelum disimpan — perilaku ubah form sudah dites di `TandaOutlet.spec.js`); outlet di luar semua runtun membuka form kosong.
 
 ## Implementation steps
 
-- [x] `RuteHarianPeta.vue`: render banner, lencana baris, dan teruskan `saran` ke `TandaOutlet.vue` lewat `bukaTandaOutlet(k)`.
-- [x] Vitest: banner tampil/tidak, lencana pada baris yang tepat, `saran` diteruskan untuk outlet dalam runtun dan kosong untuk di luar runtun.
+- [x] `RuteHarianPeta.vue`: render satu `<Alert>` per runtun (`v-for`), lencana baris berdasar keanggotaan di runtun mana pun (`.some()`), dan `bukaTandaOutlet(k)` mencari runtun yang memuat `k.outlet_id` untuk saran.
+- [x] Vitest: banner tampil/tidak dan satu banner per runtun bila lebih dari satu, lencana pada baris yang tepat, `saran` diteruskan untuk outlet dalam runtun dan kosong untuk di luar runtun.
 
 ## Blocked by
 

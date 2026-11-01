@@ -9,19 +9,24 @@ use Illuminate\Support\Collection;
 // sudah terurut jam). Berbeda dari AnomaliGps (titik GPS mentah), ini memakai `perjalanan.jarak_m` yang sudah
 // dihitung antar kunjungan (spec 045); kunjungan tanpa koordinat atau tanpa perjalanan (checkout kosong/tumpang
 // tindih) memutus runtun karena tidak bisa dinilai.
+//
+// Satu hari bisa punya LEBIH DARI SATU runtun yang memenuhi ambang (mis. motoris berhenti dekat satu klaster
+// outlet di pagi hari, lalu klaster lain di siang hari) — semuanya dikembalikan, bukan hanya yang terpanjang,
+// supaya runtun yang lebih pendek tidak tertutup/hilang begitu saja oleh runtun lain yang kebetulan lebih panjang
+// pada hari yang sama.
 class AnomaliJarakKunjungan
 {
     /**
      * @param  Collection<int, object>  $kunjungan  hasil KunjunganHarian::untuk, terurut jam checkin
-     * @return array{jumlah: int, kunjungan_id: array<int, int>, outlet_id: array<int, int>, dari_jam: string, sampai_jam: string, saran: array{kategori: string, catatan: string}}|null null bila runtun terpanjang di bawah ambang
+     * @return array<int, array{jumlah: int, kunjungan_id: array<int, int>, outlet_id: array<int, int>, dari_jam: string, sampai_jam: string, saran: array{kategori: string, catatan: string}}> urut dari yang terpanjang; kosong bila tidak ada runtun yang memenuhi ambang
      */
-    public static function analisis(Collection $kunjungan): ?array
+    public static function analisis(Collection $kunjungan): array
     {
         $ambang = PengaturanDeteksiKunjungan::ambil();
         $kunjungan = $kunjungan->values();
 
         if ($kunjungan->isEmpty()) {
-            return null;
+            return [];
         }
 
         $grup = [];
@@ -40,21 +45,25 @@ class AnomaliJarakKunjungan
         }
         $grup[] = $sekarang;
 
-        $terpanjang = collect($grup)->sortByDesc(fn ($g) => count($g))->first();
+        return collect($grup)
+            ->filter(fn ($g) => count($g) >= $ambang['min_kunjungan_berturutan'])
+            ->sortByDesc(fn ($g) => count($g))
+            ->map(fn ($g) => self::bentuk($g, $ambang))
+            ->values()->all();
+    }
 
-        if (count($terpanjang) < $ambang['min_kunjungan_berturutan']) {
-            return null;
-        }
-
-        $jumlah = count($terpanjang);
-        $dariJam = $terpanjang[0]->jam;
-        $sampaiJam = $terpanjang[$jumlah - 1]->jam;
+    /** @param  array<int, object>  $runtun */
+    private static function bentuk(array $runtun, array $ambang): array
+    {
+        $jumlah = count($runtun);
+        $dariJam = $runtun[0]->jam;
+        $sampaiJam = $runtun[$jumlah - 1]->jam;
 
         return [
             'jumlah' => $jumlah,
-            'kunjungan_id' => array_map(fn ($k) => $k->id, $terpanjang),
-            // Outlet unik (tanpa null, kunjungan outlet baru belum punya outlet_id) untuk saran Tandai outlet (ticket 03).
-            'outlet_id' => array_values(array_unique(array_filter(array_map(fn ($k) => $k->outlet_id, $terpanjang)))),
+            'kunjungan_id' => array_map(fn ($k) => $k->id, $runtun),
+            // Outlet unik (tanpa null, kunjungan outlet baru belum punya outlet_id) untuk saran Tandai outlet.
+            'outlet_id' => array_values(array_unique(array_filter(array_map(fn ($k) => $k->outlet_id, $runtun)))),
             'dari_jam' => $dariJam,
             'sampai_jam' => $sampaiJam,
             'saran' => [

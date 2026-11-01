@@ -204,9 +204,13 @@ describe('RuteHarianPeta', () => {
     });
 
     describe('indikasi jarak dekat antar kunjungan', () => {
-        const indikasiJarak = {
+        const runtun1 = {
             jumlah: 2, kunjungan_id: [1, 3], outlet_id: [70, 71], dari_jam: '09:00', sampai_jam: '12:00',
             saran: { kategori: 'pola_kunjungan_tidak_wajar', catatan: '2 kunjungan outlet berturutan berjarak kurang dari 5 m satu sama lain, dari jam 09:00 sampai 12:00.' },
+        };
+        const runtun2 = {
+            jumlah: 6, kunjungan_id: [10, 11, 12, 13, 14, 15], outlet_id: [80, 81], dari_jam: '13:04', sampai_jam: '13:17',
+            saran: { kategori: 'pola_kunjungan_tidak_wajar', catatan: '6 kunjungan outlet berturutan berjarak kurang dari 5 m satu sama lain, dari jam 13:04 sampai 13:17.' },
         };
         const stub = { TandaOutlet: { props: ['url', 'outletId', 'saran'], template: '<div class="stub-tanda-outlet">{{ saran ? saran.kategori + "|" + saran.catatan : "tanpa-saran" }}</div>' } };
 
@@ -220,7 +224,7 @@ describe('RuteHarianPeta', () => {
         }
 
         it('menampilkan banner kuning berisi ringkasan dan catatan bukan bukti', async () => {
-            const wrapper = await dengan(indikasiJarak);
+            const wrapper = await dengan([runtun1]);
             const banner = wrapper.find('.alert-warning');
 
             expect(banner.exists()).toBe(true);
@@ -230,11 +234,19 @@ describe('RuteHarianPeta', () => {
         });
 
         it('tidak menampilkan banner bila tidak ada indikasi', async () => {
-            expect((await dengan(null)).find('.alert-warning').exists()).toBe(false);
+            expect((await dengan([])).find('.alert-warning').exists()).toBe(false);
+        });
+
+        it('menampilkan satu banner per runtun bila ada lebih dari satu dalam sehari', async () => {
+            const banner = (await dengan([runtun2, runtun1])).findAll('.alert-warning');
+
+            expect(banner).toHaveLength(2);
+            expect(banner[0].text()).toContain('6 kunjungan outlet berturutan');
+            expect(banner[1].text()).toContain('2 kunjungan outlet berturutan');
         });
 
         it('memberi lencana "Jarak dekat" pada baris kunjungan yang termasuk runtun', async () => {
-            const baris = (await dengan(indikasiJarak)).findAll('.rute-kunjungan');
+            const baris = (await dengan([runtun1])).findAll('.rute-kunjungan');
 
             expect(baris[0].text()).toContain('Jarak dekat');
             expect(baris[1].text()).not.toContain('Jarak dekat');
@@ -244,7 +256,7 @@ describe('RuteHarianPeta', () => {
         it('mengisi saran Tandai outlet untuk outlet dalam runtun, kosong untuk outlet di luar runtun', async () => {
             // Kunjungan 1 -> outlet 70 (dalam runtun); tambahkan outlet di luar runtun untuk dibandingkan.
             const diluarRuntun = kunjungan.map((k) => (k.id === 3 ? { ...k, outlet_id: 99 } : k));
-            jawab({ total: 0, locations: [], depo: null, kunjungan: diluarRuntun, indikasi_jarak_kunjungan: indikasiJarak });
+            jawab({ total: 0, locations: [], depo: null, kunjungan: diluarRuntun, indikasi_jarak_kunjungan: [runtun1] });
             const wrapper = mount(RuteHarianPeta, { props, global: { stubs: stub } });
             useLeafletMap.mock.calls.at(-1)[1].onSiap(map, L);
             await flushPromises();

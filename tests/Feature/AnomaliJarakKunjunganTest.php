@@ -8,10 +8,10 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
-// Indikasi kunjungan outlet berurutan berjarak dekat (spec 054): runtun terpanjang kunjungan yang jarak
-// perjalanannya (dari KunjunganHarian) di bawah ambang. Ambang dibaca dari pengaturan_admin (kunci
-// deteksi_kunjungan.*), fallback ke config('marketama.deteksi_jarak_kunjungan') bila belum pernah disimpan
-// (default: jarak 5 m, minimum 4 kunjungan).
+// Indikasi kunjungan outlet berurutan berjarak dekat (spec 054): daftar SEMUA runtun kunjungan (bisa lebih dari
+// satu per hari) yang jarak perjalanannya (dari KunjunganHarian) di bawah ambang, urut dari yang terpanjang.
+// Ambang dibaca dari pengaturan_admin (kunci deteksi_kunjungan.*), fallback ke
+// config('marketama.deteksi_jarak_kunjungan') bila belum pernah disimpan (default: jarak 5 m, minimum 4 kunjungan).
 class AnomaliJarakKunjunganTest extends TestCase
 {
     use RefreshDatabase;
@@ -36,7 +36,7 @@ class AnomaliJarakKunjunganTest extends TestCase
             ['jam' => '08:10', 'jarak_m' => 3],
         ]);
 
-        $this->assertNull(AnomaliJarakKunjungan::analisis($k));
+        $this->assertSame([], AnomaliJarakKunjungan::analisis($k));
     }
 
     public function test_tepat_di_ambang_menghasilkan_peringatan(): void
@@ -51,29 +51,56 @@ class AnomaliJarakKunjunganTest extends TestCase
 
         $hasil = AnomaliJarakKunjungan::analisis($k);
 
-        $this->assertNotNull($hasil);
-        $this->assertSame(4, $hasil['jumlah']);
-        $this->assertSame([1, 2, 3, 4], $hasil['kunjungan_id']);
-        $this->assertSame('08:00', $hasil['dari_jam']);
-        $this->assertSame('08:15', $hasil['sampai_jam']);
+        $this->assertCount(1, $hasil);
+        $this->assertSame(4, $hasil[0]['jumlah']);
+        $this->assertSame([1, 2, 3, 4], $hasil[0]['kunjungan_id']);
+        $this->assertSame('08:00', $hasil[0]['dari_jam']);
+        $this->assertSame('08:15', $hasil[0]['sampai_jam']);
     }
 
-    public function test_runtun_terputus_oleh_kunjungan_jauh_diambil_yang_terpanjang(): void
+    public function test_dua_runtun_terpisah_sama_sama_dilaporkan_bukan_hanya_yang_terpanjang(): void
+    {
+        // Runtun pertama: 4 kunjungan dekat (08:00-08:15). Lompatan jauh. Runtun kedua: 6 kunjungan dekat (lebih panjang).
+        $k = $this->kunjungan([
+            ['jam' => '08:00', 'jarak_m' => null],
+            ['jam' => '08:05', 'jarak_m' => 2],
+            ['jam' => '08:10', 'jarak_m' => 3],
+            ['jam' => '08:15', 'jarak_m' => 0],
+            ['jam' => '09:00', 'jarak_m' => 5000], // memutus runtun
+            ['jam' => '09:05', 'jarak_m' => 1],
+            ['jam' => '09:10', 'jarak_m' => 2],
+            ['jam' => '09:15', 'jarak_m' => 3],
+            ['jam' => '09:20', 'jarak_m' => 4],
+            ['jam' => '09:25', 'jarak_m' => 0],
+        ]);
+
+        $hasil = AnomaliJarakKunjungan::analisis($k);
+
+        // Urut dari yang terpanjang, tapi runtun pertama (4) tetap ikut dilaporkan, tidak hilang karena kalah panjang.
+        $this->assertCount(2, $hasil);
+        $this->assertSame(6, $hasil[0]['jumlah']);
+        $this->assertSame([5, 6, 7, 8, 9, 10], $hasil[0]['kunjungan_id']);
+        $this->assertSame(4, $hasil[1]['jumlah']);
+        $this->assertSame([1, 2, 3, 4], $hasil[1]['kunjungan_id']);
+    }
+
+    public function test_runtun_terputus_oleh_kunjungan_jauh_diambil_yang_memenuhi_ambang_saja(): void
     {
         $k = $this->kunjungan([
             ['jam' => '08:00', 'jarak_m' => null],
             ['jam' => '08:05', 'jarak_m' => 2],
             ['jam' => '08:10', 'jarak_m' => 3],
             ['jam' => '08:15', 'jarak_m' => 0],
-            // Jauh: memutus runtun.
+            // Jauh: memutus runtun. Sisanya (2 kunjungan) di bawah ambang (4), tidak ikut dilaporkan.
             ['jam' => '09:00', 'jarak_m' => 5000],
             ['jam' => '09:05', 'jarak_m' => 1],
         ]);
 
         $hasil = AnomaliJarakKunjungan::analisis($k);
 
-        $this->assertSame(4, $hasil['jumlah']);
-        $this->assertSame([1, 2, 3, 4], $hasil['kunjungan_id']);
+        $this->assertCount(1, $hasil);
+        $this->assertSame(4, $hasil[0]['jumlah']);
+        $this->assertSame([1, 2, 3, 4], $hasil[0]['kunjungan_id']);
     }
 
     public function test_runtun_terputus_oleh_kunjungan_tanpa_koordinat(): void
@@ -89,7 +116,7 @@ class AnomaliJarakKunjunganTest extends TestCase
         ]);
 
         // Dua runtun terpisah masing-masing 3 kunjungan: keduanya di bawah ambang (4).
-        $this->assertNull(AnomaliJarakKunjungan::analisis($k));
+        $this->assertSame([], AnomaliJarakKunjungan::analisis($k));
     }
 
     public function test_ambang_jarak_tepat_batas_tidak_dihitung_dekat(): void
@@ -102,7 +129,7 @@ class AnomaliJarakKunjunganTest extends TestCase
             ['jam' => '08:15', 'jarak_m' => 4],
         ]);
 
-        $this->assertNull(AnomaliJarakKunjungan::analisis($k));
+        $this->assertSame([], AnomaliJarakKunjungan::analisis($k));
     }
 
     public function test_ambang_dibaca_dari_pengaturan_admin_bukan_ditanam_tetap(): void
@@ -118,8 +145,8 @@ class AnomaliJarakKunjunganTest extends TestCase
         ]);
 
         $hasil = AnomaliJarakKunjungan::analisis($k);
-        $this->assertNotNull($hasil);
-        $this->assertSame(2, $hasil['jumlah']);
+        $this->assertCount(1, $hasil);
+        $this->assertSame(2, $hasil[0]['jumlah']);
     }
 
     public function test_fallback_ke_config_bila_kunci_pengaturan_belum_pernah_disimpan(): void
@@ -132,8 +159,8 @@ class AnomaliJarakKunjunganTest extends TestCase
         ]);
 
         $hasil = AnomaliJarakKunjungan::analisis($k);
-        $this->assertNotNull($hasil);
-        $this->assertSame(2, $hasil['jumlah']);
+        $this->assertCount(1, $hasil);
+        $this->assertSame(2, $hasil[0]['jumlah']);
     }
 
     public function test_saran_berisi_outlet_unik_dan_ringkasan_jam(): void
@@ -145,7 +172,7 @@ class AnomaliJarakKunjunganTest extends TestCase
             ['jam' => '08:15', 'jarak_m' => 0, 'outlet_id' => null], // outlet baru, belum punya id
         ]);
 
-        $hasil = AnomaliJarakKunjungan::analisis($k);
+        $hasil = AnomaliJarakKunjungan::analisis($k)[0];
 
         $this->assertSame([10, 11], $hasil['outlet_id']);
         $this->assertSame('pola_kunjungan_tidak_wajar', $hasil['saran']['kategori']);
@@ -155,6 +182,6 @@ class AnomaliJarakKunjunganTest extends TestCase
 
     public function test_kunjungan_kosong_tidak_menghasilkan_peringatan(): void
     {
-        $this->assertNull(AnomaliJarakKunjungan::analisis(collect()));
+        $this->assertSame([], AnomaliJarakKunjungan::analisis(collect()));
     }
 }

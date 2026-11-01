@@ -82,7 +82,8 @@ class TrackingSalesController extends Controller
             'kunjungan' => $kunjungan,
             // Indikasi GPS tidak wajar pada tanggal ini saja (null bila di bawah ambang).
             'anomali_gps' => AnomaliGps::analisis($locations, $kunjungan->where('lokasi_palsu', true)->count()),
-            // Indikasi kunjungan outlet berturutan berjarak dekat (spec 054), null bila di bawah ambang.
+            // Indikasi kunjungan outlet berturutan berjarak dekat (spec 054): daftar runtun yang memenuhi ambang
+            // (bisa lebih dari satu per hari), urut dari yang terpanjang; array kosong bila tidak ada.
             'indikasi_jarak_kunjungan' => AnomaliJarakKunjungan::analisis($kunjungan),
         ]);
     }
